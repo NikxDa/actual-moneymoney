@@ -1,0 +1,45 @@
+{
+    "name": "actual-moneymoney",
+    "version": "1.0.0",
+    "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
+    "exports": "./index.js",
+    "scripts": {
+        "start": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
+        "dev": "ts-node src/index.ts import",
+        "lint": "eslint 'src/**/*.{ts,js}'",
+        "format": "prettier --write 'src/**/*.{ts,js}'"
+    },
+    "type": "module",
+    "keywords": [
+        "actual",
+        "moneymoney",
+        "finance",
+        "budget",
+        "sync",
+        "import"
+    ],
+    "author": "NikxDa",
+    "license": "MIT",
+    "dependencies": {
+        "@actual-app/api": "file:actual-api.tgz",
+        "app-root-path": "^3.1.0",
+        "date-fns": "^2.30.0",
+        "dotenv": "^16.0.3",
+        "lowdb": "^6.0.1",
+        "plist": "^3.0.6",
+        "prompts": "^2.4.2",
+        "run-applescript": "^6.1.0",
+        "yargs": "^17.7.2"
+    },
+    "node": ">=16",
+    "devDependencies": {
+        "@types/plist": "^3.0.2",
+        "@types/prompts": "^2.4.4",
+        "@types/yargs": "^17.0.24",
+        "eslint": "^8.39.0",
+        "nodemon": "^2.0.22",
+        "prettier": "^2.8.8",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.0.4"
+    }
+}
