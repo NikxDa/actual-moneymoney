@@ -162,7 +162,10 @@ class ActualApi {
             );
 
             const startTransaction: CreateTransaction = {
-                date: format(transactions[0].valueDate, 'yyyy-MM-dd'),
+                date: format(
+                    transactions[transactions.length - 1].valueDate,
+                    'yyyy-MM-dd'
+                ),
                 amount: startingBalance,
                 imported_id: `${monMonAccount.uuid}-start`,
                 cleared: true,
