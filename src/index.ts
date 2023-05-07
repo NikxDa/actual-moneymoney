@@ -1,21 +1,30 @@
-import dotenv from 'dotenv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
 import setupCommand from './commands/setup.command.js';
-import Database from './utils/db.js';
+import CacheService from './services/CacheService.js';
+import ConfigService from './services/ConfigService.js';
+import MoneyMoneyApi from './utils/MoneyMoneyApi.js';
 
-dotenv.config();
+const config = new ConfigService();
+const cache = new CacheService();
+const moneyMoneyApi = new MoneyMoneyApi();
 
-if (typeof process.env.DATA_DIR !== 'string') {
-    throw new Error('DATA_DIR environment variable is not set');
-}
+export type SharedDependencies = {
+    config: ConfigService;
+    cache: CacheService;
+    moneyMoneyApi: MoneyMoneyApi;
+};
 
-const database = new Database();
+const sharedDependencies = {
+    config,
+    cache,
+    moneyMoneyApi,
+};
 
 const yargsParser = yargs(hideBin(process.argv))
-    .command(importCommand(database))
-    .command(setupCommand(database))
+    .command(importCommand(sharedDependencies))
+    .command(setupCommand(sharedDependencies))
 
     .boolean('verbose')
     .alias('v', 'verbose')

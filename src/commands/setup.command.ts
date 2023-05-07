@@ -1,9 +1,12 @@
 import prompts from 'prompts';
 import { CommandModule } from 'yargs';
-import { default as Database } from '../utils/db.js';
+import { SharedDependencies } from '../index.js';
 
-const handleSetup = (database: Database) => async () => {
-    await database.read();
+const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
+    const { config, cache } = dependencies;
+
+    await config.load();
+    await cache.load();
 
     const defaultValues = {
         serverURL: 'http://localhost:5006',
@@ -14,8 +17,7 @@ const handleSetup = (database: Database) => async () => {
             type: 'text',
             name: 'serverURL',
             message: 'What is the URL of your running server?',
-            initial:
-                database.data.actualApi.serverURL ?? defaultValues.serverURL,
+            initial: config.data.actualApi.serverURL ?? defaultValues.serverURL,
             validate: (value) => {
                 if (value.length === 0) {
                     return 'Server URL cannot be empty';
@@ -32,7 +34,7 @@ const handleSetup = (database: Database) => async () => {
             type: 'text',
             name: 'syncID',
             message: 'What is the sync ID of your budget?',
-            initial: database.data.actualApi.syncID ?? '',
+            initial: config.data.actualApi.syncID ?? '',
             validate: (value) => {
                 if (value.length === 0) {
                     return 'Sync ID cannot be empty';
@@ -49,7 +51,7 @@ const handleSetup = (database: Database) => async () => {
             type: 'password',
             name: 'password',
             message: 'What is the password of your budget?',
-            initial: database.data.actualApi.password ?? '',
+            initial: config.data.actualApi.password ?? '',
             validate: (value) =>
                 value.length > 0 ? true : 'Password cannot be empty',
         },
@@ -72,29 +74,27 @@ const handleSetup = (database: Database) => async () => {
         // },
     ]);
 
-    if (syncID && syncID !== database.data.actualApi.syncID) {
-        database.data.importCache.accountMap = {};
-        database.data.importCache.transactionMap = {};
+    if (syncID && syncID !== config.data.actualApi.syncID) {
+        cache.data.accountMap = {};
+        cache.data.importedTransactions = [];
     }
 
-    database.data.actualApi = {
+    config.data.actualApi = {
         serverURL,
         password,
         syncID,
     };
 
-    database.data.setupComplete = true;
-
-    await database.write();
+    await config.save();
     console.log('Setup complete!');
 };
 
-export default (database: Database) =>
+export default (dependencies: SharedDependencies) =>
     ({
         command: 'setup',
         describe: 'Setup the importer',
         builder: (yargs) => {
             return yargs;
         },
-        handler: handleSetup(database),
+        handler: (argv) => handleSetup(dependencies, argv),
     } as CommandModule);

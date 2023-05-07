@@ -1,55 +1,54 @@
-import appRootPath from 'app-root-path';
+import { sub } from 'date-fns';
 import path from 'path';
 import { CommandModule } from 'yargs';
-import ActualApi from '../utils/actualApi.js';
-import Database from '../utils/db.js';
-import * as moneyMoneyApi from '../utils/moneyMoneyApi.js';
+import { SharedDependencies } from '../index.js';
+import ActualApi from '../utils/ActualApi.js';
+import Importer from '../utils/Importer.js';
+import envPaths from '../utils/envPaths.js';
 
-const handleCommand = (database: Database) => async (argv: any) => {
+const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
+    const { config } = dependencies;
+
     const isDryRun = (argv.dryRun as boolean) || false;
     const isContinuous = (argv.continuous as boolean) || false;
 
-    await database.read();
+    await config.load();
 
-    const actualDataDir = path.resolve(
-        path.join(appRootPath.path, process.env.DATA_DIR as string, 'actual')
-    );
-
-    const actualApi = new ActualApi({
-        serverURL: database.data.actualApi.serverURL,
-        password: database.data.actualApi.password,
-        syncID: database.data.actualApi.syncID,
-        dataDir: actualDataDir,
-        database,
-    });
-
-    console.log('Importing data from MoneyMoney...');
-    const allTransactions = await moneyMoneyApi.getTransactions({
-        from: new Date(2023, 1, 1),
-    });
-
-    console.log(`Found ${allTransactions.length} transactions.`);
-
-    const allAccounts = await moneyMoneyApi.getAccounts();
-    console.log(`Found ${allAccounts.length} accounts.`);
-
-    if (isDryRun) {
-        console.log('Dry run, not importing');
+    if (!(await config.isConfigurationComplete())) {
+        console.log('Please run `setup` first to configure the application.');
         return;
     }
 
+    const actualDataDir = path.resolve(path.join(envPaths.data, 'actual'));
+
+    const actualApi = new ActualApi({
+        params: {
+            ...config.data.actualApi,
+            dataDir: actualDataDir,
+        },
+        dependencies,
+    });
+
+    const importer = new Importer({
+        params: {},
+        dependencies: {
+            ...dependencies,
+            actualApi,
+        },
+    });
+
     console.log('Importing accounts...');
-    await actualApi.importMoneyMoneyAccounts(allAccounts);
+    await importer.importAccounts(isDryRun);
 
     console.log('Importing transactions...');
-    await actualApi.importMoneyMoneyTransactions(allTransactions, allAccounts);
+    const fromDate = sub(new Date(), { months: 1 });
+    await importer.importTransactions({ from: fromDate, isDryRun });
 
     console.log('Done importing data from MoneyMoney.');
-    await database.write();
 };
 
-export default (database: Database) =>
-    ({
+export default (dependencies: SharedDependencies) => {
+    return {
         command: 'import',
         describe: 'Import data from MoneyMoney',
         builder: (yargs) => {
@@ -59,5 +58,6 @@ export default (database: Database) =>
                 .boolean('continuous')
                 .describe('continuous', 'Run in continuous mode');
         },
-        handler: handleCommand(database),
-    } as CommandModule);
+        handler: (argv) => handleCommand(dependencies, argv),
+    } as CommandModule;
+};

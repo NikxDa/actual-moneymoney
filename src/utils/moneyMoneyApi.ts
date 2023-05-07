@@ -8,7 +8,7 @@ import { runAppleScript } from 'run-applescript';
     bankCode: '<BIC>',
     currency: 'EUR',
     group: false,
-    icon: <Buffer 89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52 00 00 00 20 00 00 00 20 08 06 00 00 00 73 7a 7a f4 00 00 00 01 73 52 47 42 00 ae ce 1c e9 00 00 00 78 ... 599 more bytes>,
+    icon: ...,
     indentation: 1,
     name: '<Name>',
     owner: '<OwnerName>',
@@ -71,23 +71,6 @@ export type MonMonTransaction = {
     valueDate: Date;
 };
 
-export const getAccounts = async () => {
-    if (await isDatabaseLocked()) {
-        return [];
-    }
-
-    const script = `
-        tell application "MoneyMoney"
-            export accounts
-        end tell
-    `;
-
-    const result = await runAppleScript(script);
-    const accounts = plist.parse(result);
-
-    return accounts as MonMonAccount[];
-};
-
 type GetTransactionsOptions = {
     from: Date;
     to?: Date;
@@ -95,59 +78,80 @@ type GetTransactionsOptions = {
     forCategory?: string;
 };
 
-export const getTransactions = async ({
-    to,
-    from,
-    forAccount,
-    forCategory,
-}: GetTransactionsOptions) => {
-    if (await isDatabaseLocked()) {
-        return [];
+class MoneyMoneyApi {
+    async getAccounts() {
+        if (await this.isDatabaseLocked()) {
+            return [];
+        }
+
+        const script = `
+            tell application "MoneyMoney"
+                export accounts
+            end tell
+        `;
+
+        const result = await runAppleScript(script);
+        const accounts = plist.parse(result);
+
+        return accounts as MonMonAccount[];
     }
 
-    let exportParameters = '';
+    async getTransactions({
+        to,
+        from,
+        forAccount,
+        forCategory,
+    }: GetTransactionsOptions) {
+        if (await this.isDatabaseLocked()) {
+            return [];
+        }
 
-    if (forAccount) {
-        exportParameters += ` for account "${forAccount}"`;
+        let exportParameters = '';
+
+        if (forAccount) {
+            exportParameters += ` for account "${forAccount}"`;
+        }
+
+        if (forCategory) {
+            exportParameters += ` for category "${forCategory}"`;
+        }
+
+        if (to) {
+            const formattedToDate = to.toISOString().split('T')[0];
+            exportParameters += ` to date "${formattedToDate}"`;
+        }
+
+        const formattedFromDate = from.toISOString().split('T')[0];
+        exportParameters += ` from date "${formattedFromDate}" as "plist"`;
+
+        const script = `
+            tell application "MoneyMoney"
+                export transactions${exportParameters}
+            end tell
+        `;
+
+        const result = await runAppleScript(script);
+        const data = plist.parse(result);
+
+        return (data as any).transactions as MonMonTransaction[];
     }
 
-    if (forCategory) {
-        exportParameters += ` for category "${forCategory}"`;
+    async isDatabaseLocked() {
+        const nextYear = new Date().getFullYear() + 1;
+
+        const script = `
+            tell application "MoneyMoney"
+                export transactions from date "${nextYear}-01-01" as "plist"
+            end tell
+        `;
+
+        try {
+            await runAppleScript(script);
+            return false;
+        } catch (error) {
+            return true;
+        }
     }
+}
 
-    if (to) {
-        const formattedToDate = to.toISOString().split('T')[0];
-        exportParameters += ` to date "${formattedToDate}"`;
-    }
-
-    const formattedFromDate = from.toISOString().split('T')[0];
-    exportParameters += ` from date "${formattedFromDate}" as "plist"`;
-
-    const script = `
-        tell application "MoneyMoney"
-            export transactions${exportParameters}
-        end tell
-    `;
-
-    const result = await runAppleScript(script);
-    const data = plist.parse(result);
-
-    return (data as any).transactions as MonMonTransaction[];
-};
-
-export const isDatabaseLocked = async () => {
-    const nextYear = new Date().getFullYear() + 1;
-
-    const script = `
-        tell application "MoneyMoney"
-            export transactions from date "${nextYear}-01-01" as "plist"
-        end tell
-    `;
-
-    try {
-        await runAppleScript(script);
-        return false;
-    } catch (error) {
-        return true;
-    }
-};
+export default MoneyMoneyApi;

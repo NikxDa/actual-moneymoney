@@ -1,8 +1,8 @@
-import appRootPath from 'app-root-path';
 import fs from 'fs/promises';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import path from 'path';
+import envPaths from '../utils/envPaths.js';
 
 type Config = {
     actualApi: {
@@ -10,29 +10,16 @@ type Config = {
         password: string;
         syncID: string;
     };
-    importCache: {
-        accountMap: {
-            [key: string]: string;
-        };
-        transactionMap: {
-            [key: string]: boolean;
-        };
-    };
-    setupComplete: boolean;
 };
 
-class Database {
+class ConfigService {
     private db: Low<Config>;
-    public data: Config;
     private configFile: string;
+    private configExists: boolean = false;
 
     constructor() {
         this.configFile = path.resolve(
-            path.join(
-                appRootPath.path,
-                process.env.DATA_DIR as string,
-                'db.json'
-            )
+            path.join(envPaths.config, 'config.json')
         );
 
         const defaultConfig: Config = {
@@ -41,22 +28,19 @@ class Database {
                 password: '',
                 syncID: '',
             },
-            importCache: {
-                accountMap: {},
-                transactionMap: {},
-            },
-            setupComplete: false,
         };
 
         this.db = new Low<Config>(
             new JSONFile<Config>(this.configFile),
             defaultConfig
         );
-
-        this.data = this.db.data;
     }
 
     private async ensureConfigExists() {
+        if (this.configExists) {
+            return;
+        }
+
         const configPath = path.dirname(this.configFile);
 
         // Ensure path exists
@@ -68,19 +52,36 @@ class Database {
         if (!pathExists) {
             await fs.mkdir(configPath, { recursive: true });
         }
+
+        this.configExists = true;
     }
 
-    async write() {
+    public async load() {
         await this.ensureConfigExists();
-        this.db.data = this.data;
+        await this.db.read();
+    }
+
+    public async save() {
+        await this.ensureConfigExists();
         await this.db.write();
     }
 
-    async read() {
+    get data() {
+        return this.db.data;
+    }
+
+    async isConfigurationComplete() {
         await this.ensureConfigExists();
         await this.db.read();
-        this.data = this.db.data;
+
+        const { actualApi } = this.db.data;
+
+        return (
+            actualApi.serverURL !== '' &&
+            actualApi.password !== '' &&
+            actualApi.syncID !== ''
+        );
     }
 }
 
-export default Database;
+export default ConfigService;
