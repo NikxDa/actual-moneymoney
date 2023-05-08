@@ -86,6 +86,8 @@ const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
     };
 
     await config.save();
+    await cache.save();
+
     console.log('Setup complete!');
 };
 

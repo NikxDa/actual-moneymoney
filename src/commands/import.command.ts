@@ -7,12 +7,13 @@ import Importer from '../utils/Importer.js';
 import envPaths from '../utils/envPaths.js';
 
 const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
-    const { config } = dependencies;
+    const { config, cache } = dependencies;
 
     const isDryRun = (argv.dryRun as boolean) || false;
     const isContinuous = (argv.continuous as boolean) || false;
 
     await config.load();
+    await cache.load();
 
     if (!(await config.isConfigurationComplete())) {
         console.log('Please run `setup` first to configure the application.');
@@ -47,6 +48,9 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     await importer.importTransactions({ from: fromDate, isDryRun });
 
     console.log('Done importing data from MoneyMoney.');
+
+    await config.save();
+    await cache.save();
 };
 
 export default (dependencies: SharedDependencies) => {

@@ -70,7 +70,6 @@ class Importer {
 
         console.log('Account import successful.');
 
-        await this.cache.save();
         await this.actualApi.sync();
     }
 
@@ -83,7 +82,6 @@ class Importer {
     }) {
         console.log('Starting transaction import...');
         const monMonAccounts = await this.moneyMoneyApi.getAccounts();
-        await this.cache.load();
 
         const transactions = await this.moneyMoneyApi.getTransactions({
             from,
@@ -220,7 +218,6 @@ class Importer {
             );
         }
 
-        await this.cache.save();
         await this.actualApi.sync();
         console.log('Transaction import complete.');
     }
