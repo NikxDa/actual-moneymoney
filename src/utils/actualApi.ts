@@ -91,6 +91,22 @@ class ActualApi {
     addTransactions(accountId: string, transactions: CreateTransaction[]) {
         return actual.methods.addTransactions(accountId, transactions);
     }
+
+    async getTransactionsByImportedPayee(payee: string) {
+        const queryBuilder = (actual.methods as any).q;
+        const runQuery = (actual.methods as any).runQuery;
+
+        const query = queryBuilder('transactions')
+            .filter({
+                imported_payee: payee,
+            })
+            .select(['category']);
+
+        const { data } = await runQuery(query);
+        // console.log(data);
+
+        return data;
+    }
 }
 
 export default ActualApi;

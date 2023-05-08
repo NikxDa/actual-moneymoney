@@ -30,7 +30,9 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     });
 
     const importer = new Importer({
-        params: {},
+        params: {
+            enableAIPayeeTransformation: true,
+        },
         dependencies: {
             ...dependencies,
             actualApi,

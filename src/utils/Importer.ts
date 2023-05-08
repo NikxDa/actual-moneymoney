@@ -2,9 +2,12 @@ import { format } from 'date-fns';
 import CacheService from '../services/CacheService.js';
 import ActualApi from './ActualApi.js';
 import MoneyMoneyApi, { MonMonTransaction } from './MoneyMoneyApi.js';
+import PayeeTransformer from './PayeeTransformer.js';
 import { ParamsAndDependencies } from './types.js';
 
-type ImporterParams = {};
+type ImporterParams = {
+    enableAIPayeeTransformation: boolean;
+};
 
 type ImporterDependencies = {
     cache: CacheService;
@@ -37,7 +40,9 @@ class Importer {
         );
         console.log(`Found ${actualAccounts.length} accounts in Actual.`);
 
-        const previouslyImportedAccounts = Object.keys(this.cache);
+        const previouslyImportedAccounts = Object.keys(
+            this.cache.data.accountMap
+        );
 
         const accountsToCreate = moneyMoneyAccounts.filter(
             (account) =>
@@ -78,6 +83,7 @@ class Importer {
     }) {
         console.log('Starting transaction import...');
         const monMonAccounts = await this.moneyMoneyApi.getAccounts();
+        await this.cache.load();
 
         const transactions = await this.moneyMoneyApi.getTransactions({
             from,
@@ -155,30 +161,50 @@ class Importer {
                 notes: 'Starting balance',
             };
 
-            const expenseTransactions = transactions.map(
-                (transaction): CreateTransaction => ({
-                    date: format(transaction.valueDate, 'yyyy-MM-dd'),
-                    amount: Math.round(transaction.amount * 100),
-                    imported_id: `${transaction.accountUuid}-${transaction.id}`,
-                    cleared: transaction.booked,
-                    notes: transaction.purpose,
-                    payee_name: transaction.name,
-                })
-            );
+            let expenseTransactions: CreateTransaction[] = [];
+            for (const transaction of transactions) {
+                expenseTransactions.push(
+                    await this.convertToActualTransaction(transaction)
+                );
+            }
 
             const transactionsToImport = [
                 ...expenseTransactions,
                 startTransaction,
-            ].filter(
-                (transaction) =>
-                    !this.cache.data.importedTransactions.includes(
+            ].filter((transaction) => {
+                const transactionExists =
+                    this.cache.data.importedTransactions.includes(
                         transaction.imported_id as string
-                    )
-            );
+                    );
+
+                return !transactionExists;
+            });
 
             console.log(
                 `Importing ${transactionsToImport.length} transactions to Actual account [${actualAccountId}]...`
             );
+
+            if (this.params.enableAIPayeeTransformation) {
+                console.log('Using AI to transform payee names...');
+                const payeeTransformer = new PayeeTransformer();
+
+                const transactionPayees = transactionsToImport.map(
+                    (t) => t.imported_payee as string
+                );
+                const transformedPayees =
+                    await payeeTransformer.transformPayees(transactionPayees);
+
+                if (transformedPayees !== null) {
+                    console.log('Payees transformed successfully.');
+
+                    transactionsToImport.forEach((t, i) => {
+                        t.payee_name =
+                            transformedPayees[t.imported_payee as string];
+                    });
+                } else {
+                    console.log('Payee transformation failed. Continuing...');
+                }
+            }
 
             await this.actualApi.addTransactions(
                 actualAccountId,
@@ -194,8 +220,30 @@ class Importer {
             );
         }
 
+        await this.cache.save();
         await this.actualApi.sync();
         console.log('Transaction import complete.');
+    }
+
+    private async convertToActualTransaction(
+        transaction: MonMonTransaction
+    ): Promise<CreateTransaction> {
+        const previousTransactionWithSameImportedPayee =
+            await this.actualApi.getTransactionsByImportedPayee(
+                transaction.name
+            );
+
+        // console.log(previousTransactionWithSameImportedPayee);
+
+        return {
+            date: format(transaction.valueDate, 'yyyy-MM-dd'),
+            amount: Math.round(transaction.amount * 100),
+            imported_id: `${transaction.accountUuid}-${transaction.id}`,
+            imported_payee: transaction.name,
+            cleared: transaction.booked,
+            notes: transaction.purpose,
+            // payee_name: transaction.name,
+        };
     }
 }
 

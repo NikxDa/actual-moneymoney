@@ -71,6 +71,42 @@ export type MonMonTransaction = {
     valueDate: Date;
 };
 
+/*
+    budget: { amount: 0, available: 0, period: 'monthly' },
+    currency: 'EUR',
+    default: false,
+    group: false,
+    icon: <Buffer 89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52 00 00 00 20 00 00 00 20 10 06 00 00 00 23 ea a6 b7 00 00 0c 40 69 43 43 50 49 43 43 20 50 72 6f 66 69 ... 4101 more bytes>,
+    indentation: 0,
+    name: 'Shopping',
+    rules: '"Amazon"',
+    uuid: 'dc6992b5-5b69-4224-a23e-7b9a400275ac'
+    */
+
+type MonMonCategoryDefault =
+    | {
+          default: true;
+          budget: {};
+      }
+    | {
+          default: false;
+          budget: {
+              amount: number;
+              available: number;
+              period: 'monthly' | 'yearly' | 'qurterly' | 'total';
+          };
+      };
+
+export type MonMonCategory = MonMonCategoryDefault & {
+    currency: string;
+    group: boolean;
+    icon: Buffer;
+    indentation: number;
+    name: string;
+    rules: string;
+    uuid: string;
+};
+
 type GetTransactionsOptions = {
     from: Date;
     to?: Date;
@@ -79,6 +115,23 @@ type GetTransactionsOptions = {
 };
 
 class MoneyMoneyApi {
+    async getCategories() {
+        if (await this.isDatabaseLocked()) {
+            return [];
+        }
+
+        const script = `
+            tell application "MoneyMoney"
+                export categories
+            end tell
+        `;
+
+        const result = await runAppleScript(script);
+        const categories = plist.parse(result);
+
+        return categories as MonMonCategory[];
+    }
+
     async getAccounts() {
         if (await this.isDatabaseLocked()) {
             return [];

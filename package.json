@@ -27,6 +27,7 @@
         "dotenv": "^16.0.3",
         "env-paths": "^3.0.0",
         "lowdb": "^6.0.1",
+        "openai": "^3.2.1",
         "plist": "^3.0.6",
         "prompts": "^2.4.2",
         "run-applescript": "^6.1.0",
