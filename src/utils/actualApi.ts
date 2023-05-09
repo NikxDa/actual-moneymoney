@@ -1,4 +1,5 @@
 import actual from '@actual-app/api';
+import { format } from 'date-fns';
 import fs from 'fs/promises';
 import CacheService from '../services/CacheService.js';
 import ConfigService from '../services/ConfigService.js';
@@ -90,6 +91,13 @@ class ActualApi {
 
     addTransactions(accountId: string, transactions: CreateTransaction[]) {
         return actual.methods.addTransactions(accountId, transactions);
+    }
+
+    getTransactions(accountId: string) {
+        const startDate = format(new Date(2000, 1, 1), 'yyyy-MM-dd');
+        const endDate = format(new Date(), 'yyyy-MM-dd');
+
+        return actual.methods.getTransactions(accountId, startDate, endDate);
     }
 
     async getTransactionsByImportedPayee(payee: string) {

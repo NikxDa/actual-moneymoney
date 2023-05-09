@@ -218,6 +218,61 @@ class Importer {
             );
         }
 
+        const accountsWithoutTransactions = monMonAccounts.filter(
+            (account) =>
+                !accountTransactionMap[account.uuid] &&
+                this.cache.data.accountMap[account.uuid]
+        );
+
+        console.log('Found accounts without transactions:');
+        for (const account of accountsWithoutTransactions) {
+            console.log(`- ${account.name} (${account.uuid})`);
+        }
+
+        if (accountsWithoutTransactions.length > 0) {
+            console.log('Creating starting balance transactions...');
+
+            for (const account of accountsWithoutTransactions) {
+                const actualAccountId =
+                    this.cache.data.accountMap[account.uuid];
+
+                if (!actualAccountId) {
+                    console.log(
+                        `No Actual account found for MoneyMoney account [${account.uuid}]. Skipping...`
+                    );
+
+                    continue;
+                }
+
+                console.log('Checking existing transactions...');
+                const existingTransactions =
+                    await this.actualApi.getTransactions(actualAccountId);
+
+                if (existingTransactions.length > 0) {
+                    console.log(
+                        `Actual account [${actualAccountId}] already has transactions. Skipping...`
+                    );
+
+                    continue;
+                }
+
+                const monMonAccountBalance = account.balance[0][0];
+                const startingBalance = Math.round(monMonAccountBalance * 100);
+
+                const startTransaction: CreateTransaction = {
+                    date: format(new Date(), 'yyyy-MM-dd'),
+                    amount: startingBalance,
+                    imported_id: `${account.uuid}-start`,
+                    cleared: true,
+                    notes: 'Starting balance',
+                };
+
+                await this.actualApi.addTransactions(actualAccountId, [
+                    startTransaction,
+                ]);
+            }
+        }
+
         await this.actualApi.sync();
         console.log('Transaction import complete.');
     }
