@@ -3,6 +3,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
 import setupCommand from './commands/setup.command.js';
+import pathsCommand from './commands/paths.command.js';
 import FileService from './services/FileService.js';
 import envPaths from './utils/envPaths.js';
 import path from 'path';
@@ -42,6 +43,7 @@ const sharedDependencies = {
 const yargsParser = yargs(hideBin(process.argv))
     .command(importCommand(sharedDependencies))
     .command(setupCommand(sharedDependencies))
+    .command(pathsCommand(sharedDependencies))
 
     .boolean('verbose')
     .alias('v', 'verbose')

@@ -15,6 +15,8 @@ import {
     ListrTask,
     ListrTaskWrapper,
 } from 'listr2';
+import { DATE_FORMAT } from './shared.js';
+import prompts from 'prompts';
 
 type ImporterParams = {
     enableAIPayeeTransformation: boolean;
@@ -71,15 +73,67 @@ class Importer {
 
         task.output = `Creating ${accountsToCreate.length} account(s) that weren't previously imported.`;
 
+        let mappedActualAccounts = Object.values(this.cache.data.accountMap);
+
         for (const account of accountsToCreate) {
-            if (!isDryRun) {
-                const createdAccountId =
-                    await this.actualApi.createAccountFromMoneyMoney(account);
+            const accountPrompt = await prompts([
+                {
+                    name: 'mapToAccount',
+                    type: 'select',
+                    message: `Please pick the Actual account that corresponds to the MoneyMoney account '${account.name}':`,
+                    choices: [
+                        ...actualAccounts
+                            .filter(
+                                (acc) => !mappedActualAccounts.includes(acc.id)
+                            )
+                            .map((acc) => ({
+                                title: acc.name,
+                                description: `Map the MoneyMoney account '${account.name}' to this account`,
+                                value: acc.id,
+                            })),
+                        {
+                            title: 'None / Create new account',
+                            description:
+                                'Create a new account in Actual instead of mapping to an existing account',
+                            value: 'none',
+                        },
+                    ],
+                },
+            ]);
 
-                this.cache.data.accountMap[account.uuid] = createdAccountId;
+            if (accountPrompt.mapToAccount === 'none') {
+                task.output = `Creating new Actual account for MoneyMoney account '${account.name}'...`;
+
+                if (!isDryRun) {
+                    const createdAccountId =
+                        await this.actualApi.createAccountFromMoneyMoney(
+                            account
+                        );
+
+                    this.cache.data.accountMap[account.uuid] = createdAccountId;
+                }
+            } else {
+                const actualAccount = actualAccounts.find(
+                    (acc) => acc.id === accountPrompt.mapToAccount
+                );
+
+                if (!actualAccount) {
+                    throw new Error(
+                        'Failed to find selected Actual account. Please report this bug on GitHub.'
+                    );
+                }
+
+                task.output = `Mapping MoneyMoney account '${account.name}' to Actual account '${actualAccount.name}'`;
+
+                if (!isDryRun) {
+                    this.cache.data.accountMap[account.uuid] = actualAccount.id;
+                }
+
+                mappedActualAccounts = [
+                    ...mappedActualAccounts,
+                    actualAccount.id,
+                ];
             }
-
-            task.output = `Created account ${account.name}.`;
         }
 
         if (!isDryRun) {
@@ -99,11 +153,15 @@ class Importer {
         const monMonAccounts = await getAccounts();
         task.output = `Found ${monMonAccounts.length} accounts in MoneyMoney`;
 
+        const actualAccounts = await this.actualApi.getAccounts();
+
         const transactions = await getTransactions({
             from,
         });
 
-        task.output = `Found ${transactions.length} total transactions in MoneyMoney`;
+        task.output = `Found ${
+            transactions.length
+        } total transactions in MoneyMoney since ${format(from, DATE_FORMAT)}`;
 
         const accountTransactionMap = transactions.reduce(
             (acc, transaction) => {
@@ -128,8 +186,11 @@ class Importer {
             accountTransactionMap
         )) {
             const actualAccountId = this.cache.data.accountMap[accountUuid];
+            const actualAccount = actualAccounts.find(
+                (acc) => acc.id === actualAccountId
+            );
 
-            if (!actualAccountId) {
+            if (!actualAccountId || !actualAccount) {
                 task.output = `No Actual account found for MoneyMoney account [${accountUuid}]. Skipping...`;
                 continue;
             }
@@ -172,9 +233,15 @@ class Importer {
                 );
             }
 
+            const existingTransactions = await this.actualApi.getTransactions(
+                actualAccountId
+            );
+
+            task.output = `Found ${existingTransactions.length} existing transactions for Actual account '${actualAccount.name}'`;
+
             const transactionsToImport = [
                 ...expenseTransactions,
-                startTransaction,
+                ...(existingTransactions.length > 0 ? [] : [startTransaction]),
             ].filter((transaction) => {
                 const transactionExists =
                     this.cache.data.importedTransactions.includes(
@@ -184,7 +251,7 @@ class Importer {
                 return !transactionExists;
             });
 
-            task.output = `Importing ${transactionsToImport.length} transactions to Actual account [${actualAccountId}]...`;
+            task.output = `Importing ${transactionsToImport.length} transactions to Actual account '${actualAccount.name}'...`;
 
             if (
                 this.params.enableAIPayeeTransformation &&
