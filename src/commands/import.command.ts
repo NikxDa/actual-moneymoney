@@ -86,6 +86,8 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
 
     await config.save();
     await cache.save();
+
+    process.exit();
 };
 
 export default (dependencies: SharedDependencies) => {
