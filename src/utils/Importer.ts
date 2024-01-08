@@ -1,25 +1,35 @@
 import { format } from 'date-fns';
-import CacheService from '../services/CacheService.js';
+import CacheService from '../services/FileService.js';
 import ActualApi from './ActualApi.js';
-import MoneyMoneyApi, { MonMonTransaction } from './MoneyMoneyApi.js';
 import PayeeTransformer from './PayeeTransformer.js';
-import { ParamsAndDependencies } from './types.js';
+import { Cache, ParamsAndDependencies } from './types.js';
+import {
+    Transaction as MonMonTransaction,
+    getAccounts,
+    getTransactions,
+} from 'moneymoney';
+import FileService from '../services/FileService.js';
+import {
+    Listr,
+    ListrSimpleRenderer,
+    ListrTask,
+    ListrTaskWrapper,
+} from 'listr2';
 
 type ImporterParams = {
     enableAIPayeeTransformation: boolean;
+    openaiApiKey?: string;
 };
 
 type ImporterDependencies = {
-    cache: CacheService;
+    cache: FileService<Cache>;
     actualApi: ActualApi;
-    moneyMoneyApi: MoneyMoneyApi;
 };
 
 class Importer {
     private params: ImporterParams;
-    private cache: CacheService;
+    private cache: FileService<Cache>;
     private actualApi: ActualApi;
-    private moneyMoneyApi: MoneyMoneyApi;
 
     constructor({
         params,
@@ -27,18 +37,26 @@ class Importer {
     }: ParamsAndDependencies<ImporterParams, ImporterDependencies>) {
         this.params = params;
         Object.assign(this, dependencies);
+
+        if (
+            this.params.enableAIPayeeTransformation &&
+            !this.params.openaiApiKey
+        ) {
+            throw new Error(
+                'AI payee name transformation was enabled, but no API key was provided. Run setup again to set your OpenAI API key.'
+            );
+        }
     }
 
-    async importAccounts(isDryRun = false) {
-        console.log('Starting account import...');
+    async importAccounts(
+        isDryRun = false,
+        task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>
+    ) {
+        const moneyMoneyAccounts = await getAccounts();
+        task.output = `Found ${moneyMoneyAccounts.length} accounts in MoneyMoney.`;
 
-        const moneyMoneyAccounts = await this.moneyMoneyApi.getAccounts();
         const actualAccounts = await this.actualApi.getAccounts();
-
-        console.log(
-            `Found ${moneyMoneyAccounts.length} accounts in MoneyMoney.`
-        );
-        console.log(`Found ${actualAccounts.length} accounts in Actual.`);
+        task.output = `Found ${actualAccounts.length} accounts in Actual.`;
 
         const previouslyImportedAccounts = Object.keys(
             this.cache.data.accountMap
@@ -51,41 +69,41 @@ class Importer {
                 !previouslyImportedAccounts.includes(account.uuid)
         );
 
-        console.log(
-            `Found ${accountsToCreate.length} accounts in MoneyMoney that weren't previously imported.`
-        );
-
-        if (isDryRun) {
-            console.log('Dry run. Skipping account creation.');
-            return;
-        }
+        task.output = `Creating ${accountsToCreate.length} account(s) that weren't previously imported.`;
 
         for (const account of accountsToCreate) {
-            const createdAccountId =
-                await this.actualApi.createAccountFromMoneyMoney(account);
+            if (!isDryRun) {
+                const createdAccountId =
+                    await this.actualApi.createAccountFromMoneyMoney(account);
 
-            this.cache.data.accountMap[account.uuid] = createdAccountId;
-            console.log(`Created account ${account.name}.`);
+                this.cache.data.accountMap[account.uuid] = createdAccountId;
+            }
+
+            task.output = `Created account ${account.name}.`;
         }
 
-        console.log('Account import successful.');
-
-        await this.actualApi.sync();
+        if (!isDryRun) {
+            await this.actualApi.sync();
+        }
     }
 
     async importTransactions({
         from,
         isDryRun = false,
+        task,
     }: {
         from: Date;
         isDryRun?: boolean;
+        task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>;
     }) {
-        console.log('Starting transaction import...');
-        const monMonAccounts = await this.moneyMoneyApi.getAccounts();
+        const monMonAccounts = await getAccounts();
+        task.output = `Found ${monMonAccounts.length} accounts in MoneyMoney`;
 
-        const transactions = await this.moneyMoneyApi.getTransactions({
+        const transactions = await getTransactions({
             from,
         });
+
+        task.output = `Found ${transactions.length} total transactions in MoneyMoney`;
 
         const accountTransactionMap = transactions.reduce(
             (acc, transaction) => {
@@ -100,18 +118,10 @@ class Importer {
             {} as Record<string, MonMonTransaction[]>
         );
 
-        console.log('Found transactions for the following accounts:');
         for (const [accountUuid, transactions] of Object.entries(
             accountTransactionMap
         )) {
-            console.log(
-                `- ${accountUuid} (${transactions.length} transactions)`
-            );
-        }
-
-        if (isDryRun) {
-            console.log('Dry run. Skipping transaction creation.');
-            return;
+            task.output = `Found ${transactions.length} transactions for account ${accountUuid}`;
         }
 
         for (const [accountUuid, transactions] of Object.entries(
@@ -120,9 +130,7 @@ class Importer {
             const actualAccountId = this.cache.data.accountMap[accountUuid];
 
             if (!actualAccountId) {
-                console.log(
-                    `No Actual account found for MoneyMoney account [${accountUuid}]. Skipping...`
-                );
+                task.output = `No Actual account found for MoneyMoney account [${accountUuid}]. Skipping...`;
                 continue;
             }
 
@@ -131,9 +139,7 @@ class Importer {
             );
 
             if (!monMonAccount) {
-                console.log(
-                    `No MoneyMoney account [${accountUuid}] found. Skipping...`
-                );
+                task.output = `No MoneyMoney account [${accountUuid}] found. Skipping...`;
                 continue;
             }
 
@@ -178,12 +184,14 @@ class Importer {
                 return !transactionExists;
             });
 
-            console.log(
-                `Importing ${transactionsToImport.length} transactions to Actual account [${actualAccountId}]...`
-            );
+            task.output = `Importing ${transactionsToImport.length} transactions to Actual account [${actualAccountId}]...`;
 
-            if (this.params.enableAIPayeeTransformation) {
-                console.log('Using AI to transform payee names...');
+            if (
+                this.params.enableAIPayeeTransformation &&
+                !isDryRun &&
+                transactionsToImport.length > 0
+            ) {
+                task.output = 'Transforming payee names...';
                 const payeeTransformer = new PayeeTransformer();
 
                 const transactionPayees = transactionsToImport.map(
@@ -193,29 +201,27 @@ class Importer {
                     await payeeTransformer.transformPayees(transactionPayees);
 
                 if (transformedPayees !== null) {
-                    console.log('Payees transformed successfully.');
-
                     transactionsToImport.forEach((t, i) => {
                         t.payee_name =
                             transformedPayees[t.imported_payee as string];
                     });
                 } else {
-                    console.log('Payee transformation failed. Continuing...');
+                    task.output = 'Payee transformation failed. Continuing...';
                 }
             }
 
-            await this.actualApi.addTransactions(
-                actualAccountId,
-                transactionsToImport
-            );
+            if (!isDryRun) {
+                await this.actualApi.addTransactions(
+                    actualAccountId,
+                    transactionsToImport
+                );
 
-            this.cache.data.importedTransactions.push(
-                ...transactionsToImport.map((t) => t.imported_id as string)
-            );
+                this.cache.data.importedTransactions.push(
+                    ...transactionsToImport.map((t) => t.imported_id as string)
+                );
+            }
 
-            console.log(
-                `Transaction map for Actual account [${actualAccountId}] updated.`
-            );
+            task.output = `Transaction map for Actual account [${actualAccountId}] updated.`;
         }
 
         const accountsWithoutTransactions = monMonAccounts.filter(
@@ -224,34 +230,29 @@ class Importer {
                 this.cache.data.accountMap[account.uuid]
         );
 
-        console.log('Found accounts without transactions:');
+        task.output = `Found ${accountsWithoutTransactions.length} accounts without transactions:`;
         for (const account of accountsWithoutTransactions) {
-            console.log(`- ${account.name} (${account.uuid})`);
+            task.output = `- ${account.name} (${account.uuid})`;
         }
 
         if (accountsWithoutTransactions.length > 0) {
-            console.log('Creating starting balance transactions...');
+            task.output = 'Creating starting balance transactions...';
 
             for (const account of accountsWithoutTransactions) {
                 const actualAccountId =
                     this.cache.data.accountMap[account.uuid];
 
                 if (!actualAccountId) {
-                    console.log(
-                        `No Actual account found for MoneyMoney account [${account.uuid}]. Skipping...`
-                    );
+                    task.output = `No Actual account found for MoneyMoney account [${account.uuid}]. Skipping...`;
 
                     continue;
                 }
 
-                console.log('Checking existing transactions...');
                 const existingTransactions =
                     await this.actualApi.getTransactions(actualAccountId);
 
                 if (existingTransactions.length > 0) {
-                    console.log(
-                        `Actual account [${actualAccountId}] already has transactions. Skipping...`
-                    );
+                    task.output = `Actual account [${actualAccountId}] already has transactions. Skipping...`;
 
                     continue;
                 }
@@ -259,22 +260,37 @@ class Importer {
                 const monMonAccountBalance = account.balance[0][0];
                 const startingBalance = Math.round(monMonAccountBalance * 100);
 
+                const startTransactionId = `${account.uuid}-start`;
                 const startTransaction: CreateTransaction = {
                     date: format(new Date(), 'yyyy-MM-dd'),
                     amount: startingBalance,
-                    imported_id: `${account.uuid}-start`,
+                    imported_id: startTransactionId,
                     cleared: true,
                     notes: 'Starting balance',
                 };
 
-                await this.actualApi.addTransactions(actualAccountId, [
-                    startTransaction,
-                ]);
+                if (
+                    this.cache.data.importedTransactions.includes(
+                        startTransactionId
+                    )
+                ) {
+                    task.output = `Starting balance already exists, skipping...`;
+                    continue;
+                }
+
+                if (!isDryRun) {
+                    await this.actualApi.addTransactions(actualAccountId, [
+                        startTransaction,
+                    ]);
+
+                    this.cache.data.importedTransactions.push(
+                        startTransactionId
+                    );
+                }
             }
         }
 
         await this.actualApi.sync();
-        console.log('Transaction import complete.');
     }
 
     private async convertToActualTransaction(

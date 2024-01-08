@@ -12,7 +12,14 @@ const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
         serverURL: 'http://localhost:5006',
     };
 
-    const { serverURL, password, syncID } = await prompts([
+    const {
+        serverURL,
+        password,
+        syncID,
+        encryptionEnabled,
+        openaiApiKey,
+        useAIPayeeTransformation,
+    } = await prompts([
         {
             type: 'text',
             name: 'serverURL',
@@ -55,23 +62,37 @@ const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
             validate: (value) =>
                 value.length > 0 ? true : 'Password cannot be empty',
         },
-        // {
-        //     type: 'toggle',
-        //     name: 'encryptionEnabled',
-        //     message:
-        //         'Have you set up your Actual server to use end-to-end encryption?',
-        //     hint: `Currently configured as: ${
-        //         existingConfig?.actualApi.password ? 'yes' : 'no'
-        //     }`,
-        //     initial: false,
-        //     active: 'yes',
-        //     inactive: 'no',
-        // },
-        // {
-        //     type: (prev) => (prev === true ? 'password' : null),
-        //     name: 'encryptionPassword',
-        //     message: 'What is the password used for the end-to-end encryption?',
-        // },
+        {
+            type: 'toggle',
+            name: 'encryptionEnabled',
+            message:
+                'Have you set up your Actual server to use end-to-end encryption?',
+            hint: `Currently configured as: ${
+                config.data.actualApi.password ? 'yes' : 'no'
+            }`,
+            initial: false,
+            active: 'yes',
+            inactive: 'no',
+        },
+        {
+            type: 'toggle',
+            name: 'useAIPayeeTransformation',
+            message:
+                'Do you want to use OpenAI to transform payee names to a human-readable format?',
+            hint: `An OpenAI API key is required. Currently confugured as: ${
+                config.data.useAIPayeeTransformation ? 'yes' : 'no'
+            }`,
+            initial: false,
+            active: 'yes',
+            inactive: 'no',
+        },
+        {
+            type: (prev) => (prev === true ? 'password' : null),
+            name: 'openaiApiKey',
+            initial: config.data.openaiApiKey,
+            message: 'Please enter your OpenAI API key:',
+            hint: 'You can generate one at https://platform.openai.com/account/api-keys',
+        },
     ]);
 
     if (syncID && syncID !== config.data.actualApi.syncID) {
@@ -83,7 +104,11 @@ const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
         serverURL,
         password,
         syncID,
+        encryptionEnabled,
     };
+
+    config.data.useAIPayeeTransformation = useAIPayeeTransformation;
+    config.data.openaiApiKey = openaiApiKey;
 
     await config.save();
     await cache.save();

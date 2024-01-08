@@ -1,9 +1,9 @@
 import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import CacheService from '../services/CacheService.js';
-import ConfigService from '../services/ConfigService.js';
-import { MonMonAccount } from './MoneyMoneyApi.js';
+import FileService from '../services/FileService.js';
+import { Account as MonMonAccount } from 'moneymoney';
+import { Cache, Config } from './types.js';
 
 type ActualApiParams = {
     dataDir: string;
@@ -13,8 +13,8 @@ type ActualApiParams = {
 };
 
 type ActualApiDependencies = {
-    cache: CacheService;
-    config: ConfigService;
+    cache: FileService<Cache>;
+    config: FileService<Config>;
 };
 
 type ActualApiConstructor = {
@@ -24,8 +24,8 @@ type ActualApiConstructor = {
 
 class ActualApi {
     private params: ActualApiParams;
-    private cache: CacheService;
-    private config: ConfigService;
+    private cache: FileService<Cache>;
+    private config: FileService<Config>;
 
     constructor({ params, dependencies }: ActualApiConstructor) {
         this.params = params;

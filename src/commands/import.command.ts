@@ -1,21 +1,34 @@
-import { sub } from 'date-fns';
+import { format, parse, sub, subMonths } from 'date-fns';
 import path from 'path';
 import { CommandModule } from 'yargs';
 import { SharedDependencies } from '../index.js';
 import ActualApi from '../utils/ActualApi.js';
 import Importer from '../utils/Importer.js';
 import envPaths from '../utils/envPaths.js';
+import { DATE_FORMAT } from '../utils/shared.js';
+import { Listr, SimpleRenderer } from 'listr2';
 
 const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     const { config, cache } = dependencies;
 
     const isDryRun = (argv.dryRun as boolean) || false;
-    const isContinuous = (argv.continuous as boolean) || false;
+    const fromDate = parse(argv.from as string, DATE_FORMAT, new Date());
+
+    if (isNaN(fromDate.getTime())) {
+        console.log(
+            `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
+        );
+    }
 
     await config.load();
     await cache.load();
 
-    if (!(await config.isConfigurationComplete())) {
+    const isSetupComplete =
+        config.data.actualApi.password !== '' &&
+        config.data.actualApi.serverURL !== '' &&
+        config.data.actualApi.syncID !== '';
+
+    if (!isSetupComplete) {
         console.log('Please run `setup` first to configure the application.');
         return;
     }
@@ -32,7 +45,8 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
 
     const importer = new Importer({
         params: {
-            enableAIPayeeTransformation: true,
+            enableAIPayeeTransformation: config.data.useAIPayeeTransformation,
+            openaiApiKey: config.data.openaiApiKey,
         },
         dependencies: {
             ...dependencies,
@@ -40,14 +54,35 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
         },
     });
 
-    console.log('Importing accounts...');
-    await importer.importAccounts(isDryRun);
+    const tasks = new Listr(
+        [
+            {
+                title: 'Import accounts',
+                task: async (ctx, task) => {
+                    await importer.importAccounts(isDryRun, task);
+                },
+            },
+            {
+                title: 'Import transactions',
+                task: async (ctx, task) => {
+                    await importer.importTransactions({
+                        from: fromDate,
+                        isDryRun,
+                        task,
+                    });
+                },
+            },
+            {
+                title: 'Import complete!',
+                task: () => {},
+            },
+        ],
+        {
+            renderer: SimpleRenderer,
+        }
+    );
 
-    console.log('Importing transactions...');
-    const fromDate = sub(new Date(), { months: 1 });
-    await importer.importTransactions({ from: fromDate, isDryRun });
-
-    console.log('Done importing data from MoneyMoney.');
+    await tasks.run();
 
     await config.save();
     await cache.save();
@@ -61,8 +96,12 @@ export default (dependencies: SharedDependencies) => {
             return yargs
                 .boolean('dry-run')
                 .describe('dry-run', 'Do not import data')
-                .boolean('continuous')
-                .describe('continuous', 'Run in continuous mode');
+                .string('from')
+                .describe(
+                    'from',
+                    `Import transactions on or after this date (${DATE_FORMAT})`
+                )
+                .default('from', format(subMonths(new Date(), 1), DATE_FORMAT));
         },
         handler: (argv) => handleCommand(dependencies, argv),
     } as CommandModule;

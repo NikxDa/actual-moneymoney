@@ -45,7 +45,21 @@ class PayeeTransformer {
             and concise, and omit any unnecessary details. For example, if the payee is "Amazon.com",
             you should return "Amazon". If the payee is "AMAZON.COM/BILLWA", you should also return
             "Amazon". You are free to make some assumptions about the payees. If you don't know the 
-            payee, return "Unknown".
+            payee, return "Unknown". If for some reason you cannot create a JSON object, return {}.
+
+            Examples:
+
+            Input: - 
+            Output: {}
+
+            Input: Amzn Mktp US*1234567890
+            Output: { "Amzn Mktp US*1234567890": "Amazon" }
+
+            Input: AMAZON.COM/BILLWA\nAMAZON.COM
+            Output: { "AMAZON.COM/BILLWA": "Amazon", "AMAZON.COM": "Amazon" }
+
+            If there is no list, return an empty object. Do not under any circumstances return anything that
+            is not valid JSON.
         `;
     }
 }
