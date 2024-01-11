@@ -96,8 +96,20 @@ const handleSetup = async (dependencies: SharedDependencies, argv: any) => {
     ]);
 
     if (syncID && syncID !== config.data.actualApi.syncID) {
-        cache.data.accountMap = {};
-        cache.data.importedTransactions = [];
+        const clearCachePrompt = await prompts({
+            type: 'toggle',
+            name: 'clearCache',
+            message:
+                'Your sync ID has changed. Do you want to clear the import cache and account mapping?',
+            initial: false,
+            active: 'yes',
+            inactive: 'no',
+        });
+
+        if (clearCachePrompt.clearCache) {
+            cache.data.accountMap = {};
+            cache.data.importedTransactions = [];
+        }
     }
 
     config.data.actualApi = {
