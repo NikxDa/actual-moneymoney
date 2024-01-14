@@ -28,6 +28,7 @@ const cacheFile = path.join(envPaths.cache, 'cache.json');
 const cache = new FileService<Cache>(cacheFile, {
     accountMap: {},
     importedTransactions: [],
+    lastImportDate: null,
 });
 
 export type SharedDependencies = {

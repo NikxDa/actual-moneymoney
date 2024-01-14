@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, parse, subMonths } from 'date-fns';
 import CacheService from '../services/FileService.js';
 import ActualApi from './ActualApi.js';
 import PayeeTransformer from './PayeeTransformer.js';
@@ -146,7 +146,7 @@ class Importer {
         isDryRun = false,
         task,
     }: {
-        from: Date;
+        from?: Date;
         isDryRun?: boolean;
         task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>;
     }) {
@@ -155,13 +155,22 @@ class Importer {
 
         const actualAccounts = await this.actualApi.getAccounts();
 
+        const lastImportDate = this.cache.data.lastImportDate
+            ? parse(this.cache.data.lastImportDate, 'yyyy-MM-dd', new Date())
+            : null;
+
+        const fromDate = from ?? lastImportDate ?? subMonths(new Date(), 1);
+
         const transactions = await getTransactions({
-            from,
+            from: fromDate,
         });
 
         task.output = `Found ${
             transactions.length
-        } total transactions in MoneyMoney since ${format(from, DATE_FORMAT)}`;
+        } total transactions in MoneyMoney since ${format(
+            fromDate,
+            DATE_FORMAT
+        )}`;
 
         const accountTransactionMap = transactions.reduce(
             (acc, transaction) => {
@@ -345,6 +354,8 @@ class Importer {
                     continue;
                 }
 
+                task.output = `Creating starting balance of ${startTransaction.amount} for Actual account '${actualAccountId}'`;
+
                 if (!isDryRun) {
                     await this.actualApi.addTransactions(actualAccountId, [
                         startTransaction,
@@ -357,6 +368,10 @@ class Importer {
             }
         }
 
+        if (!isDryRun) {
+            this.cache.data.lastImportDate = format(new Date(), DATE_FORMAT);
+        }
+
         await this.actualApi.sync();
     }
 
@@ -367,8 +382,6 @@ class Importer {
             await this.actualApi.getTransactionsByImportedPayee(
                 transaction.name
             );
-
-        // console.log(previousTransactionWithSameImportedPayee);
 
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),

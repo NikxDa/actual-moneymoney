@@ -34,9 +34,8 @@ $ node dist/index.js import
 
 The application will keep track of transactions that it has previously imported, so running the same import command twice will not result in duplicates. When you first run the import script, the tool will ask you to map the existing MoneyMoney accounts to accounts in Actual. You can pick the corresponding account, or create a new account in Actual if desired.
 
-After the account mapping is set up, the tool will read all transactions from MoneyMoney since the date given via the `--from` parameter (in format `yyyy-MM-dd`), and import them to the mapped account. If `--from` is omitted, it will search for transactions that are no older than 1 month. If accounts have no transactions, or you are creating a new Actual account, the application will also create starting balances.
+After the account mapping is set up, the tool will read all transactions from MoneyMoney since the date given via the `--from` parameter (in format `yyyy-MM-dd`), and import them to the mapped account. If `--from` is omitted, it will import transactions since the last import date, or, on the first run, transactions that are no older than 1 month. If accounts have no transactions, or you are creating a new Actual account, the application will also create starting balances.
 
 Please note: There is currently no way to choose the exact transaction to start the import at. Either all transactions from a given date will be imported, or none. In order to avoid duplicates when running the import for the first time, please make sure to specify a start date of which no transactions currently exist in Actual.
 
 For more parameters and options, use the `--help` to get help.
-

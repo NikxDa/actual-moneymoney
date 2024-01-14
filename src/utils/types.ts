@@ -8,6 +8,7 @@ export type Cache = {
         [key: string]: string;
     };
     importedTransactions: string[];
+    lastImportDate: string | null;
 };
 
 export type Config = {
