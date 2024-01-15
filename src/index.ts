@@ -29,6 +29,7 @@ const cache = new FileService<Cache>(cacheFile, {
     accountMap: {},
     importedTransactions: [],
     lastImportDate: null,
+    skippedAccounts: [],
 });
 
 export type SharedDependencies = {

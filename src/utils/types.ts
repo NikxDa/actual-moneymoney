@@ -7,6 +7,7 @@ export type Cache = {
     accountMap: {
         [key: string]: string;
     };
+    skippedAccounts: string[];
     importedTransactions: string[];
     lastImportDate: string | null;
 };

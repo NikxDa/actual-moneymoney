@@ -1,4 +1,4 @@
-import { format, parse, subMonths } from 'date-fns';
+import { format, isSameDay, isSameHour, parse, subMonths } from 'date-fns';
 import CacheService from '../services/FileService.js';
 import ActualApi from './ActualApi.js';
 import PayeeTransformer from './PayeeTransformer.js';
@@ -92,16 +92,22 @@ class Importer {
                                 value: acc.id,
                             })),
                         {
-                            title: 'None / Create new account',
+                            title: '[Create new account]',
                             description:
                                 'Create a new account in Actual instead of mapping to an existing account',
-                            value: 'none',
+                            value: 'create',
+                        },
+                        {
+                            title: '[Skip this account]',
+                            description:
+                                'Skip this account and do not import transactions',
+                            value: 'skip',
                         },
                     ],
                 },
             ]);
 
-            if (accountPrompt.mapToAccount === 'none') {
+            if (accountPrompt.mapToAccount === 'create') {
                 task.output = `Creating new Actual account for MoneyMoney account '${account.name}'...`;
 
                 if (!isDryRun) {
@@ -111,6 +117,12 @@ class Importer {
                         );
 
                     this.cache.data.accountMap[account.uuid] = createdAccountId;
+                }
+            } else if (accountPrompt.mapToAccount === 'skip') {
+                task.output = `Skipping MoneyMoney account '${account.name}'...`;
+
+                if (!isDryRun) {
+                    this.cache.data.skippedAccounts.push(account.uuid);
                 }
             } else {
                 const actualAccount = actualAccounts.find(
@@ -161,7 +173,7 @@ class Importer {
 
         const fromDate = from ?? lastImportDate ?? subMonths(new Date(), 1);
 
-        const transactions = await getTransactions({
+        let transactions = await getTransactions({
             from: fromDate,
         });
 
@@ -171,6 +183,44 @@ class Importer {
             fromDate,
             DATE_FORMAT
         )}`;
+
+        if (!lastImportDate) {
+            // Pick which transactions to import from the start date
+            const transactionsPrompt = await prompts([
+                {
+                    name: 'avoidDuplicates',
+                    type: 'confirm',
+                    message: `Do you want to select which transactions to import from ${format(
+                        fromDate,
+                        DATE_FORMAT
+                    )}?`,
+                    hint: 'Since this is your first time importing, you can avoid duplicates by selecting which transactions to import.',
+                },
+                {
+                    name: 'importTransactions',
+                    type: (prev) => (prev === true ? 'multiselect' : null),
+                    message: `It looks like this is the first time you are importing transactions. To avoid duplicates, please pick which transactions to import from ${format(
+                        fromDate,
+                        DATE_FORMAT
+                    )}:`,
+                    choices: transactions
+                        .filter((t) => isSameDay(t.valueDate, fromDate))
+                        .map((t) => ({
+                            title: `${t.name} (${t.amount} ${t.currency})`,
+                            description: `Import this transaction`,
+                            value: t.id,
+                        })),
+                },
+            ]);
+
+            if (transactionsPrompt.avoidDuplicates) {
+                transactions = transactions.filter(
+                    (t) =>
+                        !isSameDay(t.valueDate, fromDate) ||
+                        transactionsPrompt.importTransactions.includes(t.id)
+                );
+            }
+        }
 
         const accountTransactionMap = transactions.reduce(
             (acc, transaction) => {
@@ -242,9 +292,8 @@ class Importer {
                 );
             }
 
-            const existingTransactions = await this.actualApi.getTransactions(
-                actualAccountId
-            );
+            const existingTransactions =
+                await this.actualApi.getTransactions(actualAccountId);
 
             task.output = `Found ${existingTransactions.length} existing transactions for Actual account '${actualAccount.name}'`;
 
