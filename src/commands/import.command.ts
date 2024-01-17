@@ -12,9 +12,11 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     const { config, cache } = dependencies;
 
     const isDryRun = (argv.dryRun as boolean) || false;
-    const fromDate = parse(argv.from as string, DATE_FORMAT, new Date());
+    const fromDate = argv.from
+        ? parse(argv.from as string, DATE_FORMAT, new Date())
+        : undefined;
 
-    if (isNaN(fromDate.getTime())) {
+    if (fromDate && isNaN(fromDate.getTime())) {
         console.log(
             `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
         );
@@ -102,8 +104,7 @@ export default (dependencies: SharedDependencies) => {
                 .describe(
                     'from',
                     `Import transactions on or after this date (${DATE_FORMAT})`
-                )
-                .default('from', format(subMonths(new Date(), 1), DATE_FORMAT));
+                );
         },
         handler: (argv) => handleCommand(dependencies, argv),
     } as CommandModule;

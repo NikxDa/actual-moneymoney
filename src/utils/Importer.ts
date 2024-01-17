@@ -60,9 +60,10 @@ class Importer {
         const actualAccounts = await this.actualApi.getAccounts();
         task.output = `Found ${actualAccounts.length} accounts in Actual.`;
 
-        const previouslyImportedAccounts = Object.keys(
-            this.cache.data.accountMap
-        );
+        const previouslyImportedAccounts = [
+            ...Object.keys(this.cache.data.accountMap),
+            ...this.cache.data.skippedAccounts,
+        ];
 
         const accountsToCreate = moneyMoneyAccounts.filter(
             (account) =>
