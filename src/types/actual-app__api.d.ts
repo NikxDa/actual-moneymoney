@@ -163,7 +163,12 @@ declare module '@actual-app/api' {
 
     export const methods: {
         // Budget
-        downloadBudget: (budgetId: ID) => Promise<void>;
+        downloadBudget: (
+            budgetId: ID,
+            options?: {
+                password?: string;
+            }
+        ) => Promise<void>;
 
         // Transactions
         addTransactions: (

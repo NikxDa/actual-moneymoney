@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import FileService from '../services/FileService.js';
 import { Account as MonMonAccount } from 'moneymoney';
 import { Cache, Config } from './types.js';
+import prompts from 'prompts';
 
 type ActualApiParams = {
     dataDir: string;
@@ -35,7 +36,7 @@ class ActualApi {
 
     protected isInitialized = false;
 
-    async init() {
+    async init(e2ePassword?: string) {
         if (this.isInitialized) {
             return;
         }
@@ -55,7 +56,14 @@ class ActualApi {
             password: this.params.password,
         });
 
-        await actual.methods.downloadBudget(this.params.syncID);
+        await actual.methods.downloadBudget(
+            this.params.syncID,
+            e2ePassword
+                ? {
+                      password: e2ePassword,
+                  }
+                : undefined
+        );
 
         this.isInitialized = true;
     }

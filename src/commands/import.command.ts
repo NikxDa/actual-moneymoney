@@ -7,6 +7,8 @@ import Importer from '../utils/Importer.js';
 import envPaths from '../utils/envPaths.js';
 import { DATE_FORMAT } from '../utils/shared.js';
 import { DefaultRenderer, Listr, ListrRenderer, SimpleRenderer } from 'listr2';
+import { checkDatabaseUnlocked } from 'moneymoney';
+import prompts from 'prompts';
 
 const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     const { config, cache } = dependencies;
@@ -16,6 +18,7 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
     const verbose = argv.verbose as boolean;
+    let e2ePassword = argv.e2ePassword as string | undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
         console.log(
@@ -57,8 +60,41 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
         },
     });
 
+    const shouldQueryPassword =
+        config.data.actualApi.encryptionEnabled && !e2ePassword;
+
+    const passwordPrompt = await prompts({
+        type: shouldQueryPassword ? 'password' : null,
+        name: 'password',
+        message: 'Enter your end-to-end encryption password:',
+    });
+
+    if (shouldQueryPassword && !passwordPrompt.password) {
+        console.log('No E2E password entered. Aborting.');
+        process.exit();
+    } else {
+        e2ePassword = passwordPrompt.password;
+    }
+
     const tasks = new Listr(
         [
+            {
+                title: 'Check connection',
+                task: async (ctx, task) => {
+                    task.output = `Connecting to Actual...`;
+
+                    await actualApi.init(e2ePassword);
+                    task.output = `Connection to Actual established.`;
+                    task.output = `Checking MoneyMoney database access...`;
+                    const isUnlocked = await checkDatabaseUnlocked();
+                    if (!isUnlocked) {
+                        throw new Error(
+                            `MoneyMoney database is locked. Please unlock it and try again.`
+                        );
+                    }
+                    task.output = `MoneyMoney database is accessible.`;
+                },
+            },
             {
                 title: 'Import accounts',
                 task: async (ctx, task) => {
@@ -89,7 +125,7 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
         }
     );
 
-    await tasks.run();
+    await tasks.run().catch((e) => null);
 
     await config.save();
     await cache.save();
@@ -112,7 +148,9 @@ export default (dependencies: SharedDependencies) => {
                 )
                 .boolean('verbose')
                 .describe('verbose', 'Show verbose output')
-                .default('verbose', false);
+                .default('verbose', false)
+                .string('e2e-password')
+                .describe('e2e-password', 'End-to-end encryption password');
         },
         handler: (argv) => handleCommand(dependencies, argv),
     } as CommandModule;
