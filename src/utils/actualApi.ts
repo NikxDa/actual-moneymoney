@@ -115,6 +115,10 @@ class ActualApi {
 
         return data;
     }
+
+    async shutdown() {
+        await actual.shutdown();
+    }
 }
 
 export default ActualApi;

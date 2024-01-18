@@ -6,7 +6,7 @@ import ActualApi from '../utils/ActualApi.js';
 import Importer from '../utils/Importer.js';
 import envPaths from '../utils/envPaths.js';
 import { DATE_FORMAT } from '../utils/shared.js';
-import { Listr, SimpleRenderer } from 'listr2';
+import { DefaultRenderer, Listr, ListrRenderer, SimpleRenderer } from 'listr2';
 
 const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     const { config, cache } = dependencies;
@@ -15,6 +15,7 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
     const fromDate = argv.from
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
+    const verbose = argv.verbose as boolean;
 
     if (fromDate && isNaN(fromDate.getTime())) {
         console.log(
@@ -75,12 +76,16 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
                 },
             },
             {
-                title: 'Import complete!',
-                task: () => {},
+                title: 'Syncing data',
+                task: async () => {
+                    if (!isDryRun) {
+                        await actualApi.shutdown();
+                    }
+                },
             },
         ],
         {
-            renderer: SimpleRenderer,
+            renderer: verbose ? SimpleRenderer : DefaultRenderer,
         }
     );
 
@@ -104,7 +109,10 @@ export default (dependencies: SharedDependencies) => {
                 .describe(
                     'from',
                     `Import transactions on or after this date (${DATE_FORMAT})`
-                );
+                )
+                .boolean('verbose')
+                .describe('verbose', 'Show verbose output')
+                .default('verbose', false);
         },
         handler: (argv) => handleCommand(dependencies, argv),
     } as CommandModule;

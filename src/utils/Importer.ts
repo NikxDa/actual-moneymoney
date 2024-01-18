@@ -148,10 +148,6 @@ class Importer {
                 ];
             }
         }
-
-        if (!isDryRun) {
-            await this.actualApi.sync();
-        }
     }
 
     async importTransactions({
@@ -332,8 +328,16 @@ class Importer {
                             transformedPayees[t.imported_payee as string];
                     });
                 } else {
-                    task.output = 'Payee transformation failed. Continuing...';
+                    task.output =
+                        'Payee transformation failed. Using default payee names...';
+                    transactionsToImport.forEach((t, i) => {
+                        t.payee_name = t.imported_payee;
+                    });
                 }
+            } else {
+                transactionsToImport.forEach((t, i) => {
+                    t.payee_name = t.imported_payee;
+                });
             }
 
             if (!isDryRun) {
@@ -421,8 +425,6 @@ class Importer {
         if (!isDryRun) {
             this.cache.data.lastImportDate = format(new Date(), DATE_FORMAT);
         }
-
-        await this.actualApi.sync();
     }
 
     private async convertToActualTransaction(
