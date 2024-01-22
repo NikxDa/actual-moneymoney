@@ -69,11 +69,13 @@ const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
         message: 'Enter your end-to-end encryption password:',
     });
 
-    if (shouldQueryPassword && !passwordPrompt.password) {
-        console.log('No E2E password entered. Aborting.');
-        process.exit();
-    } else {
-        e2ePassword = passwordPrompt.password;
+    if (shouldQueryPassword) {
+        if (!passwordPrompt.password) {
+            console.log('No E2E password entered. Aborting.');
+            process.exit();
+        } else {
+            e2ePassword = passwordPrompt.password;
+        }
     }
 
     const tasks = new Listr(
