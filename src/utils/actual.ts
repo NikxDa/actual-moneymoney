@@ -1,69 +1,57 @@
 import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import FileService from '../services/FileService.js';
 import { Account as MonMonAccount } from 'moneymoney';
 import { Cache, Config } from './types.js';
 import prompts from 'prompts';
-
-type ActualApiParams = {
-    dataDir: string;
-    serverURL: string;
-    password: string;
-    syncID: string;
-};
-
-type ActualApiDependencies = {
-    cache: FileService<Cache>;
-    config: FileService<Config>;
-};
-
-type ActualApiConstructor = {
-    params: ActualApiParams;
-    dependencies: ActualApiDependencies;
-};
+import db from './db.js';
+import prisma from '@prisma/client';
+import path from 'path';
+import { getConfig } from './config.js';
 
 class ActualApi {
-    private params: ActualApiParams;
-    private cache: FileService<Cache>;
-    private config: FileService<Config>;
-
-    constructor({ params, dependencies }: ActualApiConstructor) {
-        this.params = params;
-        this.cache = dependencies.cache;
-        this.config = dependencies.config;
-    }
+    private config: prisma.Config | null = null;
 
     protected isInitialized = false;
 
-    async init(e2ePassword?: string) {
+    async init() {
         if (this.isInitialized) {
             return;
         }
 
+        this.config = await getConfig();
+
+        const actualDataDir = path.resolve(
+            process.env.ACTUAL_DATA_DIR ?? './actual-data'
+        );
+
         const dataDirExists = await fs
-            .access(this.params.dataDir)
+            .access(actualDataDir)
             .then(() => true)
             .catch(() => false);
 
         if (!dataDirExists) {
-            await fs.mkdir(this.params.dataDir, { recursive: true });
+            await fs.mkdir(actualDataDir, { recursive: true });
         }
 
         await actual.init({
-            dataDir: this.params.dataDir,
-            serverURL: this.params.serverURL,
-            password: this.params.password,
+            dataDir: actualDataDir,
+            serverURL: this.config.actualServerUrl,
+            password: this.config.actualServerPassword,
         });
 
-        await actual.methods.downloadBudget(
-            this.params.syncID,
-            e2ePassword
-                ? {
-                      password: e2ePassword,
-                  }
-                : undefined
-        );
+        const actualFiles = await db.budget.findMany();
+
+        for (const actualFile of actualFiles) {
+            await actual.methods.downloadBudget(
+                actualFile.syncId,
+                actualFile.e2ePassword
+                    ? {
+                          password: actualFile.e2ePassword,
+                      }
+                    : undefined
+            );
+        }
 
         this.isInitialized = true;
     }
@@ -129,4 +117,5 @@ class ActualApi {
     }
 }
 
-export default ActualApi;
+const actualApi = new ActualApi();
+export default actualApi;

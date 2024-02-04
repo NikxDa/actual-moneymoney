@@ -1,6 +1,4 @@
 import { format, isSameDay, isSameHour, parse, subMonths } from 'date-fns';
-import CacheService from '../services/FileService.js';
-import ActualApi from './ActualApi.js';
 import PayeeTransformer from './PayeeTransformer.js';
 import { Cache, ParamsAndDependencies } from './types.js';
 import {
@@ -8,7 +6,6 @@ import {
     getAccounts,
     getTransactions,
 } from 'moneymoney';
-import FileService from '../services/FileService.js';
 import {
     Listr,
     ListrSimpleRenderer,
@@ -17,64 +14,46 @@ import {
 } from 'listr2';
 import { DATE_FORMAT } from './shared.js';
 import prompts from 'prompts';
-
-type ImporterParams = {
-    enableAIPayeeTransformation: boolean;
-    openaiApiKey?: string;
-};
-
-type ImporterDependencies = {
-    cache: FileService<Cache>;
-    actualApi: ActualApi;
-};
+import actualApi from './actual.js';
+import db from './db.js';
+import { getConfig } from './config.js';
 
 class Importer {
-    private params: ImporterParams;
-    private cache: FileService<Cache>;
-    private actualApi: ActualApi;
-
-    constructor({
-        params,
-        dependencies,
-    }: ParamsAndDependencies<ImporterParams, ImporterDependencies>) {
-        this.params = params;
-        Object.assign(this, dependencies);
-
-        if (
-            this.params.enableAIPayeeTransformation &&
-            !this.params.openaiApiKey
-        ) {
-            throw new Error(
-                'AI payee name transformation was enabled, but no API key was provided. Run setup again to set your OpenAI API key.'
-            );
-        }
-    }
-
     async importAccounts(
+        syncId: string,
         isDryRun = false,
         task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>
     ) {
+        const actualFile = await db.budget.findUnique({
+            where: {
+                syncId,
+            },
+        });
+
+        if (!actualFile) {
+            throw new Error('No file with this sync ID found.');
+        }
+
         const moneyMoneyAccounts = await getAccounts();
         task.output = `Found ${moneyMoneyAccounts.length} accounts in MoneyMoney.`;
 
-        const actualAccounts = await this.actualApi.getAccounts();
+        const actualAccounts = await actualApi.getAccounts();
         task.output = `Found ${actualAccounts.length} accounts in Actual.`;
 
-        const previouslyImportedAccounts = [
-            ...Object.keys(this.cache.data.accountMap),
-            ...this.cache.data.skippedAccounts,
-        ];
+        const mappedAccounts = await db.mappedAccount.findMany();
 
         const accountsToCreate = moneyMoneyAccounts.filter(
             (account) =>
                 account.accountNumber &&
                 account.accountNumber.length > 0 &&
-                !previouslyImportedAccounts.includes(account.uuid)
+                !mappedAccounts.some((acc) => acc.moneyMoneyId === account.uuid)
         );
 
         task.output = `Creating ${accountsToCreate.length} account(s) that weren't previously imported.`;
 
-        let mappedActualAccounts = Object.values(this.cache.data.accountMap);
+        let mappedActualAccountIds = mappedAccounts
+            .filter((acc) => acc.actualId !== null)
+            .map((acc) => acc.actualId);
 
         for (const account of accountsToCreate) {
             const accountPrompt = await prompts([
@@ -85,7 +64,8 @@ class Importer {
                     choices: [
                         ...actualAccounts
                             .filter(
-                                (acc) => !mappedActualAccounts.includes(acc.id)
+                                (acc) =>
+                                    !mappedActualAccountIds.includes(acc.id)
                             )
                             .map((acc) => ({
                                 title: acc.name,
@@ -113,17 +93,32 @@ class Importer {
 
                 if (!isDryRun) {
                     const createdAccountId =
-                        await this.actualApi.createAccountFromMoneyMoney(
-                            account
-                        );
+                        await actualApi.createAccountFromMoneyMoney(account);
 
-                    this.cache.data.accountMap[account.uuid] = createdAccountId;
+                    await db.mappedAccount.create({
+                        data: {
+                            moneyMoneyId: account.uuid,
+                            actualId: createdAccountId,
+                            budgetSyncId: actualFile.syncId,
+                        },
+                    });
+
+                    mappedActualAccountIds = [
+                        ...mappedActualAccountIds,
+                        createdAccountId,
+                    ];
                 }
             } else if (accountPrompt.mapToAccount === 'skip') {
                 task.output = `Skipping MoneyMoney account '${account.name}'...`;
 
                 if (!isDryRun) {
-                    this.cache.data.skippedAccounts.push(account.uuid);
+                    await db.mappedAccount.create({
+                        data: {
+                            moneyMoneyId: account.uuid,
+                            actualId: null,
+                            budgetSyncId: actualFile.syncId,
+                        },
+                    });
                 }
             } else {
                 const actualAccount = actualAccounts.find(
@@ -139,11 +134,17 @@ class Importer {
                 task.output = `Mapping MoneyMoney account '${account.name}' to Actual account '${actualAccount.name}'`;
 
                 if (!isDryRun) {
-                    this.cache.data.accountMap[account.uuid] = actualAccount.id;
+                    await db.mappedAccount.create({
+                        data: {
+                            moneyMoneyId: account.uuid,
+                            actualId: actualAccount.id,
+                            budgetSyncId: actualFile.syncId,
+                        },
+                    });
                 }
 
-                mappedActualAccounts = [
-                    ...mappedActualAccounts,
+                mappedActualAccountIds = [
+                    ...mappedActualAccountIds,
                     actualAccount.id,
                 ];
             }
@@ -151,24 +152,35 @@ class Importer {
     }
 
     async importTransactions({
+        syncId,
         from,
         isDryRun = false,
         task,
     }: {
+        syncId: string;
         from?: Date;
         isDryRun?: boolean;
         task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>;
     }) {
+        const config = await getConfig();
+
+        const actualFile = await db.budget.findUnique({
+            where: {
+                syncId,
+            },
+        });
+
+        if (!actualFile) {
+            throw new Error('No file with this sync ID found.');
+        }
+
         const monMonAccounts = await getAccounts();
         task.output = `Found ${monMonAccounts.length} accounts in MoneyMoney`;
 
-        const actualAccounts = await this.actualApi.getAccounts();
+        const actualAccounts = await actualApi.getAccounts();
 
-        const lastImportDate = this.cache.data.lastImportDate
-            ? parse(this.cache.data.lastImportDate, 'yyyy-MM-dd', new Date())
-            : null;
-
-        const fromDate = from ?? lastImportDate ?? subMonths(new Date(), 1);
+        const fromDate =
+            from ?? actualFile.lastImportedAt ?? subMonths(new Date(), 1);
 
         let transactions = await getTransactions({
             from: fromDate,
@@ -181,7 +193,7 @@ class Importer {
             DATE_FORMAT
         )}`;
 
-        if (!lastImportDate) {
+        if (!actualFile.lastImportedAt) {
             // Pick which transactions to import from the start date
             const transactionsPrompt = await prompts([
                 {
@@ -196,7 +208,7 @@ class Importer {
                 {
                     name: 'importTransactions',
                     type: (prev) => (prev === true ? 'multiselect' : null),
-                    message: `It looks like this is the first time you are importing transactions. To avoid duplicates, please pick which transactions to import from ${format(
+                    message: `Please pick which transactions to import from ${format(
                         fromDate,
                         DATE_FORMAT
                     )}:`,
@@ -241,13 +253,26 @@ class Importer {
         for (const [accountUuid, transactions] of Object.entries(
             accountTransactionMap
         )) {
-            const actualAccountId = this.cache.data.accountMap[accountUuid];
+            const mappedAccount = await db.mappedAccount.findUnique({
+                where: {
+                    moneyMoneyId: accountUuid,
+                },
+            });
+
+            if (!mappedAccount) {
+                task.output = `No Actual account found for MoneyMoney account [${accountUuid}]. Skipping...`;
+                continue;
+            } else if (!mappedAccount.actualId) {
+                task.output = `MoneyMoney account [${accountUuid}] is not mapped. Skipping...`;
+                continue;
+            }
+
             const actualAccount = actualAccounts.find(
-                (acc) => acc.id === actualAccountId
+                (account) => account.id === mappedAccount.actualId
             );
 
-            if (!actualAccountId || !actualAccount) {
-                task.output = `No Actual account found for MoneyMoney account [${accountUuid}]. Skipping...`;
+            if (!actualAccount) {
+                task.output = `No Actual account [${mappedAccount.actualId}] found. Skipping...`;
                 continue;
             }
 
@@ -289,19 +314,21 @@ class Importer {
                 );
             }
 
-            const existingTransactions =
-                await this.actualApi.getTransactions(actualAccountId);
+            const existingTransactions = await actualApi.getTransactions(
+                actualAccount.id
+            );
 
             task.output = `Found ${existingTransactions.length} existing transactions for Actual account '${actualAccount.name}'`;
 
             const transactionsToImport = [
                 ...expenseTransactions,
                 ...(existingTransactions.length > 0 ? [] : [startTransaction]),
-            ].filter((transaction) => {
-                const transactionExists =
-                    this.cache.data.importedTransactions.includes(
-                        transaction.imported_id as string
-                    );
+            ].filter(async (transaction) => {
+                const transactionExists = await db.mappedTransaction.findFirst({
+                    where: {
+                        moneyMoneyId: transaction.imported_id,
+                    },
+                });
 
                 return !transactionExists;
             });
@@ -309,11 +336,11 @@ class Importer {
             task.output = `Importing ${transactionsToImport.length} transactions to Actual account '${actualAccount.name}'...`;
 
             if (
-                this.params.enableAIPayeeTransformation &&
+                !!config.openAIApiKey &&
                 !isDryRun &&
                 transactionsToImport.length > 0
             ) {
-                task.output = 'Transforming payee names...';
+                task.output = `Cleaning up payee names for ${transactionsToImport.length} transaction/s using OpenAI...`;
                 const payeeTransformer = new PayeeTransformer();
 
                 const transactionPayees = transactionsToImport.map(
@@ -341,23 +368,35 @@ class Importer {
             }
 
             if (!isDryRun) {
-                await this.actualApi.addTransactions(
-                    actualAccountId,
+                await actualApi.addTransactions(
+                    actualAccount.id,
                     transactionsToImport
                 );
 
-                this.cache.data.importedTransactions.push(
-                    ...transactionsToImport.map((t) => t.imported_id as string)
-                );
+                for (const transaction of transactionsToImport) {
+                    await db.mappedTransaction.create({
+                        data: {
+                            moneyMoneyId: transaction.imported_id as string,
+                            actualId: actualAccount.id,
+                            budgetSyncId: actualFile.syncId,
+                        },
+                    });
+                }
             }
 
-            task.output = `Transaction map for Actual account [${actualAccountId}] updated.`;
+            task.output = `Transaction map for Actual account [${actualAccount.id}] updated.`;
         }
+
+        const mappedAccounts = await db.mappedAccount.findMany({
+            where: {
+                budgetSyncId: actualFile.syncId,
+            },
+        });
 
         const accountsWithoutTransactions = monMonAccounts.filter(
             (account) =>
                 !accountTransactionMap[account.uuid] &&
-                this.cache.data.accountMap[account.uuid]
+                mappedAccounts.some((acc) => acc.moneyMoneyId === account.uuid)
         );
 
         task.output = `Found ${accountsWithoutTransactions.length} accounts without transactions:`;
@@ -369,8 +408,18 @@ class Importer {
             task.output = 'Creating starting balance transactions...';
 
             for (const account of accountsWithoutTransactions) {
-                const actualAccountId =
-                    this.cache.data.accountMap[account.uuid];
+                const mappedAccount = await db.mappedAccount.findUnique({
+                    where: {
+                        moneyMoneyId: account.uuid,
+                    },
+                });
+
+                if (!mappedAccount?.actualId) {
+                    task.output = `No Actual account found for MoneyMoney account [${account.uuid}]. Skipping...`;
+                    continue;
+                }
+
+                const actualAccountId = mappedAccount.actualId;
 
                 if (!actualAccountId) {
                     task.output = `No Actual account found for MoneyMoney account [${account.uuid}]. Skipping...`;
@@ -379,7 +428,7 @@ class Importer {
                 }
 
                 const existingTransactions =
-                    await this.actualApi.getTransactions(actualAccountId);
+                    await actualApi.getTransactions(actualAccountId);
 
                 if (existingTransactions.length > 0) {
                     task.output = `Actual account [${actualAccountId}] already has transactions. Skipping...`;
@@ -399,11 +448,14 @@ class Importer {
                     notes: 'Starting balance',
                 };
 
-                if (
-                    this.cache.data.importedTransactions.includes(
-                        startTransactionId
-                    )
-                ) {
+                const mappedStartTransaction =
+                    await db.mappedTransaction.findFirst({
+                        where: {
+                            moneyMoneyId: startTransactionId,
+                        },
+                    });
+
+                if (mappedStartTransaction) {
                     task.output = `Starting balance already exists, skipping...`;
                     continue;
                 }
@@ -411,19 +463,30 @@ class Importer {
                 task.output = `Creating starting balance of ${startTransaction.amount} for Actual account '${actualAccountId}'`;
 
                 if (!isDryRun) {
-                    await this.actualApi.addTransactions(actualAccountId, [
+                    await actualApi.addTransactions(actualAccountId, [
                         startTransaction,
                     ]);
 
-                    this.cache.data.importedTransactions.push(
-                        startTransactionId
-                    );
+                    await db.mappedTransaction.create({
+                        data: {
+                            moneyMoneyId: startTransactionId,
+                            actualId: actualAccountId,
+                            budgetSyncId: actualFile.syncId,
+                        },
+                    });
                 }
             }
         }
 
         if (!isDryRun) {
-            this.cache.data.lastImportDate = format(new Date(), DATE_FORMAT);
+            await db.budget.update({
+                where: {
+                    syncId,
+                },
+                data: {
+                    lastImportedAt: new Date(),
+                },
+            });
         }
     }
 
@@ -431,9 +494,7 @@ class Importer {
         transaction: MonMonTransaction
     ): Promise<CreateTransaction> {
         const previousTransactionWithSameImportedPayee =
-            await this.actualApi.getTransactionsByImportedPayee(
-                transaction.name
-            );
+            await actualApi.getTransactionsByImportedPayee(transaction.name);
 
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),
@@ -447,4 +508,5 @@ class Importer {
     }
 }
 
-export default Importer;
+const importer = new Importer();
+export default importer;

@@ -20,6 +20,7 @@
     "license": "MIT",
     "dependencies": {
         "@actual-app/api": "^6.4.0",
+        "@prisma/client": "^5.9.1",
         "app-root-path": "^3.1.0",
         "date-fns": "^3.1.0",
         "dotenv": "^16.3.1",
@@ -41,6 +42,7 @@
         "eslint": "^8.56.0",
         "nodemon": "^3.0.2",
         "prettier": "^3.1.1",
+        "prisma": "^5.9.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"
     }
