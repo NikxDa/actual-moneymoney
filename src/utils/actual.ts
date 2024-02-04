@@ -2,16 +2,27 @@ import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import { Account as MonMonAccount } from 'moneymoney';
-import { Cache, Config } from './types.js';
 import prompts from 'prompts';
 import db from './db.js';
 import prisma from '@prisma/client';
 import path from 'path';
 import { getConfig } from './config.js';
+import fetch from 'node-fetch';
+
+type UserFile = {
+    deleted: number;
+    encryptKeyId: null;
+    fileId: string;
+    groupId: string;
+    name: string;
+};
+
+type GetUserFilesResponse = {
+    status: string;
+    data: Array<UserFile>;
+};
 
 class ActualApi {
-    private config: prisma.Config | null = null;
-
     protected isInitialized = false;
 
     async init() {
@@ -19,7 +30,7 @@ class ActualApi {
             return;
         }
 
-        this.config = await getConfig();
+        const config = await getConfig();
 
         const actualDataDir = path.resolve(
             process.env.ACTUAL_DATA_DIR ?? './actual-data'
@@ -36,11 +47,11 @@ class ActualApi {
 
         await actual.init({
             dataDir: actualDataDir,
-            serverURL: this.config.actualServerUrl,
-            password: this.config.actualServerPassword,
+            serverURL: config.actualServerUrl,
+            password: config.actualServerPassword,
         });
 
-        const actualFiles = await db.budget.findMany();
+        const actualFiles = await db.budgetConfig.findMany();
 
         for (const actualFile of actualFiles) {
             await actual.methods.downloadBudget(
@@ -114,6 +125,68 @@ class ActualApi {
 
     async shutdown() {
         await actual.shutdown();
+    }
+
+    private async getUserToken() {
+        const config = await getConfig();
+
+        if (config.userToken) {
+            return config.userToken;
+        }
+
+        const response = await fetch(
+            `${config.actualServerUrl}/account/login`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    password: config.actualServerPassword,
+                }),
+            }
+        );
+
+        const responseData = (await response.json()) as {
+            data: { token: string | null };
+        };
+
+        const userToken = responseData.data?.token;
+
+        if (!userToken) {
+            throw new Error(
+                'Could not get user token: Invalid server password.'
+            );
+        }
+
+        await db.config.update({
+            where: {
+                id: 1,
+            },
+            data: {
+                userToken,
+            },
+        });
+
+        return userToken;
+    }
+
+    async getUserFiles() {
+        const config = await getConfig();
+        const userToken = await this.getUserToken();
+
+        const response = await fetch(
+            `${config.actualServerUrl}/sync/list-user-files`,
+            {
+                headers: {
+                    'X-Actual-Token': userToken,
+                },
+            }
+        );
+
+        const responseData = (await response.json()) as GetUserFilesResponse;
+
+        return responseData.data.filter((f) => f.deleted === 0);
     }
 }
 

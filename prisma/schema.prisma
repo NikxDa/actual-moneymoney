@@ -10,16 +10,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Budget {
-  syncId String @id @unique
-  name   String @unique
+model BudgetConfig {
+  syncId       String @id @unique
+  name         String @unique
+  originalName String
 
-  e2ePassword String?
+  e2ePassword    String?
+  lastImportedAt DateTime?
 
   mappedTransactions MappedTransaction[]
   mappedAccounts     MappedAccount[]
-
-  lastImportedAt DateTime?
 }
 
 model MappedTransaction {
@@ -27,7 +27,7 @@ model MappedTransaction {
   actualId     String
   createdAt    DateTime @default(now())
 
-  budget       Budget? @relation(fields: [budgetSyncId], references: [syncId])
+  budget       BudgetConfig? @relation(fields: [budgetSyncId], references: [syncId])
   budgetSyncId String?
 }
 
@@ -36,7 +36,7 @@ model MappedAccount {
   actualId     String?
   createdAt    DateTime @default(now())
 
-  budget       Budget? @relation(fields: [budgetSyncId], references: [syncId])
+  budget       BudgetConfig? @relation(fields: [budgetSyncId], references: [syncId])
   budgetSyncId String?
 }
 
@@ -46,6 +46,8 @@ model Config {
   actualServerUrl      String
   actualServerPassword String
   openAIApiKey         String?
+
+  userToken String?
 
   updatedAt DateTime @updatedAt
 }

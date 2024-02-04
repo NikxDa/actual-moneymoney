@@ -12,70 +12,105 @@ const handleAdd = async (argv: any) => {
 
     await getConfig();
 
-    const { syncId, e2eEncryptionEnabled, e2eEncryptionPassword, name } =
-        await prompts([
-            {
-                type: 'text',
-                name: 'syncId',
-                message: 'What is the sync ID of your budget?',
-                initial: argv.syncId ?? '',
-                validate: (value) => {
-                    if (value.length === 0) {
-                        return 'Sync ID cannot be empty';
-                    }
+    const availableBudgets = await actualApi.getUserFiles();
+    const existingBudgets = await db.budgetConfig.findMany();
 
-                    if (value.length !== 36 || !value.includes('-')) {
-                        return 'Sync ID must be a valid UUID';
-                    }
+    const budgetsNotYetAdded = availableBudgets.filter(
+        (budget) =>
+            !existingBudgets.find(
+                (existing) => existing.syncId === budget.groupId
+            )
+    );
 
-                    return true;
-                },
-            },
-            {
-                type: 'text',
-                name: 'name',
-                message:
-                    'Please give this budget a recognizable name/identifier:',
-                initial: 'personal',
-                validate: (value) =>
-                    value.length > 0 ? true : 'Name cannot be empty',
-            },
-            {
-                type: 'toggle',
-                name: 'e2eEncryptionEnabled',
-                message: 'Does this budget use end-to-end encryption?',
-                initial: false,
-                active: 'yes',
-                inactive: 'no',
-            },
-            {
-                type: (prev) => (prev === true ? 'password' : null),
-                name: 'e2eEncryptionPassword',
-                message: 'Please enter your end-to-end encryption password:',
-                validate: (value) =>
-                    value.length > 0 ? true : 'Password cannot be empty',
-            },
-        ]);
+    if (budgetsNotYetAdded.length === 0) {
+        console.log('All available budgets are already added.');
+        return;
+    }
 
-    await db.budget.create({
+    const promptsResult = await prompts([
+        {
+            type: 'select',
+            name: 'syncId',
+            message: 'Which budget do you want to add?',
+            choices: budgetsNotYetAdded.map((budget) => ({
+                title: budget.name,
+                value: budget.groupId,
+            })),
+        },
+        {
+            type: 'text',
+            name: 'name',
+            message: 'Please give this budget a recognizable name/identifier:',
+            initial: (prev) =>
+                argv.name ??
+                budgetsNotYetAdded.find((budget) => budget.groupId === prev)!
+                    .name,
+            validate: async (value) => {
+                if (value.length === 0) {
+                    return 'The name cannot be empty';
+                }
+
+                if (
+                    existingBudgets.find((existing) => existing.name === value)
+                ) {
+                    return 'A budget with this name already exists';
+                }
+
+                return true;
+            },
+        },
+        {
+            type: (_, values) =>
+                !!budgetsNotYetAdded.find(
+                    (budget) => budget.groupId === values.syncId
+                )!.encryptKeyId
+                    ? 'password'
+                    : null,
+            name: 'e2eEncryptionPassword',
+            message:
+                'This budget is end-to-end encrypted, please enter your encryption password:',
+            validate: (value) =>
+                value.length > 0 ? true : 'Password cannot be empty',
+        },
+    ]);
+
+    if (Object.keys(promptsResult).length === 0) {
+        console.log('Setup cancelled');
+        process.exit(0);
+    }
+
+    const { syncId, name, e2eEncryptionPassword } = promptsResult;
+
+    const budgetToImport = budgetsNotYetAdded.find(
+        (budget) => budget.groupId === syncId
+    )!;
+
+    await db.budgetConfig.create({
         data: {
             syncId,
-            e2ePassword: e2eEncryptionEnabled
+            e2ePassword: !!budgetToImport.encryptKeyId
                 ? e2eEncryptionPassword
                 : undefined,
             name,
+            originalName: budgetToImport.name,
         },
     });
 
-    console.log('Setup complete!');
+    console.log('Budget added successfully!');
 };
 
 const handleRemove = async (argv: any) => {
     await getConfig();
 
-    const actualFile = await db.budget.findFirst({
+    const nameToRemove = argv.name;
+    if (!nameToRemove) {
+        console.log('Please provide a budget name to remove.');
+        return;
+    }
+
+    const actualFile = await db.budgetConfig.findFirst({
         where: {
-            syncId: argv.syncId ?? undefined,
+            name: nameToRemove,
         },
     });
 
@@ -86,27 +121,29 @@ const handleRemove = async (argv: any) => {
         return;
     }
 
-    await db.budget.delete({
+    await db.budgetConfig.delete({
         where: {
-            syncId: argv.syncId,
+            syncId: actualFile.syncId,
         },
     });
 
-    console.log(`File with sync ID: '${argv.syncId}' removed.`);
+    console.log(
+        `File '${argv.name}' with sync ID: '${actualFile.syncId}' removed.`
+    );
 };
 
 const handleList = async (argv: any) => {
     await getConfig();
 
-    const actualFiles = await db.budget.findMany();
+    const actualFiles = await db.budgetConfig.findMany();
 
-    console.table(actualFiles, ['syncId', 'name']);
+    console.table(actualFiles, ['name', 'originalName', 'syncId']);
 };
 
 export default () =>
     ({
-        command: 'budget [action] [syncId]',
-        describe: 'Manage imports for different files inside Actual',
+        command: 'budget [action] [name]',
+        describe: 'Manage budget configurations for import',
         builder: (yargs) => {
             yargs.positional('action', {
                 type: 'string',
@@ -114,9 +151,9 @@ export default () =>
                 choices: ['add', 'remove', 'list'],
             });
 
-            yargs.positional('syncId', {
+            yargs.positional('name', {
                 type: 'string',
-                describe: 'The sync ID of the file',
+                describe: 'The name of the budget',
             });
 
             return yargs;

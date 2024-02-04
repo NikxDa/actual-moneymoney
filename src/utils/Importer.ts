@@ -1,6 +1,5 @@
 import { format, isSameDay, isSameHour, parse, subMonths } from 'date-fns';
 import PayeeTransformer from './PayeeTransformer.js';
-import { Cache, ParamsAndDependencies } from './types.js';
 import {
     Transaction as MonMonTransaction,
     getAccounts,
@@ -24,7 +23,7 @@ class Importer {
         isDryRun = false,
         task: ListrTaskWrapper<any, ListrSimpleRenderer, ListrSimpleRenderer>
     ) {
-        const actualFile = await db.budget.findUnique({
+        const actualFile = await db.budgetConfig.findUnique({
             where: {
                 syncId,
             },
@@ -87,6 +86,11 @@ class Importer {
                     ],
                 },
             ]);
+
+            if (Object.keys(accountPrompt).length === 0) {
+                console.log('Account selection cancelled');
+                process.exit(0);
+            }
 
             if (accountPrompt.mapToAccount === 'create') {
                 task.output = `Creating new Actual account for MoneyMoney account '${account.name}'...`;
@@ -164,7 +168,7 @@ class Importer {
     }) {
         const config = await getConfig();
 
-        const actualFile = await db.budget.findUnique({
+        const actualFile = await db.budgetConfig.findUnique({
             where: {
                 syncId,
             },
@@ -221,6 +225,11 @@ class Importer {
                         })),
                 },
             ]);
+
+            if (Object.keys(transactionsPrompt).length === 0) {
+                console.log('Transaction selection cancelled');
+                process.exit(0);
+            }
 
             if (transactionsPrompt.avoidDuplicates) {
                 transactions = transactions.filter(
@@ -479,7 +488,7 @@ class Importer {
         }
 
         if (!isDryRun) {
-            await db.budget.update({
+            await db.budgetConfig.update({
                 where: {
                     syncId,
                 },

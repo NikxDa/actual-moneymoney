@@ -1,5 +1,5 @@
 {
-    "name": "actual-moneymoney",
+    "name": "actually",
     "version": "1.0.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
@@ -16,6 +16,9 @@
         "sync",
         "import"
     ],
+    "bin": {
+        "actually": "./dist/index.js"
+    },
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
@@ -28,6 +31,7 @@
         "listr2": "^8.0.1",
         "lowdb": "^7.0.1",
         "moneymoney": "^1.2.0",
+        "node-fetch": "^3.3.2",
         "openai": "^3.2.1",
         "plist": "^3.1.0",
         "prompts": "^2.4.2",

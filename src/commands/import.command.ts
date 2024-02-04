@@ -13,24 +13,27 @@ import { getConfig } from '../utils/config.js';
 
 const handleCommand = async (argv: any) => {
     const config = await getConfig();
+    const budgetToImport = argv.budgetName;
 
-    if (!argv.budget) {
-        console.log(`Please specify the budget to import.`);
-        return;
-    }
-
-    const actualFile = await db.budget.findFirst({
+    const actualFiles = await db.budgetConfig.findMany({
         where: {
-            name: argv.budget ?? undefined,
+            name: budgetToImport ?? undefined,
         },
     });
 
-    if (!actualFile) {
+    if (actualFiles.length === 0 && budgetToImport) {
         console.log(
-            `No budget found with the name: '${argv.budget}'. Check the list of budgets with 'budget list' or add a new budget with 'budget add'.`
+            `No budget configuration found with the name: '${budgetToImport}'. Check the list of configured budgets with 'budget list' or add a new budget with 'budget add'.`
+        );
+        return;
+    } else if (actualFiles.length === 0) {
+        console.log(
+            `No budget configurations found. Add a new budget configuration with 'budget add'.`
         );
         return;
     }
+
+    console.log(`Running import for ${actualFiles.length} budget(s)`);
 
     const isDryRun = (argv.dryRun as boolean) || false;
     const fromDate = argv.from
@@ -52,6 +55,7 @@ const handleCommand = async (argv: any) => {
 
                     await actualApi.init();
                     task.output = `Connection to Actual established.`;
+
                     task.output = `Checking MoneyMoney database access...`;
                     const isUnlocked = await checkDatabaseUnlocked();
                     if (!isUnlocked) {
@@ -65,22 +69,26 @@ const handleCommand = async (argv: any) => {
             {
                 title: 'Import accounts',
                 task: async (ctx, task) => {
-                    await importer.importAccounts(
-                        actualFile.syncId,
-                        isDryRun,
-                        task
-                    );
+                    for (const actualFile of actualFiles) {
+                        await importer.importAccounts(
+                            actualFile.syncId,
+                            isDryRun,
+                            task
+                        );
+                    }
                 },
             },
             {
                 title: 'Import transactions',
                 task: async (ctx, task) => {
-                    await importer.importTransactions({
-                        syncId: actualFile.syncId,
-                        from: fromDate,
-                        isDryRun,
-                        task,
-                    });
+                    for (const actualFile of actualFiles) {
+                        await importer.importTransactions({
+                            syncId: actualFile.syncId,
+                            from: fromDate,
+                            isDryRun,
+                            task,
+                        });
+                    }
                 },
             },
             {
@@ -104,12 +112,13 @@ const handleCommand = async (argv: any) => {
 
 export default () => {
     return {
-        command: 'import [budget]',
+        command: 'import [budgetName]',
         describe: 'Import data from MoneyMoney',
         builder: (yargs) => {
-            yargs.positional('budget', {
+            yargs.positional('budgetName', {
                 type: 'string',
-                describe: 'The name/identifier of the budget to import',
+                describe:
+                    'The name/identifier of the budget to import. Leave empty to import all.',
             });
 
             return yargs

@@ -10,12 +10,7 @@ const handleSetup = async (argv: any) => {
 
     const currentConfig = await db.config.findFirst();
 
-    const {
-        serverURL,
-        serverPassword,
-        aiPayeeTransformationEnabled,
-        openaiApiKey,
-    } = await prompts([
+    const promptsResult = await prompts([
         {
             type: 'text',
             name: 'serverURL',
@@ -63,6 +58,18 @@ const handleSetup = async (argv: any) => {
                 value.length > 0 ? true : 'OpenAI API key cannot be empty',
         },
     ]);
+
+    if (Object.keys(promptsResult).length === 0) {
+        console.log('Setup cancelled');
+        process.exit(0);
+    }
+
+    const {
+        serverURL,
+        serverPassword,
+        aiPayeeTransformationEnabled,
+        openaiApiKey,
+    } = promptsResult;
 
     const config = {
         actualServerUrl: serverURL,
