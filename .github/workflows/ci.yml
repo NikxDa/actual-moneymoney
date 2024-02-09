@@ -1,0 +1,14 @@
+name: ci
+on: [push]
+jobs:
+    test:
+        name: test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: oven-sh/setup-bun@v1
+
+            - run: bun install
+            - run: bun run lint:eslint
+            - run: bun run lint:prettier
+            - run: bun run build
