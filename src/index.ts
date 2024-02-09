@@ -1,54 +1,47 @@
-import dotenv from 'dotenv';
+#!/usr/bin/env node
+
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
-import setupCommand from './commands/setup.command.js';
-import pathsCommand from './commands/paths.command.js';
-import FileService from './services/FileService.js';
-import envPaths from './utils/envPaths.js';
-import path from 'path';
-import { Cache, Config } from './utils/types.js';
+import validateCommand from './commands/validate.command.js';
+import { APPLICATION_DIRECTORY } from './utils/shared.js';
+import fs from 'fs';
+import Logger from './utils/Logger.js';
 
-dotenv.config();
+let appDirExists = true;
 
-// Set up config
-const configFile = path.join(envPaths.config, 'config.json');
-const config = new FileService<Config>(configFile, {
-    actualApi: {
-        password: '',
-        serverURL: '',
-        syncID: '',
-        encryptionEnabled: false,
-    },
-    useAIPayeeTransformation: false,
-});
+try {
+    fs.accessSync(APPLICATION_DIRECTORY);
+} catch (error) {
+    appDirExists = false;
+}
 
-// Set up cache
-const cacheFile = path.join(envPaths.cache, 'cache.json');
-const cache = new FileService<Cache>(cacheFile, {
-    accountMap: {},
-    importedTransactions: [],
-    lastImportDate: null,
-    skippedAccounts: [],
-});
-
-export type SharedDependencies = {
-    config: FileService<Config>;
-    cache: FileService<Cache>;
-};
-
-const sharedDependencies = {
-    config,
-    cache,
-};
+if (!appDirExists) {
+    fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
+}
 
 const yargsParser = yargs(hideBin(process.argv))
-    .command(importCommand(sharedDependencies))
-    .command(setupCommand(sharedDependencies))
-    .command(pathsCommand(sharedDependencies))
+    .option('config', {
+        type: 'string',
+        description: 'Path to the configuration file',
+    })
+    .option('logLevel', {
+        type: 'number',
+        description: 'The log level to use (0-3)',
+    })
+    .command(importCommand)
+    .command(validateCommand)
+    .showHelpOnFail(false)
+    .fail((msg, err, yargs) => {
+        const logger = new Logger();
 
-    .boolean('verbose')
-    .alias('v', 'verbose')
-    .describe('verbose', 'Enable verbose logging');
+        if (err) {
+            logger.error(err.message);
+        } else {
+            logger.error(msg);
+        }
+
+        process.exit(1);
+    });
 
 const { argv } = yargsParser;

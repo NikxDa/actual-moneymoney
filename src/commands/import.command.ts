@@ -1,159 +1,111 @@
-import { format, parse, sub, subMonths } from 'date-fns';
-import path from 'path';
+import { parse } from 'date-fns';
 import { CommandModule } from 'yargs';
-import { SharedDependencies } from '../index.js';
-import ActualApi from '../utils/ActualApi.js';
-import Importer from '../utils/Importer.js';
-import envPaths from '../utils/envPaths.js';
 import { DATE_FORMAT } from '../utils/shared.js';
-import { DefaultRenderer, Listr, ListrRenderer, SimpleRenderer } from 'listr2';
 import { checkDatabaseUnlocked } from 'moneymoney';
-import prompts from 'prompts';
+import Importer from '../utils/Importer.js';
+import { getConfig } from '../utils/config.js';
+import ActualApi from '../utils/ActualApi.js';
+import PayeeTransformer from '../utils/PayeeTransformer.js';
+import Logger, { LogLevel } from '../utils/Logger.js';
 
-const handleCommand = async (dependencies: SharedDependencies, argv: any) => {
-    const { config, cache } = dependencies;
+const handleCommand = async (argv: any) => {
+    const config = await getConfig(argv);
+
+    const logLevel = (argv.logLevel || LogLevel.INFO) as number;
+    const logger = new Logger(logLevel);
+
+    const payeeTransformer =
+        config.payeeTransformation.enabled &&
+        config.payeeTransformation.openAiApiKey
+            ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
+            : undefined;
+
+    if (config.actualServers.length === 0) {
+        throw new Error(
+            'No Actual servers configured. Refer to the docs on how to a new server with in the configuration file.'
+        );
+    }
 
     const isDryRun = (argv.dryRun as boolean) || false;
     const fromDate = argv.from
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
-    const verbose = argv.verbose as boolean;
-    let e2ePassword = argv.e2ePassword as string | undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
-        console.log(
+        throw new Error(
             `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
         );
     }
 
-    await config.load();
-    await cache.load();
+    for (const serverConfig of config.actualServers) {
+        const actualApi = new ActualApi(serverConfig, logger);
 
-    const isSetupComplete =
-        config.data.actualApi.password !== '' &&
-        config.data.actualApi.serverURL !== '' &&
-        config.data.actualApi.syncID !== '';
+        logger.debug(
+            `Connecting to Actual server...`,
+            `Server URL: ${serverConfig.serverUrl}`
+        );
 
-    if (!isSetupComplete) {
-        console.log('Please run `setup` first to configure the application.');
-        return;
-    }
+        await actualApi.init();
+        logger.debug(`Connection to Actual established.`);
 
-    const actualDataDir = path.resolve(path.join(envPaths.data, 'actual'));
+        logger.debug(`Checking MoneyMoney database access...`);
+        const isUnlocked = await checkDatabaseUnlocked();
+        if (!isUnlocked) {
+            throw new Error(
+                `MoneyMoney database is locked. Please unlock it and try again.`
+            );
+        }
+        logger.debug(`MoneyMoney database is accessible.`);
 
-    const actualApi = new ActualApi({
-        params: {
-            ...config.data.actualApi,
-            dataDir: actualDataDir,
-        },
-        dependencies,
-    });
+        for (const budgetConfig of serverConfig.budgets) {
+            await actualApi.init();
 
-    const importer = new Importer({
-        params: {
-            enableAIPayeeTransformation: config.data.useAIPayeeTransformation,
-            openaiApiKey: config.data.openaiApiKey,
-        },
-        dependencies: {
-            ...dependencies,
-            actualApi,
-        },
-    });
+            await actualApi.loadBudget(budgetConfig.syncId);
 
-    const shouldQueryPassword =
-        config.data.actualApi.encryptionEnabled && !e2ePassword;
+            const importer = new Importer(
+                budgetConfig,
+                actualApi,
+                logger,
+                payeeTransformer
+            );
 
-    const passwordPrompt = await prompts({
-        type: shouldQueryPassword ? 'password' : null,
-        name: 'password',
-        message: 'Enter your end-to-end encryption password:',
-    });
+            logger.info(
+                `Importing accounts...`,
+                `Budget: ${budgetConfig.syncId}`
+            );
 
-    if (shouldQueryPassword) {
-        if (!passwordPrompt.password) {
-            console.log('No E2E password entered. Aborting.');
-            process.exit();
-        } else {
-            e2ePassword = passwordPrompt.password;
+            const accountMapping = await importer.parseAccountMapping();
+
+            logger.info(
+                `Importing transactions...`,
+                `Budget: ${budgetConfig.syncId}`
+            );
+
+            await importer.importTransactions({
+                accountMapping,
+                from: fromDate,
+                isDryRun,
+            });
+
+            await actualApi.shutdown();
         }
     }
-
-    const tasks = new Listr(
-        [
-            {
-                title: 'Check connection',
-                task: async (ctx, task) => {
-                    task.output = `Connecting to Actual...`;
-
-                    await actualApi.init(e2ePassword);
-                    task.output = `Connection to Actual established.`;
-                    task.output = `Checking MoneyMoney database access...`;
-                    const isUnlocked = await checkDatabaseUnlocked();
-                    if (!isUnlocked) {
-                        throw new Error(
-                            `MoneyMoney database is locked. Please unlock it and try again.`
-                        );
-                    }
-                    task.output = `MoneyMoney database is accessible.`;
-                },
-            },
-            {
-                title: 'Import accounts',
-                task: async (ctx, task) => {
-                    await importer.importAccounts(isDryRun, task);
-                },
-            },
-            {
-                title: 'Import transactions',
-                task: async (ctx, task) => {
-                    await importer.importTransactions({
-                        from: fromDate,
-                        isDryRun,
-                        task,
-                    });
-                },
-            },
-            {
-                title: 'Syncing data',
-                task: async () => {
-                    if (!isDryRun) {
-                        await actualApi.shutdown();
-                    }
-                },
-            },
-        ],
-        {
-            renderer: verbose ? SimpleRenderer : DefaultRenderer,
-        }
-    );
-
-    await tasks.run().catch((e) => null);
-
-    await config.save();
-    await cache.save();
 
     process.exit();
 };
 
-export default (dependencies: SharedDependencies) => {
-    return {
-        command: 'import',
-        describe: 'Import data from MoneyMoney',
-        builder: (yargs) => {
-            return yargs
-                .boolean('dry-run')
-                .describe('dry-run', 'Do not import data')
-                .string('from')
-                .describe(
-                    'from',
-                    `Import transactions on or after this date (${DATE_FORMAT})`
-                )
-                .boolean('verbose')
-                .describe('verbose', 'Show verbose output')
-                .default('verbose', false)
-                .string('e2e-password')
-                .describe('e2e-password', 'End-to-end encryption password');
-        },
-        handler: (argv) => handleCommand(dependencies, argv),
-    } as CommandModule;
-};
+export default {
+    command: 'import',
+    describe: 'Import data from MoneyMoney',
+    builder: (yargs) => {
+        return yargs
+            .boolean('dry-run')
+            .describe('dry-run', 'Do not import data')
+            .string('from')
+            .describe(
+                'from',
+                `Import transactions on or after this date (${DATE_FORMAT})`
+            );
+    },
+    handler: (argv) => handleCommand(argv),
+} as CommandModule;

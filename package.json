@@ -1,6 +1,6 @@
 {
     "name": "actual-moneymoney",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
     "scripts": {
@@ -14,33 +14,36 @@
         "finance",
         "budget",
         "sync",
-        "import"
+        "import",
+        "importer"
+    ],
+    "bin": {
+        "actual-monmon": "./dist/index.js"
+    },
+    "files": [
+        "dist"
     ],
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
-        "@actual-app/api": "^6.4.0",
-        "app-root-path": "^3.1.0",
+        "@actual-app/api": "^6.5.0",
+        "chalk": "^5.3.0",
         "date-fns": "^3.1.0",
-        "dotenv": "^16.3.1",
-        "env-paths": "^3.0.0",
-        "listr2": "^8.0.1",
-        "lowdb": "^7.0.1",
         "moneymoney": "^1.2.0",
+        "node-fetch": "^3.3.2",
         "openai": "^3.2.1",
-        "plist": "^3.1.0",
-        "prompts": "^2.4.2",
-        "run-applescript": "^7.0.0",
-        "yargs": "^17.7.2"
+        "toml": "^3.0.0",
+        "yargs": "^17.7.2",
+        "zod": "^3.22.4"
     },
     "node": ">=16",
     "devDependencies": {
         "@types/plist": "^3.0.5",
-        "@types/prompts": "^2.4.9",
         "@types/yargs": "^17.0.32",
         "eslint": "^8.56.0",
         "nodemon": "^3.0.2",
         "prettier": "^3.1.1",
+        "prisma": "^5.9.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"
     }
