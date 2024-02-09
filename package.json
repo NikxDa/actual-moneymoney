@@ -7,7 +7,7 @@
         "build": "npx tsc",
         "start": "node dist/index.js",
         "lint:eslint": "eslint . --ext .ts",
-        "lint:prettier": "prettier --check ."
+        "lint:prettier": "prettier --check 'src/**/*.ts'"
     },
     "type": "module",
     "keywords": [
