@@ -20,7 +20,7 @@ The application needs to be configured with a TOML document in order to function
 
 A configuration document looks like this:
 
-```toml
+```
 # Payee transformation
 [payeeTransformation]
 enabled = false
