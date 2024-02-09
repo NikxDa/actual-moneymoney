@@ -63,6 +63,7 @@ const handleCommand = async (argv: any) => {
             await actualApi.loadBudget(budgetConfig.syncId);
 
             const importer = new Importer(
+                config,
                 budgetConfig,
                 actualApi,
                 logger,

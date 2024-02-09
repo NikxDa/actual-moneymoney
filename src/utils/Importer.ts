@@ -7,12 +7,13 @@ import {
     getTransactions,
 } from 'moneymoney';
 import { DATE_FORMAT } from './shared.js';
-import { ActualBudgetConfig, getConfig } from './config.js';
+import { ActualBudgetConfig, Config, getConfig } from './config.js';
 import ActualApi from './ActualApi.js';
 import Logger from './Logger.js';
 
 class Importer {
     constructor(
+        private config: Config,
         private budgetConfig: ActualBudgetConfig,
         private actualApi: ActualApi,
         private logger: Logger,
@@ -140,6 +141,11 @@ class Importer {
         let monMonTransactionsSinceFromDate = await getTransactions({
             from: fromDate,
         });
+
+        if (!this.config.import.importUncheckedTransactions) {
+            monMonTransactionsSinceFromDate =
+                monMonTransactionsSinceFromDate.filter((t) => t.booked);
+        }
 
         this.logger.debug(
             `Found ${
