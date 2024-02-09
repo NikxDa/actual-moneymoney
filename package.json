@@ -1,6 +1,6 @@
 {
-    "name": "actually",
-    "version": "1.0.0",
+    "name": "actual-moneymoney",
+    "version": "2.0.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
     "scripts": {
@@ -14,11 +14,15 @@
         "finance",
         "budget",
         "sync",
-        "import"
+        "import",
+        "importer"
     ],
     "bin": {
-        "actually": "./dist/index.js"
+        "actual-monmon": "./dist/index.js"
     },
+    "files": [
+        "dist"
+    ],
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {

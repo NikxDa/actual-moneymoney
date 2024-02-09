@@ -24,10 +24,9 @@ const yargsParser = yargs(hideBin(process.argv))
         type: 'string',
         description: 'Path to the configuration file',
     })
-    .option('verbose', {
-        alias: 'v',
-        type: 'boolean',
-        description: 'Run with verbose logging',
+    .option('logLevel', {
+        type: 'number',
+        description: 'The log level to use (0-3)',
     })
     .command(importCommand)
     .command(validateCommand)

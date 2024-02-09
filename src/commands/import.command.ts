@@ -11,8 +11,8 @@ import Logger, { LogLevel } from '../utils/Logger.js';
 const handleCommand = async (argv: any) => {
     const config = await getConfig(argv);
 
-    const isVerbose = argv.verbose as boolean;
-    const logger = new Logger(isVerbose ? LogLevel.DEBUG : LogLevel.INFO);
+    const logLevel = (argv.logLevel || LogLevel.INFO) as number;
+    const logger = new Logger(logLevel);
 
     const payeeTransformer =
         config.payeeTransformation.enabled &&

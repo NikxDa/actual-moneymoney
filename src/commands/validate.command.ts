@@ -8,8 +8,8 @@ import { EXAMPLE_CONFIG } from '../utils/shared.js';
 const handleValidate = async (argv: ArgumentsCamelCase) => {
     const configPath = await getConfigFile(argv);
 
-    const isVerbose = argv.verbose as boolean;
-    const logger = new Logger(isVerbose ? LogLevel.DEBUG : LogLevel.INFO);
+    const logLevel = (argv.logLevel || LogLevel.INFO) as number;
+    const logger = new Logger(logLevel);
 
     logger.info(`Current configuration file: ${configPath}`);
 
@@ -22,34 +22,35 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         // Create path to file and file itself if it doesn't exist
         await fs.writeFile(configPath, EXAMPLE_CONFIG);
 
-        console.log(
-            `Created empty configuration file at: ${configPath}. Please edit it with your preferred settings.`
+        logger.warn('Configuration file not found.');
+        logger.info(
+            `Created default configuration file at: ${configPath}. Please edit it with your preferred settings.`
         );
+
         process.exit(0);
     } else {
         const config = await getConfig(argv);
 
-        console.log('Validating configuration...');
+        logger.info('Validating configuration...');
 
         try {
             configSchema.parse(config);
         } catch (e) {
             if (e instanceof z.ZodError) {
-                console.error('Configuration file is invalid:');
+                logger.error('Configuration file is invalid:');
                 for (const error of e.errors) {
-                    console.error(
-                        `Path [${error.path.join('.')}]:`,
-                        error.message
+                    logger.error(
+                        `Path [${error.path.join('.')}]: ${error.message}`
                     );
                 }
             } else {
-                console.error('An unexpected error occured:', e);
+                logger.error(`An unexpected error occured: ${e}`);
             }
 
             process.exit(1);
         }
 
-        console.log('Configuration file is valid.');
+        logger.info('Configuration file is valid.');
     }
 };
 
