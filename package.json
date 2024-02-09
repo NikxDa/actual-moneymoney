@@ -6,7 +6,8 @@
     "scripts": {
         "build": "npx tsc",
         "start": "node dist/index.js",
-        "lint": "eslint . --ext .ts"
+        "lint:eslint": "eslint . --ext .ts",
+        "lint:prettier": "prettier --check ."
     },
     "type": "module",
     "keywords": [
