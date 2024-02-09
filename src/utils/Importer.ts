@@ -74,12 +74,12 @@ class Importer {
         const parsedAccountMapping: Map<MonMonAccount, Account> = new Map();
 
         const moneyMoneyAccounts = await getAccounts();
-        this.logger.info(
+        this.logger.debug(
             `Found ${moneyMoneyAccounts.length} accounts in MoneyMoney.`
         );
 
         const actualAccounts = await this.actualApi.getAccounts();
-        this.logger.info(`Found ${actualAccounts.length} accounts in Actual.`);
+        this.logger.debug(`Found ${actualAccounts.length} accounts in Actual.`);
 
         for (const [moneyMoneyRef, actualRef] of Object.entries(
             accountMapping
@@ -90,7 +90,7 @@ class Importer {
             );
 
             if (!moneyMoneyAccount) {
-                this.logger.warn(
+                this.logger.debug(
                     `No MoneyMoney account found for reference '${moneyMoneyRef}'. Skipping...`
                 );
                 continue;
@@ -102,18 +102,26 @@ class Importer {
             );
 
             if (!actualAccount) {
-                this.logger.warn(
+                this.logger.debug(
                     `No Actual account found for reference '${actualRef}'. Skipping...`
                 );
                 continue;
             }
 
-            this.logger.info(
+            this.logger.debug(
                 `MoneyMoney account '${moneyMoneyAccount.name}' will import to Actual account '${actualAccount.name}'.`
             );
 
             parsedAccountMapping.set(moneyMoneyAccount, actualAccount);
         }
+
+        this.logger.info(
+            'Parsed account mapping',
+            Array.from(parsedAccountMapping.entries()).map(
+                ([monMonAccount, actualAccount]) =>
+                    `${monMonAccount.name} → ${actualAccount.name}`
+            )
+        );
 
         return parsedAccountMapping;
     }
@@ -133,7 +141,7 @@ class Importer {
             from: fromDate,
         });
 
-        this.logger.info(
+        this.logger.debug(
             `Found ${
                 monMonTransactionsSinceFromDate.length
             } total transactions in MoneyMoney since ${format(
@@ -223,14 +231,14 @@ class Importer {
             );
 
             if (createTransactions.length === 0) {
-                this.logger.info(
+                this.logger.debug(
                     `No new transactions found for Actual account '${actualAccount.name}'. Skipping...`
                 );
                 continue;
             }
 
-            this.logger.info(
-                `Importing ${createTransactions.length} transactions to Actual account '${actualAccount.name}'...`
+            this.logger.debug(
+                `Considering ${createTransactions.length} transactions for Actual account '${actualAccount.name}'...`
             );
 
             if (this.payeeTransformer && !isDryRun) {
@@ -290,7 +298,11 @@ class Importer {
                 const updatedCount = result.updated.length;
 
                 this.logger.info(
-                    `Imported ${addedCount} new transaction/s and updated ${updatedCount} existing transaction/s for Actual account '${actualAccount.name}'.`
+                    `Transaction import to account '${actualAccount.name}' successful`,
+                    [
+                        `Added ${addedCount} new transaction.`,
+                        `Updated ${updatedCount} existing transaction.`,
+                    ]
                 );
             }
         }

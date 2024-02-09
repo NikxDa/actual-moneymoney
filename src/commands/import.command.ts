@@ -41,7 +41,8 @@ const handleCommand = async (argv: any) => {
         const actualApi = new ActualApi(serverConfig, logger);
 
         logger.debug(
-            `Connecting to Actual server at ${serverConfig.serverUrl}...`
+            `Connecting to Actual server...`,
+            `Server URL: ${serverConfig.serverUrl}`
         );
 
         await actualApi.init();
@@ -69,13 +70,15 @@ const handleCommand = async (argv: any) => {
             );
 
             logger.info(
-                `Importing accounts for budget: ${budgetConfig.syncId}`
+                `Importing accounts...`,
+                `Budget: ${budgetConfig.syncId}`
             );
 
             const accountMapping = await importer.parseAccountMapping();
 
             logger.info(
-                `Importing transactions for budget: ${budgetConfig.syncId}`
+                `Importing transactions...`,
+                `Budget: ${budgetConfig.syncId}`
             );
 
             await importer.importTransactions({

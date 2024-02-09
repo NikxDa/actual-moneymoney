@@ -6,6 +6,7 @@ import importCommand from './commands/import.command.js';
 import validateCommand from './commands/validate.command.js';
 import { APPLICATION_DIRECTORY } from './utils/shared.js';
 import fs from 'fs';
+import Logger from './utils/Logger.js';
 
 let appDirExists = true;
 
@@ -32,10 +33,12 @@ const yargsParser = yargs(hideBin(process.argv))
     .command(validateCommand)
     .showHelpOnFail(false)
     .fail((msg, err, yargs) => {
+        const logger = new Logger();
+
         if (err) {
-            console.error(err.message);
+            logger.error(err.message);
         } else {
-            console.error(msg);
+            logger.error(msg);
         }
 
         process.exit(1);
