@@ -1,13 +1,9 @@
 import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import { Account as MonMonAccount } from 'moneymoney';
-import prompts from 'prompts';
-import db from './db.js';
-import prisma from '@prisma/client';
-import path from 'path';
-import { getConfig } from './config.js';
+import { ActualServerConfig, Config, getConfig } from './config.js';
 import fetch from 'node-fetch';
+import { DEFAULT_DATA_DIR } from './shared.js';
 
 type UserFile = {
     deleted: number;
@@ -25,16 +21,18 @@ type GetUserFilesResponse = {
 class ActualApi {
     protected isInitialized = false;
 
+    constructor(
+        private serverConfig: ActualServerConfig,
+        private config: Config
+    ) {}
+
     async init() {
         if (this.isInitialized) {
             return;
         }
 
-        const config = await getConfig();
-
-        const actualDataDir = path.resolve(
-            process.env.ACTUAL_DATA_DIR ?? './actual-data'
-        );
+        const actualDataDir =
+            this.config.storage.actualDataDir ?? DEFAULT_DATA_DIR;
 
         const dataDirExists = await fs
             .access(actualDataDir)
@@ -47,21 +45,21 @@ class ActualApi {
 
         await actual.init({
             dataDir: actualDataDir,
-            serverURL: config.actualServerUrl,
-            password: config.actualServerPassword,
+            serverURL: this.serverConfig.serverUrl,
+            password: this.serverConfig.serverPassword,
         });
 
-        const actualFiles = await db.budgetConfig.findMany();
-
-        for (const actualFile of actualFiles) {
-            await actual.methods.downloadBudget(
-                actualFile.syncId,
-                actualFile.e2ePassword
-                    ? {
-                          password: actualFile.e2ePassword,
-                      }
-                    : undefined
-            );
+        for (const actualServer of this.config.actualServers) {
+            for (const budgetConfig of actualServer.budgets) {
+                await actual.methods.downloadBudget(
+                    budgetConfig.syncId,
+                    budgetConfig.e2eEncryption.enabled
+                        ? {
+                              password: budgetConfig.e2eEncryption.password,
+                          }
+                        : undefined
+                );
+            }
         }
 
         this.isInitialized = true;
@@ -81,19 +79,6 @@ class ActualApi {
         await this.ensureInitialization();
         const accounts = await actual.methods.getAccounts();
         return accounts;
-    }
-
-    async createAccountFromMoneyMoney(account: MonMonAccount) {
-        const createdAccountId = await actual.methods.createAccount(
-            {
-                name: account.name,
-                type: 'checking',
-                closed: false,
-            },
-            0
-        );
-
-        return createdAccountId;
     }
 
     addTransactions(accountId: string, transactions: CreateTransaction[]) {
@@ -118,7 +103,6 @@ class ActualApi {
             .select(['category']);
 
         const { data } = await runQuery(query);
-        // console.log(data);
 
         return data;
     }
@@ -128,21 +112,15 @@ class ActualApi {
     }
 
     private async getUserToken() {
-        const config = await getConfig();
-
-        if (config.userToken) {
-            return config.userToken;
-        }
-
         const response = await fetch(
-            `${config.actualServerUrl}/account/login`,
+            `${this.serverConfig.serverUrl}/account/login`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    password: config.actualServerPassword,
+                    password: this.serverConfig.serverPassword,
                 }),
             }
         );
@@ -159,24 +137,14 @@ class ActualApi {
             );
         }
 
-        await db.config.update({
-            where: {
-                id: 1,
-            },
-            data: {
-                userToken,
-            },
-        });
-
         return userToken;
     }
 
     async getUserFiles() {
-        const config = await getConfig();
         const userToken = await this.getUserToken();
 
         const response = await fetch(
-            `${config.actualServerUrl}/sync/list-user-files`,
+            `${this.serverConfig.serverUrl}/sync/list-user-files`,
             {
                 headers: {
                     'X-Actual-Token': userToken,
@@ -190,5 +158,4 @@ class ActualApi {
     }
 }
 
-const actualApi = new ActualApi();
-export default actualApi;
+export default ActualApi;

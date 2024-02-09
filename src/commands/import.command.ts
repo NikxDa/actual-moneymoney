@@ -1,39 +1,30 @@
-import { format, parse, sub, subMonths } from 'date-fns';
-import path from 'path';
+import { parse } from 'date-fns';
 import { CommandModule } from 'yargs';
-import Importer from '../utils/Importer.js';
 import { DATE_FORMAT } from '../utils/shared.js';
-import { DefaultRenderer, Listr, ListrRenderer, SimpleRenderer } from 'listr2';
 import { checkDatabaseUnlocked } from 'moneymoney';
-import prompts from 'prompts';
-import db from '../utils/db.js';
-import actualApi from '../utils/actual.js';
-import importer from '../utils/Importer.js';
+import Importer from '../utils/Importer.js';
 import { getConfig } from '../utils/config.js';
+import ActualApi from '../utils/ActualApi.js';
+import PayeeTransformer from '../utils/PayeeTransformer.js';
+import Logger, { LogLevel } from '../utils/Logger.js';
 
 const handleCommand = async (argv: any) => {
-    const config = await getConfig();
+    const config = await getConfig(argv);
     const budgetToImport = argv.budgetName;
 
-    const actualFiles = await db.budgetConfig.findMany({
-        where: {
-            name: budgetToImport ?? undefined,
-        },
-    });
+    const isVerbose = argv.verbose as boolean;
 
-    if (actualFiles.length === 0 && budgetToImport) {
-        console.log(
-            `No budget configuration found with the name: '${budgetToImport}'. Check the list of configured budgets with 'budget list' or add a new budget with 'budget add'.`
+    const logger = new Logger(isVerbose ? LogLevel.DEBUG : LogLevel.INFO);
+
+    const payeeTransformer = config.payeeTransformation.enabled
+        ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
+        : undefined;
+
+    if (config.actualServers.length === 0) {
+        throw new Error(
+            'No Actual servers configured. Refer to the docs on how to a new server with in the configuration file.'
         );
-        return;
-    } else if (actualFiles.length === 0) {
-        console.log(
-            `No budget configurations found. Add a new budget configuration with 'budget add'.`
-        );
-        return;
     }
-
-    console.log(`Running import for ${actualFiles.length} budget(s)`);
 
     const isDryRun = (argv.dryRun as boolean) || false;
     const fromDate = argv.from
@@ -41,97 +32,74 @@ const handleCommand = async (argv: any) => {
         : undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
-        console.log(
+        throw new Error(
             `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
         );
     }
 
-    const tasks = new Listr(
-        [
-            {
-                title: 'Check connection',
-                task: async (ctx, task) => {
-                    task.output = `Connecting to Actual...`;
+    for (const serverConfig of config.actualServers) {
+        const actualApi = new ActualApi(serverConfig, config);
 
-                    await actualApi.init();
-                    task.output = `Connection to Actual established.`;
+        logger.debug(
+            `Connecting to Actual server at ${serverConfig.serverUrl}...`
+        );
 
-                    task.output = `Checking MoneyMoney database access...`;
-                    const isUnlocked = await checkDatabaseUnlocked();
-                    if (!isUnlocked) {
-                        throw new Error(
-                            `MoneyMoney database is locked. Please unlock it and try again.`
-                        );
-                    }
-                    task.output = `MoneyMoney database is accessible.`;
-                },
-            },
-            {
-                title: 'Import accounts',
-                task: async (ctx, task) => {
-                    for (const actualFile of actualFiles) {
-                        await importer.importAccounts(
-                            actualFile.syncId,
-                            isDryRun,
-                            task
-                        );
-                    }
-                },
-            },
-            {
-                title: 'Import transactions',
-                task: async (ctx, task) => {
-                    for (const actualFile of actualFiles) {
-                        await importer.importTransactions({
-                            syncId: actualFile.syncId,
-                            from: fromDate,
-                            isDryRun,
-                            task,
-                        });
-                    }
-                },
-            },
-            {
-                title: 'Syncing data',
-                task: async () => {
-                    if (!isDryRun) {
-                        await actualApi.shutdown();
-                    }
-                },
-            },
-        ],
-        {
-            renderer: SimpleRenderer,
+        await actualApi.init();
+        logger.debug(`Connection to Actual established.`);
+
+        logger.debug(`Checking MoneyMoney database access...`);
+        const isUnlocked = await checkDatabaseUnlocked();
+        if (!isUnlocked) {
+            throw new Error(
+                `MoneyMoney database is locked. Please unlock it and try again.`
+            );
         }
-    );
+        logger.debug(`MoneyMoney database is accessible.`);
 
-    await tasks.run().catch((e) => null);
+        for (const budgetConfig of serverConfig.budgets) {
+            const importer = new Importer(
+                budgetConfig,
+                actualApi,
+                logger,
+                payeeTransformer
+            );
+
+            logger.info(
+                `Importing accounts for budget: ${budgetConfig.syncId}`
+            );
+
+            const accountMapping = await importer.parseAccountMapping();
+
+            logger.info(
+                `Importing transactions for budget: ${budgetConfig.syncId}`
+            );
+            await importer.importTransactions({
+                accountMapping,
+                from: fromDate,
+                isDryRun,
+            });
+
+            if (!isDryRun) {
+                await actualApi.shutdown();
+            }
+        }
+    }
 
     process.exit();
 };
 
-export default () => {
-    return {
-        command: 'import [budgetName]',
-        describe: 'Import data from MoneyMoney',
-        builder: (yargs) => {
-            yargs.positional('budgetName', {
-                type: 'string',
-                describe:
-                    'The name/identifier of the budget to import. Leave empty to import all.',
-            });
-
-            return yargs
-                .boolean('dry-run')
-                .describe('dry-run', 'Do not import data')
-                .string('from')
-                .describe(
-                    'from',
-                    `Import transactions on or after this date (${DATE_FORMAT})`
-                )
-                .string('e2e-password')
-                .describe('e2e-password', 'End-to-end encryption password');
-        },
-        handler: (argv) => handleCommand(argv),
-    } as CommandModule;
-};
+export default {
+    command: 'import',
+    describe: 'Import data from MoneyMoney',
+    builder: (yargs) => {
+        return yargs
+            .boolean('dry-run')
+            .describe('dry-run', 'Do not import data')
+            .string('from')
+            .describe(
+                'from',
+                `Import transactions on or after this date (${DATE_FORMAT})`
+            );
+    },
+    handler: (argv) => handleCommand(argv),
+} as CommandModule;

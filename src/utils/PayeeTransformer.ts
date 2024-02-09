@@ -1,15 +1,12 @@
 import { Configuration, OpenAIApi } from 'openai';
+import { Config } from './config.js';
 
 class PayeeTransformer {
     private openai: OpenAIApi;
 
-    constructor() {
-        if (!process.env.OPENAI_API_KEY) {
-            throw new Error('OPENAI_API_KEY not configured');
-        }
-
+    constructor(openAiApiKey: string) {
         const configuration = new Configuration({
-            apiKey: process.env.OPENAI_API_KEY,
+            apiKey: openAiApiKey,
         });
 
         this.openai = new OpenAIApi(configuration);
@@ -31,7 +28,6 @@ class PayeeTransformer {
             const output = response.data.choices[0].message?.content as string;
             return JSON.parse(output) as { [key: string]: string };
         } catch (e) {
-            console.error(e);
             return null;
         }
     }
