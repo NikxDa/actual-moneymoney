@@ -1,5 +1,4 @@
 import { Configuration, OpenAIApi } from 'openai';
-import { Config } from './config.js';
 
 class PayeeTransformer {
     private openai: OpenAIApi;

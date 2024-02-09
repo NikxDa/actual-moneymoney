@@ -1,5 +1,5 @@
 import { parse } from 'date-fns';
-import { CommandModule } from 'yargs';
+import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { DATE_FORMAT } from '../utils/shared.js';
 import { checkDatabaseUnlocked } from 'moneymoney';
 import Importer from '../utils/Importer.js';
@@ -8,7 +8,7 @@ import ActualApi from '../utils/ActualApi.js';
 import PayeeTransformer from '../utils/PayeeTransformer.js';
 import Logger, { LogLevel } from '../utils/Logger.js';
 
-const handleCommand = async (argv: any) => {
+const handleCommand = async (argv: ArgumentsCamelCase) => {
     const config = await getConfig(argv);
 
     const logLevel = (argv.logLevel || LogLevel.INFO) as number;

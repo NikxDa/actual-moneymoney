@@ -2,7 +2,7 @@ import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { configSchema, getConfig, getConfigFile } from '../utils/config.js';
 import fs from 'fs/promises';
 import Logger, { LogLevel } from '../utils/Logger.js';
-import { ZodIssueCode, z } from 'zod';
+import { z } from 'zod';
 import { EXAMPLE_CONFIG } from '../utils/shared.js';
 
 const handleValidate = async (argv: ArgumentsCamelCase) => {

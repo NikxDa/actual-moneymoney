@@ -150,7 +150,7 @@ declare module '@actual-app/api' {
         password?: string;
     };
 
-    type InitResult = {};
+    type InitResult = object;
 
     export async function init(
         params: InitParams

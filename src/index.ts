@@ -20,7 +20,7 @@ if (!appDirExists) {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const yargsParser = yargs(hideBin(process.argv))
+yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
         description: 'Path to the configuration file',
@@ -32,7 +32,7 @@ const yargsParser = yargs(hideBin(process.argv))
     .command(importCommand)
     .command(validateCommand)
     .showHelpOnFail(false)
-    .fail((msg, err, yargs) => {
+    .fail((msg, err) => {
         const logger = new Logger();
 
         if (err) {
@@ -43,5 +43,3 @@ const yargsParser = yargs(hideBin(process.argv))
 
         process.exit(1);
     });
-
-const { argv } = yargsParser;

@@ -1,7 +1,7 @@
 import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import { ActualServerConfig, Config, getConfig } from './config.js';
+import { ActualServerConfig } from './config.js';
 import fetch from 'node-fetch';
 import { DEFAULT_DATA_DIR } from './shared.js';
 import Logger from './Logger.js';
@@ -128,21 +128,6 @@ class ActualApi {
         const endDate = format(new Date(), 'yyyy-MM-dd');
 
         return actual.methods.getTransactions(accountId, startDate, endDate);
-    }
-
-    async getTransactionsByImportedPayee(payee: string) {
-        const queryBuilder = (actual.methods as any).q;
-        const runQuery = (actual.methods as any).runQuery;
-
-        const query = queryBuilder('transactions')
-            .filter({
-                imported_payee: payee,
-            })
-            .select(['category']);
-
-        const { data } = await runQuery(query);
-
-        return data;
     }
 
     async shutdown() {

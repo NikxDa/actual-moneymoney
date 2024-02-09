@@ -1,4 +1,4 @@
-import { format, isSameDay, isSameHour, parse, subMonths } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import PayeeTransformer from './PayeeTransformer.js';
 import {
     Transaction as MonMonTransaction,
@@ -7,7 +7,7 @@ import {
     getTransactions,
 } from 'moneymoney';
 import { DATE_FORMAT } from './shared.js';
-import { ActualBudgetConfig, Config, getConfig } from './config.js';
+import { ActualBudgetConfig, Config } from './config.js';
 import ActualApi from './ActualApi.js';
 import Logger from './Logger.js';
 
@@ -50,7 +50,7 @@ class Importer {
 
     private getActualAccountByRef(accounts: Account[], ref: string) {
         // Search by UUID first, if the ref is a UUID
-        let account = accounts.find((acc) => acc.id === ref);
+        const account = accounts.find((acc) => acc.id === ref);
         if (account) {
             return account;
         }
@@ -262,7 +262,7 @@ class Importer {
                     );
 
                 if (transformedPayees !== null) {
-                    createTransactions.forEach((t, i) => {
+                    createTransactions.forEach((t) => {
                         t.payee_name =
                             transformedPayees[t.imported_payee as string];
                     });
@@ -317,11 +317,6 @@ class Importer {
     private async convertToActualTransaction(
         transaction: MonMonTransaction
     ): Promise<CreateTransaction> {
-        const previousTransactionWithSameImportedPayee =
-            await this.actualApi.getTransactionsByImportedPayee(
-                transaction.name
-            );
-
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),
             amount: Math.round(transaction.amount * 100),

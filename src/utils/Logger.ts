@@ -1,4 +1,4 @@
-import chalk, { ChalkInstance } from 'chalk';
+import chalk from 'chalk';
 
 export enum LogLevel {
     ERROR = 0,
