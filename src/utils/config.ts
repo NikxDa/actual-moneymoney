@@ -3,42 +3,63 @@ import toml from 'toml';
 import fs from 'fs/promises';
 import { ArgumentsCamelCase } from 'yargs';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
+import { ZodIssueCode, z } from 'zod';
 
-type StorageConfig = {
-    database: string;
-    actualDataDir: string;
-};
+const budgetSchema = z
+    .object({
+        syncId: z.string(),
+        e2eEncryption: z.object({
+            enabled: z.boolean(),
+            password: z.string().optional(),
+        }),
+        accountMapping: z.record(z.string()),
+    })
+    .superRefine((val, ctx) => {
+        if (val.e2eEncryption.enabled && !val.e2eEncryption.password) {
+            ctx.addIssue({
+                code: ZodIssueCode.custom,
+                message:
+                    'Password must not be empty if end-to-end encryption is enabled',
+            });
+        }
 
-type PayeeTransformationConfig = {
-    enabled: boolean;
-    openAiApiKey: string;
-};
+        return val;
+    });
 
-type ImportConfig = {
-    importUncheckedTransactions: boolean;
-};
+const actualServerSchema = z.object({
+    serverUrl: z.string(),
+    serverPassword: z.string(),
+    budgets: z.array(budgetSchema).min(1),
+});
 
-export type ActualServerConfig = {
-    serverUrl: string;
-    serverPassword: string;
-    budgets: Array<ActualBudgetConfig>;
-};
+export const configSchema = z
+    .object({
+        payeeTransformation: z.object({
+            enabled: z.boolean(),
+            openAiApiKey: z.string().optional(),
+        }),
+        import: z.object({
+            importUncheckedTransactions: z.boolean(),
+        }),
+        actualServers: z.array(actualServerSchema).min(1),
+    })
+    .superRefine((val, ctx) => {
+        // Check openAI key if payeeTransformation is enabled
+        if (
+            val.payeeTransformation.enabled &&
+            !val.payeeTransformation.openAiApiKey
+        ) {
+            ctx.addIssue({
+                code: ZodIssueCode.custom,
+                message:
+                    'OpenAI key must not be empty if payeeTransformation is enabled',
+            });
+        }
+    });
 
-export type ActualBudgetConfig = {
-    syncId: string;
-    e2eEncryption: {
-        enabled: boolean;
-        password: string;
-    };
-    accountMapping: Record<string, string>;
-};
-
-export type Config = {
-    storage: StorageConfig;
-    payeeTransformation: PayeeTransformationConfig;
-    import: ImportConfig;
-    actualServers: Array<ActualServerConfig>;
-};
+export type ActualServerConfig = z.infer<typeof actualServerSchema>;
+export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
+export type Config = z.infer<typeof configSchema>;
 
 export const getConfigFile = (argv: ArgumentsCamelCase) => {
     if (argv.config) {
@@ -64,7 +85,13 @@ export const getConfig = async (argv: ArgumentsCamelCase) => {
     }
 
     const configContent = await fs.readFile(configFile, 'utf-8');
-    const config = toml.parse(configContent) as Config;
+    const configData = toml.parse(configContent);
 
-    return config;
+    try {
+        return configSchema.parse(configData);
+    } catch (e) {
+        throw new Error(
+            `Invalid configuration file format. Run 'validate' to see errors.`
+        );
+    }
 };

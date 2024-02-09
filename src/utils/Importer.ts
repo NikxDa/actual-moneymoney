@@ -10,7 +10,6 @@ import { DATE_FORMAT } from './shared.js';
 import { ActualBudgetConfig, getConfig } from './config.js';
 import ActualApi from './ActualApi.js';
 import Logger from './Logger.js';
-import { getCache, updateCache } from './cache.js';
 
 class Importer {
     constructor(
@@ -128,12 +127,7 @@ class Importer {
         from?: Date;
         isDryRun?: boolean;
     }) {
-        const cache = await getCache();
-        const lastImportDate = cache.lastImportDate
-            ? parse(cache.lastImportDate, DATE_FORMAT, new Date())
-            : null;
-
-        const fromDate = from ?? lastImportDate ?? subMonths(new Date(), 1);
+        const fromDate = from ?? subMonths(new Date(), 1);
 
         let monMonTransactionsSinceFromDate = await getTransactions({
             from: fromDate,
@@ -195,7 +189,7 @@ class Importer {
                         monMonTransactions.length > 0
                             ? monMonTransactions[monMonTransactions.length - 1]
                                   .valueDate
-                            : lastImportDate ?? new Date(),
+                            : new Date(),
                         DATE_FORMAT
                     ),
                     amount: this.getStartingBalanceForAccount(
@@ -278,17 +272,26 @@ class Importer {
             }
 
             if (!isDryRun) {
-                await this.actualApi.addTransactions(
+                const result = await this.actualApi.importTransactions(
                     actualAccount.id,
                     createTransactions
                 );
 
-                const updatedCache = {
-                    ...cache,
-                    lastImportDate: format(new Date(), DATE_FORMAT),
-                };
+                if (result.errors && result.errors.length > 0) {
+                    this.logger.error('Some errors occurred during import:');
+                    for (let i = 0; i < result.errors.length; i++) {
+                        this.logger.error(
+                            `Error ${i + 1}: ${result.errors[i].message}`
+                        );
+                    }
+                }
 
-                await updateCache(updatedCache);
+                const addedCount = result.added.length;
+                const updatedCount = result.updated.length;
+
+                this.logger.info(
+                    `Imported ${addedCount} new transaction/s and updated ${updatedCount} existing transaction/s for Actual account '${actualAccount.name}'.`
+                );
             }
         }
     }

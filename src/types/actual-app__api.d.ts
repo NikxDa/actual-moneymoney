@@ -163,6 +163,7 @@ declare module '@actual-app/api' {
 
     export const methods: {
         // Budget
+        loadBudget: (budgetId: ID) => Promise<void>;
         downloadBudget: (
             budgetId: ID,
             options?: {
@@ -178,7 +179,7 @@ declare module '@actual-app/api' {
         importTransactions: (
             accountId: ID,
             transactions: CreateTransaction[]
-        ) => Promise<{ errors: Error[]; added: ID[]; updated: ID[] }>;
+        ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
         getTransactions: (
             accountId: ID,
             startDate: DateString,

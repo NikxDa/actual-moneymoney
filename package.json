@@ -28,7 +28,8 @@
         "node-fetch": "^3.3.2",
         "openai": "^3.2.1",
         "toml": "^3.0.0",
-        "yargs": "^17.7.2"
+        "yargs": "^17.7.2",
+        "zod": "^3.22.4"
     },
     "node": ">=16",
     "devDependencies": {

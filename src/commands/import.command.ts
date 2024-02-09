@@ -10,15 +10,15 @@ import Logger, { LogLevel } from '../utils/Logger.js';
 
 const handleCommand = async (argv: any) => {
     const config = await getConfig(argv);
-    const budgetToImport = argv.budgetName;
 
     const isVerbose = argv.verbose as boolean;
-
     const logger = new Logger(isVerbose ? LogLevel.DEBUG : LogLevel.INFO);
 
-    const payeeTransformer = config.payeeTransformation.enabled
-        ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
-        : undefined;
+    const payeeTransformer =
+        config.payeeTransformation.enabled &&
+        config.payeeTransformation.openAiApiKey
+            ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
+            : undefined;
 
     if (config.actualServers.length === 0) {
         throw new Error(
@@ -38,7 +38,7 @@ const handleCommand = async (argv: any) => {
     }
 
     for (const serverConfig of config.actualServers) {
-        const actualApi = new ActualApi(serverConfig, config);
+        const actualApi = new ActualApi(serverConfig, logger);
 
         logger.debug(
             `Connecting to Actual server at ${serverConfig.serverUrl}...`
@@ -57,6 +57,10 @@ const handleCommand = async (argv: any) => {
         logger.debug(`MoneyMoney database is accessible.`);
 
         for (const budgetConfig of serverConfig.budgets) {
+            await actualApi.init();
+
+            await actualApi.loadBudget(budgetConfig.syncId);
+
             const importer = new Importer(
                 budgetConfig,
                 actualApi,
@@ -73,15 +77,14 @@ const handleCommand = async (argv: any) => {
             logger.info(
                 `Importing transactions for budget: ${budgetConfig.syncId}`
             );
+
             await importer.importTransactions({
                 accountMapping,
                 from: fromDate,
                 isDryRun,
             });
 
-            if (!isDryRun) {
-                await actualApi.shutdown();
-            }
+            await actualApi.shutdown();
         }
     }
 

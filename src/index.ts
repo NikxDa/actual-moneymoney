@@ -1,24 +1,22 @@
 #!/usr/bin/env node
 
-import dotenv from 'dotenv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
 import validateCommand from './commands/validate.command.js';
 import { APPLICATION_DIRECTORY } from './utils/shared.js';
-import fs from 'fs/promises';
+import fs from 'fs';
 
-dotenv.config();
+let appDirExists = true;
 
-async function main() {
-    const appDirExists = await fs
-        .access(APPLICATION_DIRECTORY)
-        .then(() => true)
-        .catch(() => false);
+try {
+    fs.accessSync(APPLICATION_DIRECTORY);
+} catch (error) {
+    appDirExists = false;
+}
 
-    if (!appDirExists) {
-        await fs.mkdir(APPLICATION_DIRECTORY, { recursive: true });
-    }
+if (!appDirExists) {
+    fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
 const yargsParser = yargs(hideBin(process.argv))
@@ -32,6 +30,16 @@ const yargsParser = yargs(hideBin(process.argv))
         description: 'Run with verbose logging',
     })
     .command(importCommand)
-    .command(validateCommand);
+    .command(validateCommand)
+    .showHelpOnFail(false)
+    .fail((msg, err, yargs) => {
+        if (err) {
+            console.error(err.message);
+        } else {
+            console.error(msg);
+        }
+
+        process.exit(1);
+    });
 
 const { argv } = yargsParser;

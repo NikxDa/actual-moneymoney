@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import { ActualServerConfig, Config, getConfig } from './config.js';
 import fetch from 'node-fetch';
 import { DEFAULT_DATA_DIR } from './shared.js';
+import Logger from './Logger.js';
 
 type UserFile = {
     deleted: number;
@@ -20,19 +21,15 @@ type GetUserFilesResponse = {
 
 class ActualApi {
     protected isInitialized = false;
+    private api: typeof actual | null = null;
 
     constructor(
         private serverConfig: ActualServerConfig,
-        private config: Config
+        private logger: Logger
     ) {}
 
     async init() {
-        if (this.isInitialized) {
-            return;
-        }
-
-        const actualDataDir =
-            this.config.storage.actualDataDir ?? DEFAULT_DATA_DIR;
+        const actualDataDir = DEFAULT_DATA_DIR;
 
         const dataDirExists = await fs
             .access(actualDataDir)
@@ -41,16 +38,29 @@ class ActualApi {
 
         if (!dataDirExists) {
             await fs.mkdir(actualDataDir, { recursive: true });
+            this.logger.debug(
+                `Created Actual data directory at ${actualDataDir}`
+            );
         }
 
-        await actual.init({
-            dataDir: actualDataDir,
-            serverURL: this.serverConfig.serverUrl,
-            password: this.serverConfig.serverPassword,
+        this.logger.debug(
+            `Initializing Actual instance for server ${this.serverConfig.serverUrl} with data directory ${actualDataDir}`
+        );
+
+        await this.suppressConsoleLog(async () => {
+            await actual.init({
+                dataDir: actualDataDir,
+                serverURL: this.serverConfig.serverUrl,
+                password: this.serverConfig.serverPassword,
+            });
         });
 
-        for (const actualServer of this.config.actualServers) {
-            for (const budgetConfig of actualServer.budgets) {
+        for (const budgetConfig of this.serverConfig.budgets) {
+            this.logger.debug(
+                `Downloading budget with syncId ${budgetConfig.syncId}...`
+            );
+
+            await this.suppressConsoleLog(async () => {
                 await actual.methods.downloadBudget(
                     budgetConfig.syncId,
                     budgetConfig.e2eEncryption.enabled
@@ -59,7 +69,7 @@ class ActualApi {
                           }
                         : undefined
                 );
-            }
+            });
         }
 
         this.isInitialized = true;
@@ -72,7 +82,10 @@ class ActualApi {
     }
 
     async sync() {
-        await actual.internal.send('sync');
+        await this.ensureInitialization();
+        await this.suppressConsoleLog(async () => {
+            await actual.internal.send('sync');
+        });
     }
 
     async getAccounts() {
@@ -81,8 +94,33 @@ class ActualApi {
         return accounts;
     }
 
-    addTransactions(accountId: string, transactions: CreateTransaction[]) {
-        return actual.methods.addTransactions(accountId, transactions);
+    async loadBudget(budgetId: string) {
+        this.logger.debug(`Loading budget with syncId '${budgetId}'...`);
+
+        const budgetConfig = this.serverConfig.budgets.find(
+            (b) => b.syncId === budgetId
+        );
+
+        if (!budgetConfig) {
+            throw new Error(`No budget with syncId '${budgetId}' found.`);
+        }
+
+        this.logger.debug(`Re-loading budget with syncId ${budgetId}...`);
+
+        await this.suppressConsoleLog(async () => {
+            await actual.methods.downloadBudget(
+                budgetConfig.syncId,
+                budgetConfig.e2eEncryption.enabled
+                    ? {
+                          password: budgetConfig.e2eEncryption.password,
+                      }
+                    : undefined
+            );
+        });
+    }
+
+    importTransactions(accountId: string, transactions: CreateTransaction[]) {
+        return actual.methods.importTransactions(accountId, transactions);
     }
 
     getTransactions(accountId: string) {
@@ -108,7 +146,10 @@ class ActualApi {
     }
 
     async shutdown() {
-        await actual.shutdown();
+        await this.ensureInitialization();
+        await this.suppressConsoleLog(async () => {
+            await actual.shutdown();
+        });
     }
 
     private async getUserToken() {
@@ -155,6 +196,17 @@ class ActualApi {
         const responseData = (await response.json()) as GetUserFilesResponse;
 
         return responseData.data.filter((f) => f.deleted === 0);
+    }
+
+    private async suppressConsoleLog(callback: () => void | Promise<void>) {
+        const originalConsoleLog = console.log;
+        console.log = () => {};
+
+        try {
+            return await callback();
+        } finally {
+            console.log = originalConsoleLog;
+        }
     }
 }
 

@@ -1,7 +1,2 @@
 dist/
-data/
 node_modules/
-.env
-actual-data/
-prisma/dev.db
-local.toml
