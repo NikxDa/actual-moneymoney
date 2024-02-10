@@ -40,6 +40,13 @@ export const configSchema = z
         }),
         import: z.object({
             importUncheckedTransactions: z.boolean(),
+            ignorePatterns: z
+                .object({
+                    commentPatterns: z.array(z.string()).optional(),
+                    payeePatterns: z.array(z.string()).optional(),
+                    purposePatterns: z.array(z.string()).optional(),
+                })
+                .optional(),
         }),
         actualServers: z.array(actualServerSchema).min(1),
     })

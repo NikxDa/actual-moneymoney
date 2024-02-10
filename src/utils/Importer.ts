@@ -138,25 +138,50 @@ class Importer {
     }) {
         const fromDate = from ?? subMonths(new Date(), 1);
 
-        let monMonTransactionsSinceFromDate = await getTransactions({
+        let monMonTransactions = await getTransactions({
             from: fromDate,
         });
 
         if (!this.config.import.importUncheckedTransactions) {
-            monMonTransactionsSinceFromDate =
-                monMonTransactionsSinceFromDate.filter((t) => t.booked);
+            monMonTransactions = monMonTransactions.filter((t) => t.booked);
+        }
+
+        if (this.config.import.ignorePatterns !== undefined) {
+            const ignorePatterns = this.config.import.ignorePatterns;
+
+            monMonTransactions = monMonTransactions.filter((t) => {
+                let isIgnored = (ignorePatterns.commentPatterns ?? []).some(
+                    (pattern) => t.comment?.includes(pattern)
+                );
+
+                isIgnored ||= (ignorePatterns.payeePatterns ?? []).some(
+                    (pattern) => t.name.includes(pattern)
+                );
+
+                isIgnored ||= (ignorePatterns.purposePatterns ?? []).some(
+                    (pattern) => t.purpose?.includes(pattern)
+                );
+
+                if (isIgnored) {
+                    this.logger.debug(
+                        `Ignoring transaction ${t.id} (${t.name}) due to ignore patterns`
+                    );
+                }
+
+                return !isIgnored;
+            });
         }
 
         this.logger.debug(
             `Found ${
-                monMonTransactionsSinceFromDate.length
+                monMonTransactions.length
             } total transactions in MoneyMoney since ${format(
                 fromDate,
                 DATE_FORMAT
             )}`
         );
 
-        const monMonTransactionMap = monMonTransactionsSinceFromDate.reduce(
+        const monMonTransactionMap = monMonTransactions.reduce(
             (acc, transaction) => {
                 if (!acc[transaction.accountUuid]) {
                     acc[transaction.accountUuid] = [];

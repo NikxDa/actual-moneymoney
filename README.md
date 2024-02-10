@@ -61,12 +61,29 @@ A short summary:
 
 Once you have configured your importer, run `actual-monmon verify` to verify that the configuration has the correct format.
 
-**Usage**
+## Usage
 
 Once configured, importing is as simple as running `actual-monmon import`. Make sure that the Actual servers are running and that MoneyMoney is unlocked. By default, the importer will import 1 month worth of transactions. You can override this by passing the `--from` property, like so: `actual-monmon import --from=2024-01-01`.
 
 The importer will not track previous imports, so if you wait more than one month between imports, you might need to manually specify the last import date. Running the importer twice in the same month is no problem, as duplicate transactions will automatically be detected and skipped.
 
-**Bugs**
+## Advanced Configuration
 
-If there are any bugs or issues, please file an issue.
+The following configuration options can optionally be added
+
+### Ignore patterns
+
+Ignore patterns allow you to specify payee names, comments, or purposes which should be ignored. *Note:* Currently, the strings are treated as is, meaning they are case-sensitive, and will be checked for inclusion, not exact matches.
+
+```
+[import.ignorePatterns]
+commentPatterns = ["[actual-ignore]"]
+payeePatterns = []
+purposePatterns = []
+```
+
+The above configuration would ignore all transactions that have a comment containing the string `[actual-ignore]`.
+
+## Bugs
+
+If you notice any bugs or issues, please file an issue.
