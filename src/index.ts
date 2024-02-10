@@ -20,7 +20,7 @@ if (!appDirExists) {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-yargs(hideBin(process.argv))
+const res = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
         description: 'Path to the configuration file',
@@ -43,3 +43,5 @@ yargs(hideBin(process.argv))
 
         process.exit(1);
     });
+
+res.argv;
