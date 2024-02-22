@@ -137,10 +137,37 @@ class Importer {
         isDryRun?: boolean;
     }) {
         const fromDate = from ?? subMonths(new Date(), 1);
+        const earliestImportDate = this.budgetConfig.earliestImportDate
+            ? new Date(this.budgetConfig.earliestImportDate)
+            : null;
+
+        const importDate =
+            earliestImportDate && earliestImportDate > fromDate
+                ? earliestImportDate
+                : fromDate;
+
+        if (earliestImportDate && earliestImportDate > fromDate) {
+            this.logger.warn(
+                `Earliest import date is set to ${format(
+                    earliestImportDate,
+                    DATE_FORMAT
+                )}. Using this date instead of ${format(fromDate, DATE_FORMAT)}.`
+            );
+        }
 
         let monMonTransactions = await getTransactions({
-            from: fromDate,
+            from: importDate,
         });
+
+        if (monMonTransactions.length === 0) {
+            this.logger.info(
+                `No transactions found in MoneyMoney since ${format(
+                    importDate,
+                    DATE_FORMAT
+                )}.`
+            );
+            return;
+        }
 
         if (!this.config.import.importUncheckedTransactions) {
             monMonTransactions = monMonTransactions.filter((t) => t.booked);
@@ -176,7 +203,7 @@ class Importer {
             `Found ${
                 monMonTransactions.length
             } total transactions in MoneyMoney since ${format(
-                fromDate,
+                importDate,
                 DATE_FORMAT
             )}`
         );

@@ -84,6 +84,17 @@ purposePatterns = []
 
 The above configuration would ignore all transactions that have a comment containing the string `[actual-ignore]`.
 
+### Earliest import date
+
+Each budget can specify an earliest import date. This can be useful when starting to use the importer with an already existing budget in order to prevent duplicates from being imported. The importer will ignore any transactions from before the specified date.
+
+```
+[[actualServers.budgets]]
+earliestImportDate = "2024-01-01" # Format is YYYY-MM-DD
+```
+
+Note that the date is a string, not a TOML date.
+
 ## Bugs
 
 If you notice any bugs or issues, please file an issue.
