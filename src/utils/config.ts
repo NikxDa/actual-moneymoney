@@ -8,6 +8,7 @@ import { ZodIssueCode, z } from 'zod';
 const budgetSchema = z
     .object({
         syncId: z.string(),
+        earliestImportDate: z.string().optional(),
         e2eEncryption: z.object({
             enabled: z.boolean(),
             password: z.string().optional(),
@@ -21,6 +22,17 @@ const budgetSchema = z
                 message:
                     'Password must not be empty if end-to-end encryption is enabled',
             });
+        }
+
+        if (val.earliestImportDate) {
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(val.earliestImportDate)) {
+                ctx.addIssue({
+                    code: ZodIssueCode.custom,
+                    message:
+                        'Invalid earliest import date format (required format is YYYY-MM-DD)',
+                });
+            }
         }
 
         return val;
@@ -92,11 +104,20 @@ export const getConfig = async (argv: ArgumentsCamelCase) => {
     }
 
     const configContent = await fs.readFile(configFile, 'utf-8');
-    const configData = toml.parse(configContent);
 
     try {
+        const configData = toml.parse(configContent);
         return configSchema.parse(configData);
     } catch (e) {
+        if (e instanceof Error && e.name === 'SyntaxError') {
+            const line = 'line' in e ? e.line : -1;
+            const column = 'column' in e ? e.column : -1;
+
+            throw new Error(
+                `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
+            );
+        }
+
         throw new Error(
             `Invalid configuration file format. Run 'validate' to see errors.`
         );

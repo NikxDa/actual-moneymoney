@@ -33,6 +33,7 @@ serverPassword = "<password>"
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]
 syncId = "<syncId>" # Get this value from the Actual advanced settings
+# earliestImportDate = "2021-01-01" # Optional, only import transactions from this date
 
 # E2E encryption for the budget, if enabled
 [actualServers.budgets.e2eEncryption]
