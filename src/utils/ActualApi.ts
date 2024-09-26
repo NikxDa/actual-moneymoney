@@ -90,7 +90,9 @@ class ActualApi {
 
     async getAccounts() {
         await this.ensureInitialization();
-        const accounts = await actual.methods.getAccounts();
+        const accounts = await this.suppressConsoleLog(async () => {
+            return await actual.methods.getAccounts();
+        });
         return accounts;
     }
 
@@ -120,21 +122,23 @@ class ActualApi {
     }
 
     importTransactions(accountId: string, transactions: CreateTransaction[]) {
-        return actual.methods.importTransactions(accountId, transactions);
+        return this.suppressConsoleLog(() =>
+            actual.methods.importTransactions(accountId, transactions)
+        );
     }
 
     getTransactions(accountId: string) {
         const startDate = format(new Date(2000, 1, 1), 'yyyy-MM-dd');
         const endDate = format(new Date(), 'yyyy-MM-dd');
 
-        return actual.methods.getTransactions(accountId, startDate, endDate);
+        return this.suppressConsoleLog(() =>
+            actual.methods.getTransactions(accountId, startDate, endDate)
+        );
     }
 
     async shutdown() {
         await this.ensureInitialization();
-        await this.suppressConsoleLog(async () => {
-            await actual.shutdown();
-        });
+        await this.suppressConsoleLog(() => actual.shutdown());
     }
 
     private async getUserToken() {
@@ -183,7 +187,7 @@ class ActualApi {
         return responseData.data.filter((f) => f.deleted === 0);
     }
 
-    private async suppressConsoleLog(callback: () => void | Promise<void>) {
+    private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
         const originalConsoleLog = console.log;
         console.log = () => {};
 
