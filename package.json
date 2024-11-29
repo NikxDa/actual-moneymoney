@@ -1,6 +1,6 @@
 {
     "name": "actual-moneymoney",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
     "scripts": {
