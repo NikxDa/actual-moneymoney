@@ -1,6 +1,6 @@
 import toml from 'toml';
 import { ArgumentsCamelCase, CommandModule } from 'yargs';
-import { configSchema, getConfig, getConfigFile } from '../utils/config.js';
+import { configSchema, getConfigFile } from '../utils/config.js';
 import fs from 'fs/promises';
 import Logger, { LogLevel } from '../utils/Logger.js';
 import { z } from 'zod';
