@@ -29,6 +29,7 @@ openAiApiKey = "<openAiKey>"
 # Import settings
 [import]
 importUncheckedTransactions = true
+synchronizeClearedStatus = true
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
