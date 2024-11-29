@@ -374,7 +374,9 @@ class Importer {
             amount: Math.round(transaction.amount * 100),
             imported_id: this.getIdForMoneyMoneyTransaction(transaction),
             imported_payee: transaction.name,
-            cleared: transaction.booked,
+            cleared: this.config.import.synchronizeClearedStatus
+                ? transaction.booked
+                : false,
             notes: transaction.purpose,
             // payee_name: transaction.name,
         };
