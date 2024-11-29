@@ -1,3 +1,4 @@
+import toml from 'toml';
 import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { configSchema, getConfig, getConfigFile } from '../utils/config.js';
 import fs from 'fs/promises';
@@ -29,12 +30,17 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
 
         process.exit(0);
     } else {
-        const config = await getConfig(argv);
-
         logger.info('Validating configuration...');
 
         try {
-            configSchema.parse(config);
+            logger.debug(`Reading configuration file...`);
+            const configContent = await fs.readFile(configPath, 'utf-8');
+
+            logger.debug(`Parsing configuration file...`);
+            const configData = toml.parse(configContent);
+
+            logger.debug(`Parsing configuration schema...`);
+            configSchema.parse(configData);
         } catch (e) {
             if (e instanceof z.ZodError) {
                 logger.error('Configuration file is invalid:');
@@ -43,6 +49,13 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                         `Path [${error.path.join('.')}]: ${error.message}`
                     );
                 }
+            } else if (e instanceof Error && e.name === 'SyntaxError') {
+                const line = 'line' in e ? e.line : -1;
+                const column = 'column' in e ? e.column : -1;
+
+                logger.error(
+                    `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
+                );
             } else {
                 logger.error(`An unexpected error occured: ${e}`);
             }
