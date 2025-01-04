@@ -160,7 +160,7 @@ class Importer {
 
         let monMonTransactions = await getTransactions({
             from: importDate,
-            to: toDate
+            to: toDate,
         });
 
         if (monMonTransactions.length === 0) {
