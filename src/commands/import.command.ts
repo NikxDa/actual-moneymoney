@@ -30,10 +30,19 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const fromDate = argv.from
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
+    const toDate = argv.to
+        ? parse(argv.to as string, DATE_FORMAT, new Date())
+        : undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
         throw new Error(
             `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
+        );
+    }
+
+    if (toDate && isNaN(toDate.getTime())) {
+        throw new Error(
+            `Invalid "to" date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`
         );
     }
 
@@ -106,6 +115,11 @@ export default {
             .describe(
                 'from',
                 `Import transactions on or after this date (${DATE_FORMAT})`
+            )
+            .string('to')
+            .describe(
+                'from',
+                `Import transactions up to this date (${DATE_FORMAT})`
             );
     },
     handler: (argv) => handleCommand(argv),

@@ -130,16 +130,19 @@ class Importer {
     async importTransactions({
         accountMapping,
         from,
+        to,
         isDryRun = false,
     }: {
         accountMapping: Map<MonMonAccount, Account>;
         from?: Date;
+        to?: Date;
         isDryRun?: boolean;
     }) {
         const fromDate = from ?? subMonths(new Date(), 1);
         const earliestImportDate = this.budgetConfig.earliestImportDate
             ? new Date(this.budgetConfig.earliestImportDate)
             : null;
+        const toDate = to;
 
         const importDate =
             earliestImportDate && earliestImportDate > fromDate
@@ -157,6 +160,7 @@ class Importer {
 
         let monMonTransactions = await getTransactions({
             from: importDate,
+            to: toDate
         });
 
         if (monMonTransactions.length === 0) {
