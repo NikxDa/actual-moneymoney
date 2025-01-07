@@ -1,6 +1,10 @@
-# Actual-MoneyMoney
-
-> A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
+<p align="center">
+    <img src="./assets/actual-moneymoney.png" height="150">
+</p>
+<h1 align="center">Actual-MoneyMoney</h1>
+<p align="center">
+A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
+<p>
 
 ## Installation
 
