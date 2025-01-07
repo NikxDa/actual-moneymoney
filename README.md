@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Actual-MoneyMoney</h1>
 <p align="center">
-A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
+A CLI to import <a href="https://moneymoney-app.com" target="_blanK">MoneyMoney</a> transactions into <a href="https://actualbudget.org">Actual Budget</a>, written in TypeScript
 <p>
 
 ## Installation
