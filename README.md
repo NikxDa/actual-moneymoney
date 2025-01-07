@@ -5,6 +5,9 @@
 <p align="center">
 A CLI to import <a href="https://moneymoney-app.com" target="_blanK">MoneyMoney</a> transactions into <a href="https://actualbudget.org">Actual Budget</a>, written in TypeScript
 <p>
+<p align="center">
+<img src="https://badgers.space/github/checks/NikxDa/actual-moneymoney/main">
+</p>
 
 ## Installation
 
