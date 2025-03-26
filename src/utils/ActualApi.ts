@@ -1,10 +1,10 @@
 import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import { ActualServerConfig } from './config.js';
 import fetch from 'node-fetch';
-import { DEFAULT_DATA_DIR } from './shared.js';
+import { ActualServerConfig } from './config.js';
 import Logger from './Logger.js';
+import { DEFAULT_DATA_DIR } from './shared.js';
 
 type UserFile = {
     deleted: number;
@@ -61,7 +61,7 @@ class ActualApi {
             );
 
             await this.suppressConsoleLog(async () => {
-                await actual.methods.downloadBudget(
+                await actual.downloadBudget(
                     budgetConfig.syncId,
                     budgetConfig.e2eEncryption.enabled
                         ? {
@@ -91,7 +91,7 @@ class ActualApi {
     async getAccounts() {
         await this.ensureInitialization();
         const accounts = await this.suppressConsoleLog(async () => {
-            return await actual.methods.getAccounts();
+            return await actual.getAccounts();
         });
         return accounts;
     }
@@ -110,7 +110,7 @@ class ActualApi {
         this.logger.debug(`Re-loading budget with syncId ${budgetId}...`);
 
         await this.suppressConsoleLog(async () => {
-            await actual.methods.downloadBudget(
+            await actual.downloadBudget(
                 budgetConfig.syncId,
                 budgetConfig.e2eEncryption.enabled
                     ? {
@@ -123,7 +123,7 @@ class ActualApi {
 
     importTransactions(accountId: string, transactions: CreateTransaction[]) {
         return this.suppressConsoleLog(() =>
-            actual.methods.importTransactions(accountId, transactions)
+            actual.importTransactions(accountId, transactions)
         );
     }
 
@@ -132,7 +132,7 @@ class ActualApi {
         const endDate = format(new Date(), 'yyyy-MM-dd');
 
         return this.suppressConsoleLog(() =>
-            actual.methods.getTransactions(accountId, startDate, endDate)
+            actual.getTransactions(accountId, startDate, endDate)
         );
     }
 
