@@ -1,14 +1,42 @@
 name: ci
-on: [push]
+on: [push, pull_request]
 jobs:
     test:
         name: test
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
             - uses: oven-sh/setup-bun@v1
 
             - run: bun install
             - run: bun run lint:eslint
             - run: bun run lint:prettier
             - run: bun run build
+
+    commitlint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node
+              uses: actions/setup-node@v3
+
+            - name: Print versions
+              run: |
+                  git --version
+                  node --version
+                  npm --version
+                  npx commitlint --version
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Validate current commit (last commit) with commitlint
+              if: github.event_name == 'push'
+              run: npx commitlint --last --verbose
+
+            - name: Validate PR commits with commitlint
+              if: github.event_name == 'pull_request'
+              run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
