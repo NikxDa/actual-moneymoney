@@ -14,13 +14,13 @@ jobs:
                   node-version: '20'
 
             - name: Install dependencies
-              run: bun install
+              run: npm install
 
             - name: Lint with ESLint
-              run: bun run lint:eslint
+              run: npm run lint:eslint
 
             - name: Lint with Prettier
-              run: bun run lint:prettier
+              run: npm run lint:prettier
 
             - name: Build
               run: npm run build
