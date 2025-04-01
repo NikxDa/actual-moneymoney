@@ -171,13 +171,18 @@ declare module '@actual-app/api' {
     ) => Promise<void>;
 
     // Transactions
+    interface ImportTransactionsOpts {
+        defaultCleared?: boolean;
+    }
+
     const addTransactions: (
         accountId: ID,
         transactions: CreateTransaction[]
     ) => Promise<ID[]>;
     const importTransactions: (
         accountId: ID,
-        transactions: CreateTransaction[]
+        transactions: CreateTransaction[],
+        opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
     const getTransactions: (
         accountId: ID,
@@ -251,7 +256,7 @@ type BaseTransaction = {
     notes: string;
     imported_id: string;
     transfer_id: string;
-    cleared: boolean;
+    cleared?: boolean;
 };
 
 type ReadTransaction = Omit<BaseTransaction, 'payee_name'> & {

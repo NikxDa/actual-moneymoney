@@ -1,12 +1,12 @@
 import { parse } from 'date-fns';
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
-import { DATE_FORMAT } from '../utils/shared.js';
 import { checkDatabaseUnlocked } from 'moneymoney';
-import Importer from '../utils/Importer.js';
-import { getConfig } from '../utils/config.js';
+import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import ActualApi from '../utils/ActualApi.js';
-import PayeeTransformer from '../utils/PayeeTransformer.js';
+import Importer from '../utils/Importer.js';
 import Logger, { LogLevel } from '../utils/Logger.js';
+import PayeeTransformer from '../utils/PayeeTransformer.js';
+import { getConfig } from '../utils/config.js';
+import { DATE_FORMAT } from '../utils/shared.js';
 
 const handleCommand = async (argv: ArgumentsCamelCase) => {
     const config = await getConfig(argv);
