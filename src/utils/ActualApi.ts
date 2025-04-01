@@ -123,7 +123,9 @@ class ActualApi {
 
     importTransactions(accountId: string, transactions: CreateTransaction[]) {
         return this.suppressConsoleLog(() =>
-            actual.importTransactions(accountId, transactions)
+            actual.importTransactions(accountId, transactions, {
+                defaultCleared: false,
+            })
         );
     }
 
