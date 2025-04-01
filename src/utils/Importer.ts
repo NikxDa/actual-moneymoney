@@ -1,15 +1,15 @@
 import { format, subMonths } from 'date-fns';
-import PayeeTransformer from './PayeeTransformer.js';
 import {
-    Transaction as MonMonTransaction,
     Account as MonMonAccount,
+    Transaction as MonMonTransaction,
     getAccounts,
     getTransactions,
 } from 'moneymoney';
-import { DATE_FORMAT } from './shared.js';
-import { ActualBudgetConfig, Config } from './config.js';
 import ActualApi from './ActualApi.js';
+import { ActualBudgetConfig, Config } from './config.js';
 import Logger from './Logger.js';
+import PayeeTransformer from './PayeeTransformer.js';
+import { DATE_FORMAT } from './shared.js';
 
 class Importer {
     constructor(
@@ -157,6 +157,14 @@ class Importer {
                 )}. Using this date instead of ${format(fromDate, DATE_FORMAT)}.`
             );
         }
+
+        this.logger.debug(
+            `Cleared status synchronization is ${
+                this.config.import.synchronizeClearedStatus
+                    ? 'enabled'
+                    : 'disabled'
+            }`
+        );
 
         let monMonTransactions = await getTransactions({
             from: importDate,
@@ -380,7 +388,7 @@ class Importer {
             imported_payee: transaction.name,
             cleared: this.config.import.synchronizeClearedStatus
                 ? transaction.booked
-                : false,
+                : undefined,
             notes: transaction.purpose,
             // payee_name: transaction.name,
         };
