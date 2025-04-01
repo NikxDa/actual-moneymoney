@@ -1,26 +1,20 @@
 #!/usr/bin/env node
 
+import fs from 'fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
 import validateCommand from './commands/validate.command.js';
-import { APPLICATION_DIRECTORY } from './utils/shared.js';
-import fs from 'fs';
 import Logger from './utils/Logger.js';
-
-let appDirExists = true;
+import { APPLICATION_DIRECTORY } from './utils/shared.js';
 
 try {
     fs.accessSync(APPLICATION_DIRECTORY);
-} catch (error) {
-    appDirExists = false;
-}
-
-if (!appDirExists) {
+} catch (_err) {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const res = yargs(hideBin(process.argv))
+const _ = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
         description: 'Path to the configuration file',
@@ -42,6 +36,4 @@ const res = yargs(hideBin(process.argv))
         }
 
         process.exit(1);
-    });
-
-res.argv;
+    }).argv;

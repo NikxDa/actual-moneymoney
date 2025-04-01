@@ -24,7 +24,7 @@ class PayeeTransformer {
 
             const output = response.choices[0].message?.content as string;
             return JSON.parse(output) as { [key: string]: string };
-        } catch (e) {
+        } catch (_) {
             return null;
         }
     }
