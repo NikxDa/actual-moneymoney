@@ -6,7 +6,7 @@
     "scripts": {
         "build": "npx tsc",
         "start": "node dist/index.js",
-        "lint:eslint": "eslint . --ext .ts",
+        "lint:eslint": "eslint src",
         "lint:prettier": "prettier --check 'src/**/*.ts'"
     },
     "type": "module",
@@ -42,12 +42,15 @@
     "devDependencies": {
         "@commitlint/cli": "^19.8.0",
         "@commitlint/config-conventional": "^19.8.0",
+        "@eslint/js": "^9.23.0",
         "@types/yargs": "^17.0.33",
-        "@typescript-eslint/eslint-plugin": "^6.21.0",
-        "eslint": "^8",
+        "@typescript-eslint/eslint-plugin": "^8.29.0",
+        "eslint": "^9",
+        "globals": "^16.0.0",
         "prettier": "^3.5.3",
         "semantic-release": "^24.2.3",
         "ts-node": "^10.9.2",
-        "typescript": "^5.8.2"
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.29.0"
     }
 }
