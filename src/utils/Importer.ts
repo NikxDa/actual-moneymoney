@@ -158,6 +158,14 @@ class Importer {
             );
         }
 
+        this.logger.debug(
+            `Cleared status synchronization is ${
+                this.config.import.synchronizeClearedStatus
+                    ? 'enabled'
+                    : 'disabled'
+            }`
+        );
+
         let monMonTransactions = await getTransactions({
             from: importDate,
             to: toDate,
