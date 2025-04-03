@@ -1,12 +1,18 @@
 import OpenAI from 'openai';
 
+interface PayeeTransformerConfig {
+    model: string;
+}
+
 class PayeeTransformer {
     private openai: OpenAI;
+    private config: PayeeTransformerConfig;
 
-    constructor(openAiApiKey: string) {
+    constructor(openAiApiKey: string, config: PayeeTransformerConfig = { model: 'gpt-3.5-turbo' }) {
         this.openai = new OpenAI({
             apiKey: openAiApiKey,
         });
+        this.config = config;
     }
 
     public async transformPayees(payeeList: string[]) {
@@ -14,7 +20,7 @@ class PayeeTransformer {
 
         try {
             const response = await this.openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+                model: this.config.model,
                 messages: [
                     { role: 'system', content: prompt },
                     { role: 'user', content: payeeList.join('\n') },

@@ -49,6 +49,7 @@ export const configSchema = z
         payeeTransformation: z.object({
             enabled: z.boolean(),
             openAiApiKey: z.string().optional(),
+            model: z.string().optional(),
         }),
         import: z.object({
             importUncheckedTransactions: z.boolean(),
