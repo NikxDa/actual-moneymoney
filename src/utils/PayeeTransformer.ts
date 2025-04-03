@@ -8,7 +8,10 @@ class PayeeTransformer {
     private openai: OpenAI;
     private config: PayeeTransformerConfig;
 
-    constructor(openAiApiKey: string, config: PayeeTransformerConfig = { model: 'gpt-3.5-turbo' }) {
+    constructor(
+        openAiApiKey: string,
+        config: PayeeTransformerConfig = { model: 'gpt-3.5-turbo' }
+    ) {
         this.openai = new OpenAI({
             apiKey: openAiApiKey,
         });
