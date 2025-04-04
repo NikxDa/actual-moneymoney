@@ -49,7 +49,7 @@ export const configSchema = z
         payeeTransformation: z.object({
             enabled: z.boolean(),
             openAiApiKey: z.string().optional(),
-            model: z.string().optional(),
+            openAiModel: z.string().optional().default('gpt-3.5-turbo'),
         }),
         import: z.object({
             importUncheckedTransactions: z.boolean(),

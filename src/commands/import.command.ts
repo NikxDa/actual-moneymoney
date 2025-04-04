@@ -17,8 +17,9 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const payeeTransformer =
         config.payeeTransformation.enabled &&
         config.payeeTransformation.openAiApiKey
-            ? new PayeeTransformer(config.payeeTransformation.openAiApiKey, {
-                  model: config.payeeTransformation.model || 'gpt-3.5-turbo',
+            ? new PayeeTransformer({
+                  openAiApiKey: config.payeeTransformation.openAiApiKey,
+                  openAiModel: config.payeeTransformation.openAiModel,
               })
             : undefined;
 

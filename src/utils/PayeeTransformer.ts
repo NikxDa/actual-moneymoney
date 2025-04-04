@@ -1,29 +1,30 @@
 import OpenAI from 'openai';
 
 interface PayeeTransformerConfig {
-    model: string;
+    openAiModel: string;
+    openAiApiKey: string;
 }
 
 class PayeeTransformer {
     private openai: OpenAI;
     private config: PayeeTransformerConfig;
 
-    constructor(
-        openAiApiKey: string,
-        config: PayeeTransformerConfig = { model: 'gpt-3.5-turbo' }
-    ) {
-        this.openai = new OpenAI({
-            apiKey: openAiApiKey,
-        });
+    constructor(config: PayeeTransformerConfig) {
         this.config = config;
+        this.openai = new OpenAI({
+            apiKey: config.openAiApiKey,
+        });
     }
 
     public async transformPayees(payeeList: string[]) {
         const prompt = this.generatePrompt();
 
         try {
+            // Validate model before proceeding
+            await this.validateModel();
+
             const response = await this.openai.chat.completions.create({
-                model: this.config.model,
+                model: this.config.openAiModel,
                 messages: [
                     { role: 'system', content: prompt },
                     { role: 'user', content: payeeList.join('\n') },
@@ -33,8 +34,29 @@ class PayeeTransformer {
 
             const output = response.choices[0].message?.content as string;
             return JSON.parse(output) as { [key: string]: string };
-        } catch (_) {
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error(`Error in transformPayees: ${error.message}`);
+            }
             return null;
+        }
+    }
+
+    private async validateModel() {
+        try {
+            const models = await this.openai.models.list();
+            const availableModels = models.data.map((model) => model.id);
+
+            if (!availableModels.includes(this.config.openAiModel)) {
+                throw new Error(
+                    `Model "${this.config.openAiModel}" is not available. Available models are: ${availableModels.join(', ')}`
+                );
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(`Failed to validate model: ${error.message}`);
+            }
+            throw error;
         }
     }
 

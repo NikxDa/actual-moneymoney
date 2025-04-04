@@ -31,8 +31,8 @@ A configuration document looks like this:
 # Payee transformation
 [payeeTransformation]
 enabled = false
-openAiApiKey = "<openAiKey>"
-model = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use (default: gpt-3.5-turbo)
+openAiApiKey = "<openAiKey>"  # Your OpenAI API key
+openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use (default: gpt-3.5-turbo)
 
 # Import settings
 [import]
