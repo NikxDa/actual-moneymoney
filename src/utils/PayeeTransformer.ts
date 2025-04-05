@@ -5,6 +5,8 @@ import { PayeeTransformationConfig } from './config.js';
 class PayeeTransformer {
     private openai: OpenAI;
 
+    private static availableModels: Array<string> | null = null;
+
     constructor(
         private config: PayeeTransformationConfig,
         private logger: Logger
@@ -23,10 +25,18 @@ class PayeeTransformer {
     public async transformPayees(payeeList: string[]) {
         const prompt = this.generatePrompt();
 
-        try {
+        if (payeeList.length === 0) {
             this.logger.debug(
-                `Starting payee transformation with model '${this.config.openAiModel}'...`
+                'No payees to transform. Returning empty object.'
             );
+            return {};
+        }
+
+        try {
+            this.logger.debug(`Starting payee transformation...`, [
+                `Payees: ${payeeList.length}`,
+                `Model: ${this.config.openAiModel}`,
+            ]);
 
             // Validate model before proceeding
             const model = await this.getConfiguredModel();
@@ -65,19 +75,28 @@ class PayeeTransformer {
     }
 
     private async getConfiguredModel() {
-        this.logger.debug('Listing available models...');
+        let availableModels: Array<string>;
+        if (PayeeTransformer.availableModels) {
+            this.logger.debug('Found available models in cache.');
+            availableModels = PayeeTransformer.availableModels;
+        } else {
+            this.logger.debug('Listing available models...');
+            const modelsIterator = await this.openai.models.list();
+            availableModels = (await Array.fromAsync(modelsIterator)).map(
+                (m) => m.id
+            );
+            PayeeTransformer.availableModels = availableModels;
+        }
 
-        const modelsIterator = await this.openai.models.list();
-        const availableModels = (await Array.fromAsync(modelsIterator)).map(
-            (m) => m.id
-        );
-
-        this.logger.debug(`Available models: ${availableModels.join(', ')}`);
+        this.logger.debug(`Found ${availableModels.length} available models.`);
 
         if (!availableModels.includes(this.config.openAiModel)) {
-            throw new Error(
-                `The specified model '${this.config.openAiModel}' is invalid. The following models are available: ${availableModels.join(', ')}`
+            this.logger.error(
+                `The specified model '${this.config.openAiModel}' is invalid. The following models are available:`,
+                availableModels
             );
+
+            throw new Error('Invalid OpenAI model specified.');
         }
 
         return this.config.openAiModel;
