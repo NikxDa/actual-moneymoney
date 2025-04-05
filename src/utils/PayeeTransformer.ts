@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import Logger from './Logger.js';
 
 interface PayeeTransformerConfig {
     openAiModel: string;
@@ -8,9 +9,11 @@ interface PayeeTransformerConfig {
 class PayeeTransformer {
     private openai: OpenAI;
     private config: PayeeTransformerConfig;
+    private logger: Logger;
 
-    constructor(config: PayeeTransformerConfig) {
+    constructor(config: PayeeTransformerConfig, logger: Logger) {
         this.config = config;
+        this.logger = logger;
         this.openai = new OpenAI({
             apiKey: config.openAiApiKey,
         });
@@ -20,6 +23,8 @@ class PayeeTransformer {
         const prompt = this.generatePrompt();
 
         try {
+            this.logger.debug(`Starting payee transformation with model: ${this.config.openAiModel}`);
+
             // Validate model before proceeding
             await this.validateModel();
 
@@ -33,10 +38,20 @@ class PayeeTransformer {
             });
 
             const output = response.choices[0].message?.content as string;
-            return JSON.parse(output) as { [key: string]: string };
+
+            // Clean the output to handle markdown formatting
+            const cleanedOutput = this.cleanJsonResponse(output);
+
+            try {
+                return JSON.parse(cleanedOutput) as { [key: string]: string };
+            } catch (parseError) {
+                this.logger.error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+                this.logger.debug(`Raw response: ${output}`);
+                return null;
+            }
         } catch (error) {
             if (error instanceof Error) {
-                console.error(`Error in transformPayees: ${error.message}`);
+                this.logger.error(`Error in payee transformation: ${error.message}`);
             }
             return null;
         }
@@ -85,6 +100,16 @@ class PayeeTransformer {
             If there is no list, return an empty object. Do not under any circumstances return anything that
             is not valid JSON.
         `;
+    }
+
+    private cleanJsonResponse(response: string): string {
+        // Remove markdown code block markers
+        let cleaned = response.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+
+        // Trim whitespace
+        cleaned = cleaned.trim();
+
+        return cleaned;
     }
 }
 
