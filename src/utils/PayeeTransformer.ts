@@ -1,11 +1,21 @@
 import OpenAI from 'openai';
+import Logger from './Logger.js';
+
+interface PayeeTransformerConfig {
+    openAiModel: string;
+    openAiApiKey: string;
+}
 
 class PayeeTransformer {
     private openai: OpenAI;
+    private config: PayeeTransformerConfig;
+    private logger: Logger;
 
-    constructor(openAiApiKey: string) {
+    constructor(config: PayeeTransformerConfig, logger: Logger) {
+        this.config = config;
+        this.logger = logger;
         this.openai = new OpenAI({
-            apiKey: openAiApiKey,
+            apiKey: config.openAiApiKey,
         });
     }
 
@@ -13,8 +23,15 @@ class PayeeTransformer {
         const prompt = this.generatePrompt();
 
         try {
+            this.logger.debug(
+                `Starting payee transformation with model: ${this.config.openAiModel}`
+            );
+
+            // Validate model before proceeding
+            await this.validateModel();
+
             const response = await this.openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+                model: this.config.openAiModel,
                 messages: [
                     { role: 'system', content: prompt },
                     { role: 'user', content: payeeList.join('\n') },
@@ -23,9 +40,44 @@ class PayeeTransformer {
             });
 
             const output = response.choices[0].message?.content as string;
-            return JSON.parse(output) as { [key: string]: string };
-        } catch (_) {
+
+            // Clean the output to handle markdown formatting
+            const cleanedOutput = this.cleanJsonResponse(output);
+
+            try {
+                return JSON.parse(cleanedOutput) as { [key: string]: string };
+            } catch (parseError) {
+                this.logger.error(
+                    `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+                );
+                this.logger.debug(`Raw response: ${output}`);
+                return null;
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                this.logger.error(
+                    `Error in payee transformation: ${error.message}`
+                );
+            }
             return null;
+        }
+    }
+
+    private async validateModel() {
+        try {
+            const models = await this.openai.models.list();
+            const availableModels = models.data.map((model) => model.id);
+
+            if (!availableModels.includes(this.config.openAiModel)) {
+                throw new Error(
+                    `Model "${this.config.openAiModel}" is not available. Available models are: ${availableModels.join(', ')}`
+                );
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(`Failed to validate model: ${error.message}`);
+            }
+            throw error;
         }
     }
 
@@ -54,6 +106,18 @@ class PayeeTransformer {
             If there is no list, return an empty object. Do not under any circumstances return anything that
             is not valid JSON.
         `;
+    }
+
+    private cleanJsonResponse(response: string): string {
+        // Remove markdown code block markers
+        let cleaned = response
+            .replace(/```json\s*/g, '')
+            .replace(/```\s*$/g, '');
+
+        // Trim whitespace
+        cleaned = cleaned.trim();
+
+        return cleaned;
     }
 }
 

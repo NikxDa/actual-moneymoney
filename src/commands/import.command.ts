@@ -17,7 +17,13 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const payeeTransformer =
         config.payeeTransformation.enabled &&
         config.payeeTransformation.openAiApiKey
-            ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
+            ? new PayeeTransformer(
+                  {
+                      openAiApiKey: config.payeeTransformation.openAiApiKey,
+                      openAiModel: config.payeeTransformation.openAiModel,
+                  },
+                  logger
+              )
             : undefined;
 
     if (config.actualServers.length === 0) {
