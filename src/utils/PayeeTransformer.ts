@@ -1,19 +1,20 @@
 import OpenAI from 'openai';
 import Logger from './Logger.js';
-
-interface PayeeTransformerConfig {
-    openAiModel: string;
-    openAiApiKey: string;
-}
+import { PayeeTransformationConfig } from './config.js';
 
 class PayeeTransformer {
     private openai: OpenAI;
-    private config: PayeeTransformerConfig;
-    private logger: Logger;
 
-    constructor(config: PayeeTransformerConfig, logger: Logger) {
-        this.config = config;
-        this.logger = logger;
+    constructor(
+        private config: PayeeTransformationConfig,
+        private logger: Logger
+    ) {
+        if (!config.openAiApiKey) {
+            throw new Error(
+                'An OpenAPI API key is required for payee transformation. Please set the key in the configuration file.'
+            );
+        }
+
         this.openai = new OpenAI({
             apiKey: config.openAiApiKey,
         });
@@ -24,28 +25,28 @@ class PayeeTransformer {
 
         try {
             this.logger.debug(
-                `Starting payee transformation with model: ${this.config.openAiModel}`
+                `Starting payee transformation with model '${this.config.openAiModel}'...`
             );
 
             // Validate model before proceeding
-            await this.validateModel();
+            const model = await this.getConfiguredModel();
 
             const response = await this.openai.chat.completions.create({
-                model: this.config.openAiModel,
+                model,
                 messages: [
                     { role: 'system', content: prompt },
                     { role: 'user', content: payeeList.join('\n') },
                 ],
+                response_format: {
+                    type: 'json_object',
+                },
                 temperature: 0,
             });
 
             const output = response.choices[0].message?.content as string;
 
-            // Clean the output to handle markdown formatting
-            const cleanedOutput = this.cleanJsonResponse(output);
-
             try {
-                return JSON.parse(cleanedOutput) as { [key: string]: string };
+                return JSON.parse(output) as { [key: string]: string };
             } catch (parseError) {
                 this.logger.error(
                     `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
@@ -63,22 +64,23 @@ class PayeeTransformer {
         }
     }
 
-    private async validateModel() {
-        try {
-            const models = await this.openai.models.list();
-            const availableModels = models.data.map((model) => model.id);
+    private async getConfiguredModel() {
+        this.logger.debug('Listing available models...');
 
-            if (!availableModels.includes(this.config.openAiModel)) {
-                throw new Error(
-                    `Model "${this.config.openAiModel}" is not available. Available models are: ${availableModels.join(', ')}`
-                );
-            }
-        } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(`Failed to validate model: ${error.message}`);
-            }
-            throw error;
+        const modelsIterator = await this.openai.models.list();
+        const availableModels = (await Array.fromAsync(modelsIterator)).map(
+            (m) => m.id
+        );
+
+        this.logger.debug(`Available models: ${availableModels.join(', ')}`);
+
+        if (!availableModels.includes(this.config.openAiModel)) {
+            throw new Error(
+                `The specified model '${this.config.openAiModel}' is invalid. The following models are available: ${availableModels.join(', ')}`
+            );
         }
+
+        return this.config.openAiModel;
     }
 
     private generatePrompt() {
@@ -106,18 +108,6 @@ class PayeeTransformer {
             If there is no list, return an empty object. Do not under any circumstances return anything that
             is not valid JSON.
         `;
-    }
-
-    private cleanJsonResponse(response: string): string {
-        // Remove markdown code block markers
-        let cleaned = response
-            .replace(/```json\s*/g, '')
-            .replace(/```\s*$/g, '');
-
-        // Trim whitespace
-        cleaned = cleaned.trim();
-
-        return cleaned;
     }
 }
 
