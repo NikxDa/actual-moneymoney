@@ -2,9 +2,9 @@ import { format, subMonths } from 'date-fns';
 import {
     Account as MonMonAccount,
     Transaction as MonMonTransaction,
-    getAccounts,
     getTransactions,
 } from 'moneymoney';
+import { AccountMap } from './AccountMap.js';
 import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig, Config } from './config.js';
 import Logger from './Logger.js';
@@ -17,123 +17,17 @@ class Importer {
         private budgetConfig: ActualBudgetConfig,
         private actualApi: ActualApi,
         private logger: Logger,
+        private accountMap: AccountMap,
         private payeeTransformer?: PayeeTransformer
     ) {}
 
-    private getMoneyMoneyAccountByRef(accounts: MonMonAccount[], ref: string) {
-        // Search by UUID first, if the ref is a UUID
-        let account = accounts.find((acc) => acc.uuid === ref);
-        if (account) {
-            return account;
-        }
-
-        // Next, search by account number
-        account = accounts.find((acc) => acc.accountNumber === ref);
-        if (account) {
-            return account;
-        }
-
-        // Lastly, search by account name
-        const matchingNames = accounts.filter((acc) => acc.name === ref);
-        if (matchingNames.length > 0) {
-            if (matchingNames.length > 1) {
-                this.logger.warn(
-                    `Found multiple MoneyMoney accounts with the name '${ref}'. Using the first one.`
-                );
-            }
-
-            return matchingNames[0];
-        }
-
-        return null;
-    }
-
-    private getActualAccountByRef(accounts: Account[], ref: string) {
-        // Search by UUID first, if the ref is a UUID
-        const account = accounts.find((acc) => acc.id === ref);
-        if (account) {
-            return account;
-        }
-
-        // Next, search by name
-        const matchingNames = accounts.filter((acc) => acc.name === ref);
-        if (matchingNames.length > 0) {
-            if (matchingNames.length > 1) {
-                this.logger.warn(
-                    `Found multiple Actual accounts with the name '${ref}'. Using the first one.`
-                );
-            }
-
-            return matchingNames[0];
-        }
-
-        return null;
-    }
-
-    async parseAccountMapping() {
-        const accountMapping = this.budgetConfig.accountMapping;
-        const parsedAccountMapping: Map<MonMonAccount, Account> = new Map();
-
-        const moneyMoneyAccounts = await getAccounts();
-        this.logger.debug(
-            `Found ${moneyMoneyAccounts.length} accounts in MoneyMoney.`
-        );
-
-        const actualAccounts = await this.actualApi.getAccounts();
-        this.logger.debug(`Found ${actualAccounts.length} accounts in Actual.`);
-
-        for (const [moneyMoneyRef, actualRef] of Object.entries(
-            accountMapping
-        )) {
-            const moneyMoneyAccount = this.getMoneyMoneyAccountByRef(
-                moneyMoneyAccounts,
-                moneyMoneyRef
-            );
-
-            if (!moneyMoneyAccount) {
-                this.logger.debug(
-                    `No MoneyMoney account found for reference '${moneyMoneyRef}'. Skipping...`
-                );
-                continue;
-            }
-
-            const actualAccount = this.getActualAccountByRef(
-                actualAccounts,
-                actualRef
-            );
-
-            if (!actualAccount) {
-                this.logger.debug(
-                    `No Actual account found for reference '${actualRef}'. Skipping...`
-                );
-                continue;
-            }
-
-            this.logger.debug(
-                `MoneyMoney account '${moneyMoneyAccount.name}' will import to Actual account '${actualAccount.name}'.`
-            );
-
-            parsedAccountMapping.set(moneyMoneyAccount, actualAccount);
-        }
-
-        this.logger.info(
-            'Parsed account mapping',
-            Array.from(parsedAccountMapping.entries()).map(
-                ([monMonAccount, actualAccount]) =>
-                    `${monMonAccount.name} → ${actualAccount.name}`
-            )
-        );
-
-        return parsedAccountMapping;
-    }
-
     async importTransactions({
-        accountMapping,
+        accountRefs,
         from,
-        to,
+        to: toDate,
         isDryRun = false,
     }: {
-        accountMapping: Map<MonMonAccount, Account>;
+        accountRefs?: Array<string>;
         from?: Date;
         to?: Date;
         isDryRun?: boolean;
@@ -142,7 +36,6 @@ class Importer {
         const earliestImportDate = this.budgetConfig.earliestImportDate
             ? new Date(this.budgetConfig.earliestImportDate)
             : null;
-        const toDate = to;
 
         const importDate =
             earliestImportDate && earliestImportDate > fromDate
@@ -240,6 +133,8 @@ class Importer {
                 `Found ${monMonTransactions.length} transactions for account ${monMonAccountUuid}`
             );
         }
+
+        const accountMapping = this.accountMap.getMap(accountRefs);
 
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
