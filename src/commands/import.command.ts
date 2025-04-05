@@ -15,11 +15,9 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const logLevel = (argv.logLevel || LogLevel.INFO) as number;
     const logger = new Logger(logLevel);
 
-    const payeeTransformer =
-        config.payeeTransformation.enabled &&
-        config.payeeTransformation.openAiApiKey
-            ? new PayeeTransformer(config.payeeTransformation.openAiApiKey)
-            : undefined;
+    const payeeTransformer = config.payeeTransformation.enabled
+        ? new PayeeTransformer(config.payeeTransformation, logger)
+        : undefined;
 
     if (config.actualServers.length === 0) {
         throw new Error(
@@ -43,13 +41,13 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
 
     if (fromDate && isNaN(fromDate.getTime())) {
         throw new Error(
-            `Invalid from date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
+            `Invalid 'from' date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
         );
     }
 
     if (toDate && isNaN(toDate.getTime())) {
         throw new Error(
-            `Invalid "to" date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`
+            `Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`
         );
     }
 
