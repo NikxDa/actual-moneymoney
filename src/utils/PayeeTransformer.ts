@@ -23,7 +23,9 @@ class PayeeTransformer {
         const prompt = this.generatePrompt();
 
         try {
-            this.logger.debug(`Starting payee transformation with model: ${this.config.openAiModel}`);
+            this.logger.debug(
+                `Starting payee transformation with model: ${this.config.openAiModel}`
+            );
 
             // Validate model before proceeding
             await this.validateModel();
@@ -45,13 +47,17 @@ class PayeeTransformer {
             try {
                 return JSON.parse(cleanedOutput) as { [key: string]: string };
             } catch (parseError) {
-                this.logger.error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+                this.logger.error(
+                    `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+                );
                 this.logger.debug(`Raw response: ${output}`);
                 return null;
             }
         } catch (error) {
             if (error instanceof Error) {
-                this.logger.error(`Error in payee transformation: ${error.message}`);
+                this.logger.error(
+                    `Error in payee transformation: ${error.message}`
+                );
             }
             return null;
         }
@@ -104,7 +110,9 @@ class PayeeTransformer {
 
     private cleanJsonResponse(response: string): string {
         // Remove markdown code block markers
-        let cleaned = response.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+        let cleaned = response
+            .replace(/```json\s*/g, '')
+            .replace(/```\s*$/g, '');
 
         // Trim whitespace
         cleaned = cleaned.trim();
