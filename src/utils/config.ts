@@ -1,9 +1,9 @@
+import fs from 'fs/promises';
 import path from 'path';
 import toml from 'toml';
-import fs from 'fs/promises';
 import { ArgumentsCamelCase } from 'yargs';
-import { DEFAULT_CONFIG_FILE } from './shared.js';
 import { ZodIssueCode, z } from 'zod';
+import { DEFAULT_CONFIG_FILE } from './shared.js';
 
 const budgetSchema = z
     .object({
@@ -44,12 +44,15 @@ const actualServerSchema = z.object({
     budgets: z.array(budgetSchema).min(1),
 });
 
+const payeeTransformationSchema = z.object({
+    enabled: z.boolean(),
+    openAiApiKey: z.string().optional(),
+    openAiModel: z.string().optional().default('gpt-3.5-turbo'),
+});
+
 export const configSchema = z
     .object({
-        payeeTransformation: z.object({
-            enabled: z.boolean(),
-            openAiApiKey: z.string().optional(),
-        }),
+        payeeTransformation: payeeTransformationSchema,
         import: z.object({
             importUncheckedTransactions: z.boolean(),
             synchronizeClearedStatus: z.boolean().default(true),
@@ -77,6 +80,9 @@ export const configSchema = z
         }
     });
 
+export type PayeeTransformationConfig = z.infer<
+    typeof payeeTransformationSchema
+>;
 export type ActualServerConfig = z.infer<typeof actualServerSchema>;
 export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
 export type Config = z.infer<typeof configSchema>;

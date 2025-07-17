@@ -31,7 +31,8 @@ A configuration document looks like this:
 # Payee transformation
 [payeeTransformation]
 enabled = false
-openAiApiKey = "<openAiKey>"
+openAiApiKey = "<openAiKey>"  # Your OpenAI API key
+openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use (default: gpt-3.5-turbo)
 
 # Import settings
 [import]
@@ -74,6 +75,8 @@ Once you have configured your importer, run `actual-monmon validate` again to ve
 Once configured, importing is as simple as running `actual-monmon import`. Make sure that the Actual servers are running and that MoneyMoney is unlocked. By default, the importer will import 1 month worth of transactions. You can override this by passing the `--from` property, like so: `actual-monmon import --from=2024-01-01`. Similarly, a `--to` property is available in case you want to import a specific date range.
 
 The importer will not track previous imports, so if you wait more than one month between imports, you might need to manually specify the last import date. Running the importer twice in the same month is no problem, as duplicate transactions will automatically be detected and skipped.
+
+You can import a specific account with the `--account` option on the import command. Specify it multiple times to import from multiple accounts at a time. For example, to import only transactions from the MoneyMoney account with the name Acc1 and the account with a specific IBAN, you can use: `actual-monmon import --account Acc1 --account DE01...52`. The resolution of an account name follows the same patterns as the configuration keys.
 
 ## Advanced Configuration
 

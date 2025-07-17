@@ -161,71 +161,74 @@ declare module '@actual-app/api' {
         send: (message: string) => Promise<void>;
     };
 
-    export const methods: {
-        // Budget
-        loadBudget: (budgetId: ID) => Promise<void>;
-        downloadBudget: (
-            budgetId: ID,
-            options?: {
-                password?: string;
-            }
-        ) => Promise<void>;
+    // Budget
+    const loadBudget: (budgetId: ID) => Promise<void>;
+    const downloadBudget: (
+        budgetId: ID,
+        options?: {
+            password?: string;
+        }
+    ) => Promise<void>;
 
-        // Transactions
-        addTransactions: (
-            accountId: ID,
-            transactions: CreateTransaction[]
-        ) => Promise<ID[]>;
-        importTransactions: (
-            accountId: ID,
-            transactions: CreateTransaction[]
-        ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
-        getTransactions: (
-            accountId: ID,
-            startDate: DateString,
-            endDate: DateString
-        ) => Promise<ReadTransaction[]>;
-        updateTransaction: (
-            transactionId: ID,
-            fields: UpdateFields<UpdateTransaction>
-        ) => Promise<ID>;
-        deleteTransaction: (transactionId: ID) => Promise<void>;
+    // Transactions
+    interface ImportTransactionsOpts {
+        defaultCleared?: boolean;
+    }
 
-        // Accounts
-        getAccounts: () => Promise<Account[]>;
-        createAccount: (
-            account: CreateAccount,
-            initialBalance?: number
-        ) => Promise<ID>;
-        updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
-        deleteAccount: (accountId: ID) => Promise<void>;
-        closeAccount: (
-            accountId: ID,
-            transferAccountId?: ID,
-            transferCategoryId?: ID
-        ) => Promise<void>;
-        reopenAccount: (accountId: ID) => Promise<void>;
+    const addTransactions: (
+        accountId: ID,
+        transactions: CreateTransaction[]
+    ) => Promise<ID[]>;
+    const importTransactions: (
+        accountId: ID,
+        transactions: CreateTransaction[],
+        opts?: ImportTransactionsOpts
+    ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
+    const getTransactions: (
+        accountId: ID,
+        startDate: DateString,
+        endDate: DateString
+    ) => Promise<ReadTransaction[]>;
+    const updateTransaction: (
+        transactionId: ID,
+        fields: UpdateFields<UpdateTransaction>
+    ) => Promise<ID>;
+    const deleteTransaction: (transactionId: ID) => Promise<void>;
 
-        // Categories
-        getCategories: () => Promise<Category[]>;
-        createCategory: (category: Category) => Promise<ID>;
-        updateCategory: (
-            categoryId: ID,
-            fields: UpdateFields<Category>
-        ) => Promise<ID>;
-        deleteCategory: (categoryId: ID) => Promise<void>;
+    // Accounts
+    const getAccounts: () => Promise<Account[]>;
+    const createAccount: (
+        account: CreateAccount,
+        initialBalance?: number
+    ) => Promise<ID>;
+    const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
+    const deleteAccount: (accountId: ID) => Promise<void>;
+    const closeAccount: (
+        accountId: ID,
+        transferAccountId?: ID,
+        transferCategoryId?: ID
+    ) => Promise<void>;
+    const reopenAccount: (accountId: ID) => Promise<void>;
 
-        // Category groups
-        getCategoryGroups: () => Promise<CategoryGroup[]>;
-        createCategoryGroup: (
-            categoryGroup: CategoryGroupPayload
-        ) => Promise<ID>;
-        updateCategoryGroup: (
-            categoryGroupId: ID,
-            fields: UpdateFields<CategoryGroupPayload>
-        ) => Promise<ID>;
-        deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
-    };
+    // Categories
+    const getCategories: () => Promise<Category[]>;
+    const createCategory: (category: Category) => Promise<ID>;
+    const updateCategory: (
+        categoryId: ID,
+        fields: UpdateFields<Category>
+    ) => Promise<ID>;
+    const deleteCategory: (categoryId: ID) => Promise<void>;
+
+    // Category groups
+    const getCategoryGroups: () => Promise<CategoryGroup[]>;
+    const createCategoryGroup: (
+        categoryGroup: CategoryGroupPayload
+    ) => Promise<ID>;
+    const updateCategoryGroup: (
+        categoryGroupId: ID,
+        fields: UpdateFields<CategoryGroupPayload>
+    ) => Promise<ID>;
+    const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
 }
 
 type UpdateFields<T> = Partial<Omit<T, 'id'>>;
@@ -253,7 +256,7 @@ type BaseTransaction = {
     notes: string;
     imported_id: string;
     transfer_id: string;
-    cleared: boolean;
+    cleared?: boolean;
 };
 
 type ReadTransaction = Omit<BaseTransaction, 'payee_name'> & {

@@ -1,0 +1,37 @@
+name: release
+on:
+    push:
+        branches:
+            - main
+            - next
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@v3
+              with:
+                  node-version: '20'
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Lint with ESLint
+              run: npm run lint:eslint
+
+            - name: Lint with Prettier
+              run: npm run lint:prettier
+
+            - name: Build
+              run: npm run build
+
+            - name: Semantic Release
+              run: npx semantic-release
+              env:
+                  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
