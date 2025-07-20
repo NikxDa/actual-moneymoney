@@ -88,11 +88,6 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             );
 
             logger.info(
-                `Importing accounts...`,
-                `Budget: ${budgetConfig.syncId}`
-            );
-
-            logger.info(
                 `Importing transactions...`,
                 `Budget: ${budgetConfig.syncId}`
             );
