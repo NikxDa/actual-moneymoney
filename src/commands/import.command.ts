@@ -52,16 +52,6 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     for (const serverConfig of config.actualServers) {
-        const actualApi = new ActualApi(serverConfig, logger);
-
-        logger.debug(
-            `Connecting to Actual server...`,
-            `Server URL: ${serverConfig.serverUrl}`
-        );
-
-        await actualApi.init();
-        logger.debug(`Connection to Actual established.`);
-
         logger.debug(`Checking MoneyMoney database access...`);
         const isUnlocked = await checkDatabaseUnlocked();
         if (!isUnlocked) {
@@ -72,9 +62,19 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         logger.debug(`MoneyMoney database is accessible.`);
 
         for (const budgetConfig of serverConfig.budgets) {
+            logger.debug(`Creating Actual API instance...`, [
+                `Server URL: ${serverConfig.serverUrl}`,
+                `Budget: ${budgetConfig.syncId}`,
+            ]);
+            const actualApi = new ActualApi(serverConfig, logger);
+
+            logger.debug(`Initializing Actual API...`);
             await actualApi.init();
+
+            logger.debug(`Loading budget...`, `Budget: ${budgetConfig.syncId}`);
             await actualApi.loadBudget(budgetConfig.syncId);
 
+            logger.debug(`Loading accounts...`);
             const accountMap = new AccountMap(budgetConfig, logger, actualApi);
             await accountMap.loadFromConfig();
 
@@ -85,11 +85,6 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                 logger,
                 accountMap,
                 payeeTransformer
-            );
-
-            logger.info(
-                `Importing accounts...`,
-                `Budget: ${budgetConfig.syncId}`
             );
 
             logger.info(
