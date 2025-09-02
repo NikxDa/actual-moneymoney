@@ -13,7 +13,7 @@ const budgetSchema = z
             enabled: z.boolean(),
             password: z.string().optional(),
         }),
-        accountMapping: z.record(z.string()),
+        accountMapping: z.record(z.string(), z.string()),
     })
     .superRefine((val, ctx) => {
         if (val.e2eEncryption.enabled && !val.e2eEncryption.password) {
@@ -34,8 +34,6 @@ const budgetSchema = z
                 });
             }
         }
-
-        return val;
     });
 
 const actualServerSchema = z.object({
@@ -48,6 +46,14 @@ const payeeTransformationSchema = z.object({
     enabled: z.boolean(),
     openAiApiKey: z.string().optional(),
     openAiModel: z.string().optional().default('gpt-3.5-turbo'),
+    customPrompt: z.string().optional(),
+    modelConfig: z
+        .object({
+            temperature: z.number().min(0).max(2).optional(),
+            maxTokens: z.number().positive().optional(),
+            timeout: z.number().positive().optional(),
+        })
+        .optional(),
 });
 
 export const configSchema = z
