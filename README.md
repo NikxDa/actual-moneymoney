@@ -1,38 +1,53 @@
-<p align="center">
-    <img src="./assets/actual-moneymoney.png" height="150">
-</p>
-<h1 align="center">Actual-MoneyMoney</h1>
-<p align="center">
-A CLI to import <a href="https://moneymoney-app.com" target="_blanK">MoneyMoney</a> transactions into <a href="https://actualbudget.org">Actual Budget</a>, written in TypeScript
-<p>
-<p align="center">
-<img src="https://badgers.space/github/checks/NikxDa/actual-moneymoney/main">
-</p>
+# Actual-MoneyMoney
+
+![Actual-MoneyMoney Logo](./assets/actual-moneymoney.png)
+
+A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
+
+![GitHub Checks](https://badgers.space/github/checks/NikxDa/actual-moneymoney/main)
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Dependencies](#dependencies)
+- [Configuration](#configuration)
+  - [Basic Configuration](#basic-configuration)
+  - [Advanced Configuration](#advanced-configuration)
+  - [Payee Transformation](#payee-transformation)
+- [Usage](#usage)
+- [Account Mapping](#account-mapping)
+- [Troubleshooting](#troubleshooting)
 
 ## Installation
 
 Install with NPM:
 
 ```bash
-$ npm i -g actual-moneymoney
+npm i -g actual-moneymoney
 ```
 
 The application will be accessible as a CLI tool with the name `actual-monmon`.
 
+## Dependencies
+
+**Note on zod version**: This project is currently pinned to zod v3.25.76 due to a peer dependency conflict with the openai package. The openai library requires zod v3.x (`^3.23.8`), but zod v4.x introduces breaking changes that are incompatible. This prevents dependabot from automatically updating to zod v4, which would break the application. We'll update zod when openai releases a version that supports zod v4.
+
 ## Configuration
 
-Details on parameters are available by running `actual-monmon --help`.
+The application needs to be configured with a TOML document to function. You can validate your configuration by running `actual-monmon validate`. Running this for the first time will create an example configuration file. You can also pass a custom configuration path with the `--config` parameter.
 
-The application needs to be configured with a TOML document in order to function. You can validate the configuration details by running `actual-monmon validate`. Running this for the first time will create an example configuration and print the path. You can pass a custom configuration with the `--config` parameter.
+For detailed command-line options, run `actual-monmon --help`.
 
-A configuration document looks like this:
+### Basic Configuration
 
-```
+A basic configuration document looks like this:
+
+```toml
 # Payee transformation
 [payeeTransformation]
 enabled = false
 openAiApiKey = "<openAiKey>"  # Your OpenAI API key
-openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use (default: gpt-3.5-turbo)
+openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
 
 # Import settings
 [import]
@@ -60,52 +75,114 @@ password = ""
 "<monMonAcc>" = "<actualAcc>"
 ```
 
-A short summary:
+### Advanced Configuration
 
--   **Payee transformation** allows the automatic conversion of payee names to human-readable formats, e.g. "AMAZN S.A.R.L" to "Amazon". In order for this to function, you also need to provide a valid OpenAI API key. You can generate this key at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys).
--   **Import settings** allow you to customize the import behavior, e.g. whether unchecked transactions should be imported.
--   **Actual servers** specify which servers should be imported to
--   **Budget configurations** describe the budget files per server which are import targets. The sync ID can be grabbed from the Actual web interface by navigating to settings, then advanced settings. If the budget file is end-to-end encrypted, the details need to be provided here.
--   **Account mapping** maps each MoneyMoney account to an Actual account. MoneyMoney accounts can be described by their UUID (accessible via the AppleScript API of MoneyMoney only, at this time), account number (IBAN, credit card no, etc.) or their name (in this order). Actual accounts can be described by their UUID (can be copied from the URL in a browser window) or their name (in that order). If a name occurs multiple times, the first one will be used. Invalid mappings or additional accounts are ignored.
+For advanced configuration options including custom AI prompts, model-specific settings, and comprehensive examples, see the [advanced configuration example](./example-config-advanced.toml) file. This file demonstrates:
 
-Once you have configured your importer, run `actual-monmon validate` again to verify that the configuration has the correct format.
+- Custom AI prompts for payee transformation
+- Model-specific configuration (temperature, max tokens, timeout)
+- Multiple server and budget configurations
+- E2E encryption settings
+- Ignore patterns for transaction filtering
+- Detailed model compatibility information
+
+### Payee Transformation
+
+The payee transformation feature automatically converts payee names to human-readable formats (e.g., "AMAZN S.A.R.L" to "Amazon"). To use this feature:
+
+1. Set `enabled = true` in the `[payeeTransformation]` section
+2. Provide a valid OpenAI API key (generate one at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys))
+3. Optionally customize the AI model and settings
+
+#### Custom Prompts
+
+You can override the default AI classification prompt with your own instructions:
+
+```toml
+[payeeTransformation]
+customPrompt = """
+Your custom classification instructions here...
+Make sure to instruct the model to return valid JSON.
+"""
+```
+
+#### Model Configuration
+
+Advanced model settings can be configured:
+
+```toml
+[payeeTransformation.modelConfig]
+temperature = 0.0  # 0.0 = deterministic, 1.0 = creative (0.0-2.0)
+maxTokens = 1000   # Maximum tokens in response
+timeout = 30000    # Request timeout in milliseconds
+```
+
+**Note**: Newer models (GPT-4o, GPT-5) don't support temperature control and will use their default behavior.
+
+### Configuration Summary
+
+- **Payee transformation**: Automatically standardize payee names using AI
+- **Import settings**: Customize import behavior (unchecked transactions, cleared status)
+- **Actual servers**: Specify which Actual Budget servers to import to
+- **Budget configurations**: Define budget files per server with sync IDs
+- **E2E encryption**: Handle encrypted budget files
+- **Account mapping**: Map MoneyMoney accounts to Actual accounts
 
 ## Usage
 
-Once configured, importing is as simple as running `actual-monmon import`. Make sure that the Actual servers are running and that MoneyMoney is unlocked. By default, the importer will import 1 month worth of transactions. You can override this by passing the `--from` property, like so: `actual-monmon import --from=2024-01-01`. Similarly, a `--to` property is available in case you want to import a specific date range.
+### Validation
 
-The importer will not track previous imports, so if you wait more than one month between imports, you might need to manually specify the last import date. Running the importer twice in the same month is no problem, as duplicate transactions will automatically be detected and skipped.
+Before importing, validate your configuration:
 
-You can import a specific account with the `--account` option on the import command. Specify it multiple times to import from multiple accounts at a time. For example, to import only transactions from the MoneyMoney account with the name Acc1 and the account with a specific IBAN, you can use: `actual-monmon import --account Acc1 --account DE01...52`. The resolution of an account name follows the same patterns as the configuration keys.
-
-## Advanced Configuration
-
-The following configuration options can optionally be added
-
-### Ignore patterns
-
-Ignore patterns allow you to specify payee names, comments, or purposes which should be ignored. _Note:_ Currently, the strings are treated as is, meaning they are case-sensitive, and will be checked for inclusion, not exact matches.
-
-```
-[import.ignorePatterns]
-commentPatterns = ["[actual-ignore]"]
-payeePatterns = []
-purposePatterns = []
+```bash
+actual-monmon validate
 ```
 
-The above configuration would ignore all transactions that have a comment containing the string `[actual-ignore]`.
+### Import Transactions
 
-### Earliest import date
+To import transactions:
 
-Each budget can specify an earliest import date. This can be useful when starting to use the importer with an already existing budget in order to prevent duplicates from being imported. The importer will ignore any transactions from before the specified date.
-
-```
-[[actualServers.budgets]]
-earliestImportDate = "2024-01-01" # Format is YYYY-MM-DD
+```bash
+actual-monmon import
 ```
 
-Note that the date is a string, not a TOML date.
+### Command Options
 
-## Bugs
+For all available commands and options:
 
-If you notice any bugs or issues, please file an issue.
+```bash
+actual-monmon --help
+```
+
+## Account Mapping
+
+Account mapping connects MoneyMoney accounts to Actual Budget accounts:
+
+**MoneyMoney accounts** can be identified by:
+
+1. UUID (via AppleScript API)
+2. Account number (IBAN, credit card number, etc.)
+3. Account name
+
+**Actual accounts** can be identified by:
+
+1. UUID (from browser URL)
+2. Account name
+
+If multiple accounts have the same name, the first match will be used. Invalid mappings or additional accounts are ignored.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Configuration validation errors**: Run `actual-monmon validate` to see detailed error messages
+2. **Import failures**: Check your server URLs, passwords, and sync IDs
+3. **Payee transformation not working**: Verify your OpenAI API key and model settings
+4. **Account mapping issues**: Ensure account names/IDs match exactly
+
+### Getting Help
+
+- Run `actual-monmon --help` for command-line options
+- Use `actual-monmon validate` to check your configuration
+- Check the [advanced configuration example](./example-config-advanced.toml) for complex setups
+- Review the configuration schema and error messages for specific issues
