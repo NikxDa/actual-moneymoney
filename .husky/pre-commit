@@ -1,0 +1,3 @@
+# Run linting checks before commit
+npm run lint:eslint
+npm run lint:prettier
