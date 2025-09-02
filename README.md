@@ -1,23 +1,24 @@
-<p align="center">
-    <img src="./assets/actual-moneymoney.png" height="150">
-</p>
-<h1 align="center">Actual-MoneyMoney</h1>
-<p align="center">
-A CLI to import <a href="https://moneymoney-app.com" target="_blanK">MoneyMoney</a> transactions into <a href="https://actualbudget.org">Actual Budget</a>, written in TypeScript
-<p>
-<p align="center">
-<img src="https://badgers.space/github/checks/NikxDa/actual-moneymoney/main">
-</p>
+# Actual-MoneyMoney
+
+![Actual-MoneyMoney Logo](./assets/actual-moneymoney.png)
+
+A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
+
+![GitHub Checks](https://badgers.space/github/checks/NikxDa/actual-moneymoney/main)
 
 ## Installation
 
 Install with NPM:
 
 ```bash
-$ npm i -g actual-moneymoney
+npm i -g actual-moneymoney
 ```
 
 The application will be accessible as a CLI tool with the name `actual-monmon`.
+
+## Dependencies
+
+**Note on zod version**: This project is currently pinned to zod v3.25.76 due to a peer dependency conflict with the openai package. The openai library requires zod v3.x (`^3.23.8`), but zod v4.x introduces breaking changes that are incompatible. This prevents dependabot from automatically updating to zod v4, which would break the application. We'll update zod when openai releases a version that supports zod v4.
 
 ## Configuration
 
@@ -27,7 +28,7 @@ The application needs to be configured with a TOML document in order to function
 
 A configuration document looks like this:
 
-```
+```toml
 # Payee transformation
 [payeeTransformation]
 enabled = false
@@ -67,17 +68,18 @@ password = ""
 
 A short summary:
 
--   **Payee transformation** allows the automatic conversion of payee names to human-readable formats, e.g. "AMAZN S.A.R.L" to "Amazon". In order for this to function, you also need to provide a valid OpenAI API key. You can generate this key at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys).
--   **Import settings** allow you to customize the import behavior, e.g. whether unchecked transactions should be imported.
--   **Actual servers** specify which servers should be imported to
--   **Budget configurations** describe the budget files per server which are import targets. The sync ID can be grabbed from the Actual web interface by navigating to settings, then advanced settings. If the budget file is end-to-end encrypted, the details need to be provided here.
--   **Account mapping** maps each MoneyMoney account to an Actual account. MoneyMoney accounts can be described by their UUID (accessible via the AppleScript API of MoneyMoney only, at this time), account number (IBAN, credit card no, etc.) or their name (in this order). Actual accounts can be described by their UUID (can be copied from the URL in a browser window) or their name (in that order). If a name occurs multiple times, the first one will be used. Invalid mappings or additional accounts are ignored.
+- **Payee transformation** allows the automatic conversion of payee names to human-readable formats, e.g. "AMAZN S.A.R.L" to "Amazon". In order for this to function, you also need to provide a valid OpenAI API key. You can generate this key at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+- **Import settings** allow you to customize the import behavior, e.g. whether unchecked transactions should be imported.
+- **Actual servers** specify which servers should be imported to
+- **Budget configurations** describe the budget files per server which are import targets. The sync ID can be grabbed from the Actual web interface by navigating to settings, then advanced settings. If the budget file is end-to-end encrypted, the details need to be provided here.
+- **Account mapping** maps each MoneyMoney account to an Actual account. MoneyMoney accounts can be described by their UUID (accessible via the AppleScript API of MoneyMoney only, at this time), account number (IBAN, credit card no, etc.) or their name (in this order). Actual accounts can be described by their UUID (can be copied from the URL in a browser window) or their name (in that order). If a name occurs multiple times, the first one will be used. Invalid mappings or additional accounts are ignored.
 
 Once you have configured your importer, run `actual-monmon validate` again to verify that the configuration has the correct format.
 
 ### Advanced Payee Transformation Features
 
 #### Custom Prompts
+
 You can override the default AI classification prompt with your own instructions:
 
 ```toml
@@ -87,71 +89,3 @@ Your custom classification instructions here...
 Make sure to instruct the model to return valid JSON.
 """
 ```
-
-**Important**: Custom prompts must instruct the model to return valid JSON with the format: `{"original_payee": "standardized_name"}`
-
-#### Model-Specific Configuration
-Different OpenAI models have different capabilities. The system automatically adapts:
-
-```toml
-[payeeTransformation.modelConfig]
-# Temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
-# Note: Newer models like GPT-4o don't support temperature=0
-temperature = 0.1
-
-# Maximum tokens in response
-maxTokens = 1000
-
-# Request timeout in milliseconds
-timeout = 45000
-```
-
-#### Model Compatibility
-- **GPT-3.5/4 models**: Full temperature support (0.0-2.0), default to 0.0 (deterministic)
-- **GPT-4o models**: No temperature support (uses default ~0.7)
-- **GPT-5 models**: No temperature support (uses default ~0.7)
-
-**Default Behavior**:
-- Models that support temperature default to 0.0 (most deterministic) for consistent financial results
-- Newer models without temperature control use their built-in default (~0.7)
-- The system automatically adapts based on model capabilities
-
-## Usage
-
-Once configured, importing is as simple as running `actual-monmon import`. Make sure that the Actual servers are running and that MoneyMoney is unlocked. By default, the importer will import 1 month worth of transactions. You can override this by passing the `--from` property, like so: `actual-monmon import --from=2024-01-01`. Similarly, a `--to` property is available in case you want to import a specific date range.
-
-The importer will not track previous imports, so if you wait more than one month between imports, you might need to manually specify the last import date. Running the importer twice in the same month is no problem, as duplicate transactions will automatically be detected and skipped.
-
-You can import a specific account with the `--account` option on the import command. Specify it multiple times to import from multiple accounts at a time. For example, to import only transactions from the MoneyMoney account with the name Acc1 and the account with a specific IBAN, you can use: `actual-monmon import --account Acc1 --account DE01...52`. The resolution of an account name follows the same patterns as the configuration keys.
-
-## Advanced Configuration
-
-The following configuration options can optionally be added
-
-### Ignore patterns
-
-Ignore patterns allow you to specify payee names, comments, or purposes which should be ignored. _Note:_ Currently, the strings are treated as is, meaning they are case-sensitive, and will be checked for inclusion, not exact matches.
-
-```
-[import.ignorePatterns]
-commentPatterns = ["[actual-ignore]"]
-payeePatterns = []
-purposePatterns = []
-```
-
-The above configuration would ignore all transactions that have a comment containing the string `[actual-ignore]`.
-
-### Earliest import date
-
-Each budget can specify an earliest import date. This can be useful when starting to use the importer with an already existing budget in order to prevent duplicates from being imported. The importer will ignore any transactions from before the specified date.
-
-```
-[[actualServers.budgets]]
-earliestImportDate = "2024-01-01" # Format is YYYY-MM-DD
-```
-
-Note that the date is a string, not a TOML date.
-
-## Bugs
-
-If you notice any bugs or issues, please file an issue.
