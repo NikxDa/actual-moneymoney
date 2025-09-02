@@ -1,13 +1,14 @@
 {
     "name": "actual-moneymoney",
-    "version": "2.11.0",
+    "version": "2.12.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
     "scripts": {
         "build": "npx tsc",
         "start": "node dist/index.js",
         "lint:eslint": "eslint src",
-        "lint:prettier": "prettier --check 'src/**/*.ts'"
+        "lint:prettier": "prettier --check 'src/**/*.ts'",
+        "lint:prettier:fix": "prettier --write 'src/**/*.ts'"
     },
     "type": "module",
     "keywords": [
@@ -28,15 +29,15 @@
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
-        "@actual-app/api": "^25.7.1",
-        "chalk": "^5.4.1",
+        "@actual-app/api": "25.9.0-nightly.20250901",
+        "chalk": "^5.6.0",
         "date-fns": "^4.1.0",
         "moneymoney": "^1.2.1",
         "node-fetch": "^3.3.2",
-        "openai": "^5.10.1",
+        "openai": "^5.16.0",
         "toml": "^3.0.0",
         "yargs": "^18.0.0",
-        "zod": "^3.23.8"
+        "zod": "3.25.76"
     },
     "node": ">=16",
     "devDependencies": {
@@ -44,12 +45,12 @@
         "@commitlint/config-conventional": "^19.8.1",
         "@eslint/js": "^9.31.0",
         "@types/yargs": "^17.0.33",
-        "eslint": "^9",
+        "eslint": "^9.34.0",
         "globals": "^16.3.0",
         "prettier": "^3.6.2",
         "semantic-release": "^24.2.7",
         "ts-node": "^10.9.2",
         "typescript": "^5.8.3",
-        "typescript-eslint": "^8.37.0"
+        "typescript-eslint": "^8.41.0"
     }
 }
