@@ -25,7 +25,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         );
     }
 
-    const isDryRun = (argv.dryRun as boolean) || false;
+    const isDryRun = (argv['dry-run'] as boolean) || false;
     const fromDate = argv.from
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
@@ -52,14 +52,21 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     for (const serverConfig of config.actualServers) {
-        logger.debug(`Checking MoneyMoney database access...`);
-        const isUnlocked = await checkDatabaseUnlocked();
-        if (!isUnlocked) {
-            throw new Error(
-                `MoneyMoney database is locked. Please unlock it and try again.`
+        try {
+            logger.debug(`Checking MoneyMoney database access...`);
+            const isUnlocked = await checkDatabaseUnlocked();
+            if (!isUnlocked) {
+                throw new Error(
+                    `MoneyMoney database is locked. Please unlock it and try again.`
+                );
+            }
+            logger.debug(`MoneyMoney database is accessible.`);
+        } catch (error) {
+            logger.error(
+                `Failed to access MoneyMoney database: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
+            throw error;
         }
-        logger.debug(`MoneyMoney database is accessible.`);
 
         for (const budgetConfig of serverConfig.budgets) {
             logger.debug(`Creating Actual API instance...`, [
@@ -87,10 +94,17 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                 payeeTransformer
             );
 
-            logger.info(
-                `Importing transactions...`,
-                `Budget: ${budgetConfig.syncId}`
-            );
+            if (isDryRun) {
+                logger.info(
+                    `DRY RUN MODE - Importing transactions (no changes will be made)...`,
+                    `Budget: ${budgetConfig.syncId}`
+                );
+            } else {
+                logger.info(
+                    `Importing transactions...`,
+                    `Budget: ${budgetConfig.syncId}`
+                );
+            }
 
             await importer.importTransactions({
                 accountRefs,

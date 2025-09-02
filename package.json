@@ -1,13 +1,14 @@
 {
     "name": "actual-moneymoney",
-    "version": "2.11.0",
+    "version": "2.12.0",
     "description": "An importer for syncing MoneyMoney accounts and transactions to Actual.",
     "exports": "./index.js",
     "scripts": {
         "build": "npx tsc",
         "start": "node dist/index.js",
         "lint:eslint": "eslint src",
-        "lint:prettier": "prettier --check 'src/**/*.ts'"
+        "lint:prettier": "prettier --check 'src/**/*.ts'",
+        "lint:prettier:fix": "prettier --write 'src/**/*.ts'"
     },
     "type": "module",
     "keywords": [
@@ -28,15 +29,15 @@
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
-        "@actual-app/api": "^25.7.1",
-        "chalk": "^5.4.1",
+        "@actual-app/api": "25.9.0-nightly.20250901",
+        "chalk": "^5.6.0",
         "date-fns": "^4.1.0",
         "moneymoney": "^1.2.1",
         "node-fetch": "^3.3.2",
-        "openai": "^5.10.1",
+        "openai": "^5.16.0",
         "toml": "^3.0.0",
         "yargs": "^18.0.0",
-        "zod": "^3.23.8"
+        "zod": "^4.1.5"
     },
     "node": ">=16",
     "devDependencies": {

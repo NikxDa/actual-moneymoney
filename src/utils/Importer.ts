@@ -32,6 +32,7 @@ class Importer {
         to?: Date;
         isDryRun?: boolean;
     }) {
+        const importStartTime = Date.now();
         const fromDate = from ?? subMonths(new Date(), 1);
         const earliestImportDate = this.budgetConfig.earliestImportDate
             ? new Date(this.budgetConfig.earliestImportDate)
@@ -59,10 +60,15 @@ class Importer {
             }`
         );
 
+        const fetchStartTime = Date.now();
         let monMonTransactions = await getTransactions({
             from: importDate,
             to: toDate,
         });
+        const fetchEndTime = Date.now();
+        this.logger.debug(
+            `MoneyMoney transaction fetch completed in ${fetchEndTime - fetchStartTime}ms`
+        );
 
         if (monMonTransactions.length === 0) {
             this.logger.info(
@@ -138,6 +144,7 @@ class Importer {
 
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
+            const accountStartTime = Date.now();
             const monMonTransactions =
                 monMonTransactionMap[monMonAccount.uuid] ?? [];
 
@@ -211,6 +218,7 @@ class Importer {
                     `Cleaning up payee names for ${createTransactions.length} transaction/s using OpenAI...`
                 );
 
+                const startTime = Date.now();
                 const transactionPayees = createTransactions.map(
                     (t) => t.imported_payee as string
                 );
@@ -220,11 +228,28 @@ class Importer {
                         transactionPayees
                     );
 
+                const endTime = Date.now();
+                this.logger.debug(
+                    `Payee transformation completed in ${endTime - startTime}ms`
+                );
+
                 if (transformedPayees !== null) {
+                    this.logger.debug(
+                        `Applying transformed payee names to transactions...`
+                    );
                     createTransactions.forEach((t) => {
+                        const originalPayee = t.imported_payee as string;
+                        const newPayee = transformedPayees[originalPayee];
+
+                        // Use original payee name if transformation is undefined, null, or "Unknown"
                         t.payee_name =
-                            transformedPayees[t.imported_payee as string];
+                            newPayee && newPayee !== 'Unknown'
+                                ? newPayee
+                                : originalPayee;
                     });
+                    this.logger.debug(
+                        `Payee transformation completed successfully.`
+                    );
                 } else {
                     this.logger.warn(
                         'Payee transformation failed. Using default payee names...'
@@ -235,18 +260,36 @@ class Importer {
                     });
                 }
             } else {
-                this.logger.debug(
-                    isDryRun
-                        ? `Skipping payee transformation in dry run mode, using default payee names...`
-                        : `Payee transformation is disabled. Using default payee names...`
-                );
+                if (isDryRun) {
+                    this.logger.debug(
+                        `Skipping payee transformation in dry run mode, using default payee names...`
+                    );
+                } else if (!this.payeeTransformer) {
+                    this.logger.debug(
+                        `Payee transformation is disabled. Using default payee names...`
+                    );
+                }
 
                 createTransactions.forEach((t) => {
                     t.payee_name = t.imported_payee;
                 });
             }
 
-            if (!isDryRun) {
+            // Log final payee names being used for import
+            this.logger.debug(
+                `Final payee names for import:`,
+                createTransactions.map((t) => `"${t.payee_name}"`)
+            );
+
+            if (isDryRun) {
+                this.logger.info(
+                    `DRY RUN - Would import to account '${actualAccount.name}'`,
+                    [
+                        `Would add ${createTransactions.length} new transaction(s).`,
+                        `No changes made.`,
+                    ]
+                );
+            } else {
                 const result = await this.actualApi.importTransactions(
                     actualAccount.id,
                     createTransactions
@@ -272,7 +315,17 @@ class Importer {
                     ]
                 );
             }
+
+            const accountEndTime = Date.now();
+            this.logger.debug(
+                `Account '${actualAccount.name}' processing completed in ${accountEndTime - accountStartTime}ms`
+            );
         }
+
+        const totalImportTime = Date.now() - importStartTime;
+        this.logger.debug(
+            `Total import process completed in ${totalImportTime}ms`
+        );
     }
 
     private async convertToActualTransaction(

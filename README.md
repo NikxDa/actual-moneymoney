@@ -33,6 +33,11 @@ A configuration document looks like this:
 enabled = false
 openAiApiKey = "<openAiKey>"  # Your OpenAI API key
 openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use (default: gpt-3.5-turbo)
+# customPrompt = "Your custom prompt here..." # Optional: Override default prompt
+# [payeeTransformation.modelConfig] # Optional: Model-specific settings
+# temperature = 0.0 # 0.0 = deterministic, 1.0 = creative (0.0-2.0)
+# maxTokens = 1000 # Maximum tokens in response
+# timeout = 30000 # Request timeout in milliseconds
 
 # Import settings
 [import]
@@ -69,6 +74,47 @@ A short summary:
 -   **Account mapping** maps each MoneyMoney account to an Actual account. MoneyMoney accounts can be described by their UUID (accessible via the AppleScript API of MoneyMoney only, at this time), account number (IBAN, credit card no, etc.) or their name (in this order). Actual accounts can be described by their UUID (can be copied from the URL in a browser window) or their name (in that order). If a name occurs multiple times, the first one will be used. Invalid mappings or additional accounts are ignored.
 
 Once you have configured your importer, run `actual-monmon validate` again to verify that the configuration has the correct format.
+
+### Advanced Payee Transformation Features
+
+#### Custom Prompts
+You can override the default AI classification prompt with your own instructions:
+
+```toml
+[payeeTransformation]
+customPrompt = """
+Your custom classification instructions here...
+Make sure to instruct the model to return valid JSON.
+"""
+```
+
+**Important**: Custom prompts must instruct the model to return valid JSON with the format: `{"original_payee": "standardized_name"}`
+
+#### Model-Specific Configuration
+Different OpenAI models have different capabilities. The system automatically adapts:
+
+```toml
+[payeeTransformation.modelConfig]
+# Temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
+# Note: Newer models like GPT-4o don't support temperature=0
+temperature = 0.1
+
+# Maximum tokens in response
+maxTokens = 1000
+
+# Request timeout in milliseconds
+timeout = 45000
+```
+
+#### Model Compatibility
+- **GPT-3.5/4 models**: Full temperature support (0.0-2.0), default to 0.0 (deterministic)
+- **GPT-4o models**: No temperature support (uses default ~0.7)
+- **GPT-5 models**: No temperature support (uses default ~0.7)
+
+**Default Behavior**:
+- Models that support temperature default to 0.0 (most deterministic) for consistent financial results
+- Newer models without temperature control use their built-in default (~0.7)
+- The system automatically adapts based on model capabilities
 
 ## Usage
 

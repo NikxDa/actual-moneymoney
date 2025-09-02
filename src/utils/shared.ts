@@ -20,6 +20,12 @@ export const EXAMPLE_CONFIG = `
 [payeeTransformation]
 enabled = false
 openAiApiKey = "<openAiKey>"
+openAiModel = "gpt-3.5-turbo"
+# customPrompt = "Your custom prompt here..." # Optional: Override default prompt
+# [payeeTransformation.modelConfig] # Optional: Model-specific settings
+# temperature = 0.0 # 0.0 = deterministic, 1.0 = creative (0.0-2.0)
+# maxTokens = 1000 # Maximum tokens in response
+# timeout = 30000 # Request timeout in milliseconds
 
 # Import settings
 [import]

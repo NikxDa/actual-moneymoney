@@ -1,0 +1,164 @@
+# Advanced configuration example for actual-moneymoney
+# This file demonstrates all available options including the new customizable prompts and model settings
+
+# Payee transformation with advanced configuration
+[payeeTransformation]
+enabled = true
+openAiApiKey = "your-openai-api-key-here"
+openAiModel = "gpt-5-nano"  # Can be: gpt-3.5-turbo, gpt-4, gpt-4o, gpt-4o-mini, gpt-5, etc.
+
+# Optional: Custom prompt for payee transformation
+# If not provided, a default prompt optimized for financial classification will be used
+customPrompt = """
+You are a financial transaction classifier. Your task is to standardize payee names from bank transactions.
+
+TASK: Convert raw payee names into clean, human-readable names.
+
+RULES:
+- Return ONLY valid JSON objects
+- Map original payee names to standardized names
+- Make names concise and recognizable
+- Use consistent naming conventions
+- Return "Unknown" for unrecognized payees
+- Return empty object {} if no input
+
+EXAMPLES:
+Input: "Amzn Mktp US*1234567890"
+Output: {"Amzn Mktp US*1234567890": "Amazon"}
+
+Input: "AMAZON.COM/BILLWA\nAMAZON.COM"
+Output: {"AMAZON.COM/BILLWA": "Amazon", "AMAZON.COM": "Amazon"}
+
+Input: ""
+Output: {}
+
+CRITICAL: Return ONLY valid JSON. No explanations or additional text.
+"""
+
+# Optional: Model-specific configuration
+[payeeTransformation.modelConfig]
+# Temperature: Controls randomness (0.0 = deterministic, 1.0 = creative, 2.0 = very creative)
+# IMPORTANT: Newer models (GPT-4o, GPT-5) don't support temperature=0, so this will be ignored for them
+# For these models, the system automatically uses the model's default behavior
+# Default behavior: GPT-3.5/4 models use temperature=0.0 (deterministic), GPT-4o/5 models use ~0.7
+temperature = 0.0
+
+# Maximum tokens in the response (optional)
+maxTokens = 1000
+
+# Request timeout in milliseconds (optional, default: 30000)
+timeout = 45000
+
+# Import settings
+[import]
+importUncheckedTransactions = true
+synchronizeClearedStatus = true
+
+# Optional: Ignore patterns for filtering transactions
+[import.ignorePatterns]
+commentPatterns = ["*test*", "*ignore*"]
+payeePatterns = ["*spam*", "*unwanted*"]
+purposePatterns = ["*internal*", "*transfer*"]
+
+# Actual servers configuration
+[[actualServers]]
+serverUrl = "http://localhost:5006"
+serverPassword = "your-server-password"
+
+# Budgets for this server
+[[actualServers.budgets]]
+syncId = "your-sync-id-here"
+# Optional: Only import transactions from this date onwards
+earliestImportDate = "2021-01-01"
+
+# E2E encryption for this budget
+[actualServers.budgets.e2eEncryption]
+enabled = false
+password = ""
+
+# Account mapping for this budget
+[actualServers.budgets.accountMapping]
+# Map MoneyMoney account names/numbers to Actual account names/IDs
+"Main Checking" = "checking-account-id"
+"Savings Account" = "savings-account-id"
+"Credit Card" = "credit-card-id"
+
+# You can add multiple servers
+[[actualServers]]
+serverUrl = "https://your-remote-server.com"
+serverPassword = "remote-server-password"
+
+[[actualServers.budgets]]
+syncId = "remote-sync-id"
+earliestImportDate = "2023-01-01"
+
+[actualServers.budgets.e2eEncryption]
+enabled = true
+password = "your-encryption-password"
+
+[actualServers.budgets.accountMapping]
+"Remote Checking" = "remote-checking-id"
+"Remote Savings" = "remote-savings-id"
+
+# =============================================================================
+# MODEL COMPATIBILITY GUIDE
+# =============================================================================
+#
+# Different OpenAI models have different capabilities:
+#
+# GPT-3.5 Models (gpt-3.5-turbo, gpt-3.5-turbo-16k, etc.):
+# ✅ Full temperature support (0.0-2.0)
+# ✅ Full max_tokens support
+# ✅ All parameters supported
+# 💡 Best for: Cost-effective, deterministic results with temperature=0.0 (default)
+#
+# GPT-4 Models (gpt-4, gpt-4-turbo, gpt-4-turbo-preview, etc.):
+# ✅ Full temperature support (0.0-2.0)
+# ✅ Full max_tokens support
+# ✅ All parameters supported
+# 💡 Best for: High-quality results with full control, temperature=0.0 (default)
+#
+# GPT-4o Models (gpt-4o, gpt-4o-mini):
+# ❌ No temperature support (parameter ignored)
+# ✅ Full max_tokens support
+# ⚠️ Uses default temperature (~0.7) - cannot be changed
+# 💡 Best for: Fast, high-quality results (no randomness control)
+#
+# GPT-5 Models (gpt-5, gpt-5-turbo, etc.):
+# ❌ No temperature support (parameter ignored)
+# ✅ Full max_tokens support
+# ⚠️ Uses default temperature (~0.7) - cannot be changed
+# 💡 Best for: Latest AI capabilities (no randomness control)
+#
+# =============================================================================
+# TEMPERATURE GUIDELINES
+# =============================================================================
+#
+# For models that support temperature:
+# 0.0: Most deterministic, consistent results (recommended for financial data)
+# 0.1-0.3: Low randomness, good balance
+# 0.7: Default for most models
+# 1.0+: Higher creativity, less predictable
+#
+# For newer models (GPT-4o, GPT-5):
+# Temperature setting is automatically ignored
+# Models use their default behavior (~0.7)
+# This provides a good balance of consistency and quality
+#
+# =============================================================================
+# RECOMMENDED CONFIGURATIONS
+# =============================================================================
+#
+# For maximum consistency (older models):
+# openAiModel = "gpt-3.5-turbo"
+# temperature = 0.0
+#
+# For balanced results (older models):
+# openAiModel = "gpt-4"
+# temperature = 0.1
+#
+# For latest capabilities (newer models):
+# openAiModel = "gpt-4o-mini"  # or "gpt-5"
+# # temperature setting ignored automatically
+#
+# =============================================================================
