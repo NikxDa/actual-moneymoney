@@ -2,6 +2,8 @@ import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
+import util from 'node:util';
+
 import { ActualServerConfig } from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
@@ -174,13 +176,37 @@ class ActualApi {
 
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
         const originalConsoleLog = console.log;
-        console.log = () => {};
+        const originalConsoleInfo = console.info;
+
+        const suppressIfNoisy =
+            <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
+            (...args: TArgs) => {
+                if (this.isActualNoise(args)) {
+                    return;
+                }
+
+                original(...args);
+            };
+
+        console.log = suppressIfNoisy(originalConsoleLog);
+        console.info = suppressIfNoisy(originalConsoleInfo);
 
         try {
             return await callback();
         } finally {
             console.log = originalConsoleLog;
+            console.info = originalConsoleInfo;
         }
+    }
+
+    private isActualNoise(args: unknown[]) {
+        if (args.length === 0) {
+            return false;
+        }
+
+        const message = util.format(...(args as [unknown, ...unknown[]]));
+
+        return message.startsWith('Got messages from server');
     }
 }
 
