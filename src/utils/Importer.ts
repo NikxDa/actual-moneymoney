@@ -146,6 +146,7 @@ class Importer {
         }
 
         const accountMapping = this.accountMap.getMap(accountRefs);
+        let hasNewTransactions = false;
 
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
@@ -234,6 +235,8 @@ class Importer {
             this.logger.debug(
                 `Considering ${createTransactions.length} transactions for Actual account '${actualAccount.name}'...`
             );
+
+            hasNewTransactions = true;
 
             if (this.payeeTransformer && !isDryRun) {
                 this.logger.debug(
@@ -361,6 +364,10 @@ class Importer {
         this.logger.debug(
             `Total import process completed in ${totalImportTime}ms`
         );
+
+        if (!hasNewTransactions) {
+            this.logger.info('No new transactions to import.');
+        }
     }
 
     private async convertToActualTransaction(
