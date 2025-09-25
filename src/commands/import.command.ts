@@ -32,8 +32,15 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const toDate = argv.to
         ? parse(argv.to as string, DATE_FORMAT, new Date())
         : undefined;
+    const server = argv.server as string | Array<string> | undefined;
     const account = argv.account as string | Array<string> | undefined;
     const budget = argv.budget as string | Array<string> | undefined;
+
+    const serverUrls = server
+        ? Array.isArray(server)
+            ? server
+            : [server]
+        : undefined;
 
     let accountRefs: Array<string> | undefined;
     if (account) {
@@ -74,10 +81,38 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         throw error;
     }
 
+    const serversToProcess = serverUrls
+        ? config.actualServers.filter((serverConfig) =>
+              serverUrls.includes(serverConfig.serverUrl)
+          )
+        : config.actualServers;
+
+    if (serverUrls && serverUrls.length > 0) {
+        const configuredServerUrls = new Set(
+            config.actualServers.map((serverConfig) => serverConfig.serverUrl)
+        );
+        const missingServers = serverUrls.filter(
+            (url) => !configuredServerUrls.has(url)
+        );
+
+        if (missingServers.length > 0) {
+            const missingList = missingServers.join(', ');
+            throw new Error(
+                `Server${missingServers.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
+            );
+        }
+    }
+
+    if (serversToProcess.length === 0) {
+        throw new Error(
+            'No Actual servers matched the provided filters. Check your configuration or adjust the --server flag.'
+        );
+    }
+
     if (budgetSyncIds && budgetSyncIds.length > 0) {
         const configuredBudgets = new Set(
-            config.actualServers.flatMap((server) =>
-                server.budgets.map((b) => b.syncId)
+            serversToProcess.flatMap((serverConfig) =>
+                serverConfig.budgets.map((b) => b.syncId)
             )
         );
         const missingBudgets = budgetSyncIds.filter(
@@ -92,7 +127,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         }
     }
 
-    for (const serverConfig of config.actualServers) {
+    for (const serverConfig of serversToProcess) {
         const budgetsToProcess = budgetSyncIds
             ? serverConfig.budgets.filter((budgetConfig) =>
                   budgetSyncIds.includes(budgetConfig.syncId)
@@ -165,6 +200,11 @@ export default {
                 describe: 'Do not import data',
             })
             .alias('dry-run', 'dryRun')
+            .string('server')
+            .describe(
+                'server',
+                'Import only budgets configured for the specified Actual server URL'
+            )
             .string('account')
             .describe(
                 'account',

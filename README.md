@@ -148,6 +148,14 @@ To import transactions:
 actual-monmon import
 ```
 
+You can limit the scope of an import with additional flags:
+
+- `--server <url>` – import only budgets associated with the specified Actual server URL. Repeat the flag to include multiple servers.
+- `--budget <syncId>` – restrict imports to the given Actual budget sync ID. Repeat for multiple budgets.
+- `--account <ref>` – import transactions from a specific MoneyMoney account reference.
+- `--from YYYY-MM-DD` / `--to YYYY-MM-DD` – bound the transaction date range.
+- `--dry-run` – simulate the import without persisting any changes.
+
 ### Command Options
 
 For all available commands and options:
