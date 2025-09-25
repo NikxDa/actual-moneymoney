@@ -23,7 +23,7 @@ A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actu
 Install with NPM:
 
 ```bash
-npm i -g actual-moneymoney
+npm i -g actual-monmon
 ```
 
 The application will be accessible as a CLI tool with the name `actual-monmon`.
