@@ -31,6 +31,6 @@ These checks ensure linting, formatting, and TypeScript compilation succeed.
 - Keep the subject under 72 characters and avoid ending it with a period.
 
 ## Additional Notes
-- Node.js version 16 or newer is required (per `package.json` engines).
+- Node.js version 18 or newer is required.
 - Example configurations live at `example-config-advanced.toml` and should stay in sync with config schema changes.
 - Assets (logos, etc.) reside in `/assets`; update paths carefully if moving files referenced in the README.
