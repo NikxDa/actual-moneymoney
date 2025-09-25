@@ -194,22 +194,18 @@ class PayeeTransformer {
             defaultTemperature: 0.7,
         };
 
-        // Newer models (GPT-4o, GPT-4o-mini, GPT-5) don't support temperature=0
+        // GPT-4o/GPT-5 models expose full temperature control (0.0-2.0) but
+        // default closer to 0.7 for more creative responses.
         if (model.includes('gpt-4o') || model.includes('gpt-5')) {
-            capabilities.supportsTemperature = false;
             capabilities.defaultTemperature = 0.7;
         }
 
-        // GPT-4 models support temperature but with different defaults
+        // GPT-4 (non-omni) and GPT-3.5 series default closer to deterministic
+        // responses, but still allow overriding the full 0.0-2.0 range.
         else if (model.includes('gpt-4') && !model.includes('gpt-4o')) {
-            capabilities.supportsTemperature = true;
-            capabilities.defaultTemperature = 0.7;
-        }
-
-        // GPT-3.5 models fully support all parameters
-        else if (model.includes('gpt-3.5')) {
-            capabilities.supportsTemperature = true;
-            capabilities.defaultTemperature = 0.7;
+            capabilities.defaultTemperature = 0.0;
+        } else if (model.includes('gpt-3.5')) {
+            capabilities.defaultTemperature = 0.0;
         }
 
         this.modelCapabilities.set(model, capabilities);
