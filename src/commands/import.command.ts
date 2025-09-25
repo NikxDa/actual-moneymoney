@@ -138,52 +138,72 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             continue;
         }
 
-        for (const budgetConfig of budgetsToProcess) {
-            logger.debug(`Creating Actual API instance...`, [
-                `Server URL: ${serverConfig.serverUrl}`,
-                `Budget: ${budgetConfig.syncId}`,
-            ]);
-            const actualApi = new ActualApi(serverConfig, logger);
+        logger.debug(`Creating Actual API instance...`, [
+            `Server URL: ${serverConfig.serverUrl}`,
+        ]);
+        const actualApi = new ActualApi(serverConfig, logger);
 
+        try {
             logger.debug(`Initializing Actual API...`);
             await actualApi.init();
 
-            logger.debug(`Loading budget...`, `Budget: ${budgetConfig.syncId}`);
-            await actualApi.loadBudget(budgetConfig.syncId);
-
-            logger.debug(`Loading accounts...`);
-            const accountMap = new AccountMap(budgetConfig, logger, actualApi);
-            await accountMap.loadFromConfig();
-
-            const importer = new Importer(
-                config,
-                budgetConfig,
-                actualApi,
-                logger,
-                accountMap,
-                payeeTransformer
-            );
-
-            if (isDryRun) {
-                logger.info(
-                    `DRY RUN MODE - Importing transactions (no changes will be made)...`,
+            for (const budgetConfig of budgetsToProcess) {
+                logger.debug(
+                    `Loading budget...`,
                     `Budget: ${budgetConfig.syncId}`
                 );
-            } else {
-                logger.info(
-                    `Importing transactions...`,
-                    `Budget: ${budgetConfig.syncId}`
+                await actualApi.loadBudget(budgetConfig.syncId);
+
+                logger.debug(`Loading accounts...`);
+                const accountMap = new AccountMap(
+                    budgetConfig,
+                    logger,
+                    actualApi
+                );
+                await accountMap.loadFromConfig();
+
+                const importer = new Importer(
+                    config,
+                    budgetConfig,
+                    actualApi,
+                    logger,
+                    accountMap,
+                    payeeTransformer
+                );
+
+                if (isDryRun) {
+                    logger.info(
+                        `DRY RUN MODE - Importing transactions (no changes will be made)...`,
+                        `Budget: ${budgetConfig.syncId}`
+                    );
+                } else {
+                    logger.info(
+                        `Importing transactions...`,
+                        `Budget: ${budgetConfig.syncId}`
+                    );
+                }
+
+                await importer.importTransactions({
+                    accountRefs,
+                    from: fromDate,
+                    to: toDate,
+                    isDryRun,
+                });
+            }
+        } finally {
+            try {
+                logger.debug(
+                    `Shutting down Actual API instance...`,
+                    `Server URL: ${serverConfig.serverUrl}`
+                );
+                await actualApi.shutdown();
+            } catch (error) {
+                logger.warn(
+                    `Failed to shut down Actual API cleanly: ${
+                        error instanceof Error ? error.message : 'Unknown error'
+                    }`
                 );
             }
-
-            await importer.importTransactions({
-                accountRefs,
-                from: fromDate,
-                to: toDate,
-                isDryRun,
-            });
-
-            await actualApi.shutdown();
         }
     }
 

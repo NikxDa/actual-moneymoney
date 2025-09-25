@@ -94,6 +94,7 @@ The payee transformation feature automatically converts payee names to human-rea
 1. Set `enabled = true` in the `[payeeTransformation]` section
 2. Provide a valid OpenAI API key (generate one at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys))
 3. Optionally customize the AI model and settings
+4. (Optional) Set `skipModelValidation = true` if you want to trust the configured model identifier without contacting the OpenAI model listing endpoint
 
 #### Custom Prompts
 
@@ -119,6 +120,8 @@ timeout = 30000    # Request timeout in milliseconds
 ```
 
 **Note**: GPT-4o and GPT-5 models accept temperatures between 0.0 and 2.0. They default to ~0.7 but you can override this for deterministic behavior.
+
+Model validation and payee lookups are cached to keep imports fast and avoid unnecessary OpenAI requests. The model list is stored for one hour in the application data directory, and transformed payee names are memoized within a single import run. Combine these caches with `skipModelValidation = true` if your environment restricts model listing requests.
 
 ### Configuration Summary
 

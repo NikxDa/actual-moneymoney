@@ -21,8 +21,6 @@ type GetUserFilesResponse = {
     data: Array<UserFile>;
 };
 
-let hasInstalledActualNoiseFilter = false;
-
 const isActualNoise = (args: unknown[]) => {
     if (args.length === 0) {
         return false;
@@ -32,32 +30,15 @@ const isActualNoise = (args: unknown[]) => {
 
     return message.startsWith('Got messages from server');
 };
+const suppressIfNoisy =
+    <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
+    (...args: TArgs) => {
+        if (isActualNoise(args)) {
+            return;
+        }
 
-const installActualNoiseFilter = () => {
-    if (hasInstalledActualNoiseFilter) {
-        return;
-    }
-
-    const suppressIfNoisy =
-        <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
-        (...args: TArgs) => {
-            if (isActualNoise(args)) {
-                return;
-            }
-
-            original(...args);
-        };
-
-    const originalConsoleLog = console.log.bind(console);
-    const originalConsoleInfo = console.info.bind(console);
-    const originalConsoleDebug = console.debug.bind(console);
-
-    console.log = suppressIfNoisy(originalConsoleLog);
-    console.info = suppressIfNoisy(originalConsoleInfo);
-    console.debug = suppressIfNoisy(originalConsoleDebug);
-
-    hasInstalledActualNoiseFilter = true;
-};
+        original(...args);
+    };
 
 class ActualApi {
     protected isInitialized = false;
@@ -152,9 +133,12 @@ class ActualApi {
         );
     }
 
-    getTransactions(accountId: string) {
-        const startDate = format(new Date(2000, 1, 1), 'yyyy-MM-dd');
-        const endDate = format(new Date(), 'yyyy-MM-dd');
+    getTransactions(accountId: string, options?: { from?: Date; to?: Date }) {
+        const startDate = format(
+            options?.from ?? new Date(2000, 0, 1),
+            'yyyy-MM-dd'
+        );
+        const endDate = format(options?.to ?? new Date(), 'yyyy-MM-dd');
 
         return this.suppressConsoleLog(() =>
             actual.getTransactions(accountId, startDate, endDate)
@@ -162,8 +146,12 @@ class ActualApi {
     }
 
     async shutdown() {
-        await this.ensureInitialization();
+        if (!this.isInitialized) {
+            return;
+        }
+
         await this.suppressConsoleLog(() => actual.shutdown());
+        this.isInitialized = false;
     }
 
     private async getUserToken() {
@@ -213,8 +201,21 @@ class ActualApi {
     }
 
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
-        installActualNoiseFilter();
-        return await callback();
+        const originalConsoleLog = console.log;
+        const originalConsoleInfo = console.info;
+        const originalConsoleDebug = console.debug;
+
+        console.log = suppressIfNoisy(originalConsoleLog.bind(console));
+        console.info = suppressIfNoisy(originalConsoleInfo.bind(console));
+        console.debug = suppressIfNoisy(originalConsoleDebug.bind(console));
+
+        try {
+            return await callback();
+        } finally {
+            console.log = originalConsoleLog;
+            console.info = originalConsoleInfo;
+            console.debug = originalConsoleDebug;
+        }
     }
 }
 

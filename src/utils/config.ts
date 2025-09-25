@@ -68,6 +68,7 @@ const payeeTransformationSchema = z.object({
         'OpenAI API key must not be empty'
     ).optional(),
     openAiModel: z.string().trim().optional().default('gpt-3.5-turbo'),
+    skipModelValidation: z.boolean().default(false),
     customPrompt: z.string().optional(),
     modelConfig: z
         .object({

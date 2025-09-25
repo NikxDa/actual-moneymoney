@@ -161,7 +161,10 @@ class Importer {
             }
 
             const existingActualTransactions =
-                await this.actualApi.getTransactions(actualAccount.id);
+                await this.actualApi.getTransactions(actualAccount.id, {
+                    from: importDate,
+                    to: toDate ?? undefined,
+                });
 
             this.logger.debug(
                 `Found ${existingActualTransactions.length} existing transactions for Actual account '${actualAccount.name}'`
