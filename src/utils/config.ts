@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import toml from 'toml';
-import { ArgumentsCamelCase } from 'yargs';
+import type { ArgumentsCamelCase } from 'yargs';
 import { formatISO, isValid as isValidDate, parseISO } from 'date-fns';
 import { ZodError, ZodIssueCode, z } from 'zod';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
@@ -57,7 +57,7 @@ const budgetSchema = z
     });
 
 const actualServerSchema = z.object({
-    serverUrl: z.string().trim(),
+    serverUrl: z.string().trim().url(),
     serverPassword: trimmedNonEmptyString('Server password must not be empty'),
     budgets: z.array(budgetSchema).min(1),
 });

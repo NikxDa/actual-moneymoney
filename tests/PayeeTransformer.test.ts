@@ -168,4 +168,52 @@ describe('PayeeTransformer', () => {
         expect(result).toEqual({ 'Vendor C': 'Vendor C-normalized' });
         expect(createMock).not.toHaveBeenCalled();
     });
+
+    it('uses disk cache when available without hitting the API', async () => {
+        const cacheFile = path.join(dataDir, 'openai-model-cache.json');
+        const cachedModels = {
+            models: ['cached-model-a', 'cached-model-b'],
+            expiresAt: Date.now() + 60 * 60 * 1000,
+        };
+
+        await fs.writeFile(cacheFile, JSON.stringify(cachedModels), 'utf-8');
+
+        await vi.resetModules();
+
+        vi.doMock('openai', () => ({
+            default: MockOpenAI,
+        }));
+
+        vi.doMock('../src/utils/shared.js', async () => {
+            const actual = await vi.importActual<
+                typeof import('../src/utils/shared.js')
+            >('../src/utils/shared.js');
+
+            return {
+                ...actual,
+                get DEFAULT_DATA_DIR() {
+                    return dataDir;
+                },
+            };
+        });
+
+        listMock.mockClear();
+        createMock.mockClear();
+
+        const PayeeTransformer = await importTransformer();
+        const transformer = new PayeeTransformer(
+            {
+                enabled: true,
+                openAiApiKey: 'key',
+                openAiModel: 'cached-model-a',
+                skipModelValidation: false,
+            },
+            createLogger()
+        );
+
+        await transformer.transformPayees(['Vendor Disk']);
+
+        expect(listMock).not.toHaveBeenCalled();
+        expect(createMock).toHaveBeenCalledTimes(1);
+    });
 });

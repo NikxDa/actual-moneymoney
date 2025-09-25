@@ -1,4 +1,5 @@
 import { format, subMonths } from 'date-fns';
+import type { CreateTransaction } from '@actual-app/api';
 import {
     Account as MonMonAccount,
     Transaction as MonMonTransaction,

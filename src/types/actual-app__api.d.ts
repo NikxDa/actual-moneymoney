@@ -263,7 +263,7 @@ type ReadTransaction = Omit<BaseTransaction, 'payee_name'> & {
     subtransactions: ReadSubTransaction[];
 };
 
-type CreateTransaction = Modify<
+export type CreateTransaction = Modify<
     BaseTransaction,
     | 'amount'
     | 'payee'
@@ -335,11 +335,6 @@ deleteAccount(idid) → Promise<null>
 
 Delete an account.
 */
-
-type CreateTransaction = Pick<BaseTransaction, 'account' | 'date'> &
-    Partial<Omit<BaseTransaction, 'id' | 'account' | 'date'>> & {
-        subtransactions: CreateSubTransaction[];
-    };
 
 type UpdateTransaction = Omit<BaseTransaction, 'id' | 'subtransactions'>;
 

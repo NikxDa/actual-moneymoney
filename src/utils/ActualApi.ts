@@ -1,4 +1,5 @@
 import actual from '@actual-app/api';
+import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
@@ -134,11 +135,13 @@ class ActualApi {
     }
 
     getTransactions(accountId: string, options?: { from?: Date; to?: Date }) {
-        const startDate = format(
-            options?.from ?? new Date(2000, 0, 1),
-            'yyyy-MM-dd'
-        );
-        const endDate = format(options?.to ?? new Date(), 'yyyy-MM-dd');
+        let from = options?.from ?? new Date(2000, 0, 1);
+        let to = options?.to ?? new Date();
+        if (from > to) {
+            [from, to] = [to, from];
+        }
+        const startDate = format(from, 'yyyy-MM-dd');
+        const endDate = format(to, 'yyyy-MM-dd');
 
         return this.suppressConsoleLog(() =>
             actual.getTransactions(accountId, startDate, endDate)
@@ -200,21 +203,42 @@ class ActualApi {
         return responseData.data.filter((f) => f.deleted === 0);
     }
 
+    private static suppressDepth = 0;
+    private static originals: {
+        log: typeof console.log;
+        info: typeof console.info;
+        debug: typeof console.debug;
+    } | null = null;
+
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
-        const originalConsoleLog = console.log;
-        const originalConsoleInfo = console.info;
-        const originalConsoleDebug = console.debug;
+        if (ActualApi.suppressDepth === 0) {
+            ActualApi.originals = {
+                log: console.log,
+                info: console.info,
+                debug: console.debug,
+            };
+            console.log = suppressIfNoisy(
+                ActualApi.originals.log.bind(console)
+            );
+            console.info = suppressIfNoisy(
+                ActualApi.originals.info.bind(console)
+            );
+            console.debug = suppressIfNoisy(
+                ActualApi.originals.debug.bind(console)
+            );
+        }
 
-        console.log = suppressIfNoisy(originalConsoleLog.bind(console));
-        console.info = suppressIfNoisy(originalConsoleInfo.bind(console));
-        console.debug = suppressIfNoisy(originalConsoleDebug.bind(console));
-
+        ActualApi.suppressDepth++;
         try {
             return await callback();
         } finally {
-            console.log = originalConsoleLog;
-            console.info = originalConsoleInfo;
-            console.debug = originalConsoleDebug;
+            ActualApi.suppressDepth--;
+            if (ActualApi.suppressDepth === 0 && ActualApi.originals) {
+                console.log = ActualApi.originals.log;
+                console.info = ActualApi.originals.info;
+                console.debug = ActualApi.originals.debug;
+                ActualApi.originals = null;
+            }
         }
     }
 }

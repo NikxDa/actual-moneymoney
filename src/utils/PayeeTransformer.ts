@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
-import Logger from './Logger.js';
+import type Logger from './Logger.js';
 import { PayeeTransformationConfig } from './config.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -67,11 +67,13 @@ class PayeeTransformer {
         try {
             await PayeeTransformer.ensureCacheDirExists();
             const cacheFile = PayeeTransformer.getCacheFilePath();
+            const tmpFile = `${cacheFile}.tmp`;
             await fs.writeFile(
-                cacheFile,
+                tmpFile,
                 JSON.stringify(cache, null, 2),
                 'utf-8'
             );
+            await fs.rename(tmpFile, cacheFile);
         } catch (_error) {
             // Ignore cache write errors but log in debug environments if needed
         }
@@ -93,7 +95,9 @@ class PayeeTransformer {
         });
     }
 
-    public async transformPayees(payeeList: string[]) {
+    public async transformPayees(
+        payeeList: string[]
+    ): Promise<Record<string, string> | null> {
         const prompt = this.generatePrompt();
 
         if (payeeList.length === 0) {
@@ -333,8 +337,14 @@ class PayeeTransformer {
         }
 
         this.logger.debug('Fetching OpenAI model list from OpenAI API...');
-        const response = await this.openai.models.list();
-        const models = response.data.map((m) => m.id);
+        let models: string[] = [];
+        try {
+            const response = await this.openai.models.list();
+            models = response.data.map((m) => m.id);
+        } catch (err) {
+            this.logger.error('Failed to fetch OpenAI model list');
+            throw err;
+        }
         const cache: ModelCache = {
             models,
             expiresAt: now + MODEL_CACHE_TTL_MS,
