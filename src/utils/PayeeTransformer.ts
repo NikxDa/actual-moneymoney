@@ -71,7 +71,18 @@ class PayeeTransformer {
             const output = response.choices[0].message.content;
 
             try {
-                const transformedPayees = JSON.parse(output) as {
+                const parsed = JSON.parse(output) as unknown;
+                if (
+                    typeof parsed !== 'object' ||
+                    parsed === null ||
+                    Array.isArray(parsed)
+                ) {
+                    throw new Error(
+                        'Transformed payee response is not an object'
+                    );
+                }
+
+                const transformedPayees = parsed as {
                     [key: string]: string;
                 };
 

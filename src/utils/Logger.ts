@@ -50,18 +50,18 @@ class Logger {
             console.log(chalkColor(prefix), `[${timestamp}]`, message);
             if (hint) {
                 const arrayHint = Array.isArray(hint) ? hint : [hint];
+                const hintIndent = ' '.repeat(
+                    `${prefix} [${timestamp}] `.length
+                );
                 for (const hint of arrayHint) {
-                    console.log(
-                        chalk.gray(
-                            ' '.repeat(prefix.length),
-                            ' '.repeat(timestamp.length + 2),
-                            '↳',
-                            hint
-                        )
-                    );
+                    console.log(chalk.gray(hintIndent, '↳ ', hint));
                 }
             }
         }
+    }
+
+    public getLevel(): LogLevel {
+        return this.logLevel;
     }
 }
 

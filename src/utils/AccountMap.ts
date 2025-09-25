@@ -26,15 +26,23 @@ export class AccountMap {
         private actualApi: ActualApi
     ) {}
 
-    private moneyMoneyAccounts: Array<MonMonAccount>;
-    private actualAccounts: Array<ActualAccount>;
+    private moneyMoneyAccounts: Array<MonMonAccount> = [];
+    private actualAccounts: Array<ActualAccount> = [];
 
-    private mapping: Map<MonMonAccount, ActualAccount>;
+    private mapping: Map<MonMonAccount, ActualAccount> | null = null;
 
-    public getMap(moneyMoneyAccountRefs?: Array<string>) {
+    public getMap(
+        moneyMoneyAccountRefs?: Array<string>
+    ): Map<MonMonAccount, ActualAccount> {
+        if (!this.mapping) {
+            throw new Error(
+                'Account mapping has not been loaded. Call loadFromConfig() before accessing the map.'
+            );
+        }
+
         if (!moneyMoneyAccountRefs) return this.mapping;
 
-        const customMap = new Map<MonMonAccount, Account>();
+        const customMap = new Map<MonMonAccount, ActualAccount>();
         for (const ref of moneyMoneyAccountRefs) {
             const monMonAccount = this.getMoneyMoneyAccountByRef(ref);
 

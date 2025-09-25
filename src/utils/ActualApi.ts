@@ -50,9 +50,11 @@ const installActualNoiseFilter = () => {
 
     const originalConsoleLog = console.log.bind(console);
     const originalConsoleInfo = console.info.bind(console);
+    const originalConsoleDebug = console.debug.bind(console);
 
     console.log = suppressIfNoisy(originalConsoleLog);
     console.info = suppressIfNoisy(originalConsoleInfo);
+    console.debug = suppressIfNoisy(originalConsoleDebug);
 
     hasInstalledActualNoiseFilter = true;
 };
