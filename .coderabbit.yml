@@ -16,7 +16,7 @@ reviews:
     drafts: false
     base_branches:
       - main
-      - release/**
+      - "^release/.*$"
       - develop
   path_instructions:
     - path: "*"
