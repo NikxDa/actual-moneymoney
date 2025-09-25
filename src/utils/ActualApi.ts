@@ -2,6 +2,8 @@ import actual from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
+import util from 'node:util';
+
 import { ActualServerConfig } from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
@@ -17,6 +19,42 @@ type UserFile = {
 type GetUserFilesResponse = {
     status: string;
     data: Array<UserFile>;
+};
+
+let hasInstalledActualNoiseFilter = false;
+
+const isActualNoise = (args: unknown[]) => {
+    if (args.length === 0) {
+        return false;
+    }
+
+    const message = util.format(...(args as [unknown, ...unknown[]]));
+
+    return message.startsWith('Got messages from server');
+};
+
+const installActualNoiseFilter = () => {
+    if (hasInstalledActualNoiseFilter) {
+        return;
+    }
+
+    const suppressIfNoisy =
+        <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
+        (...args: TArgs) => {
+            if (isActualNoise(args)) {
+                return;
+            }
+
+            original(...args);
+        };
+
+    const originalConsoleLog = console.log.bind(console);
+    const originalConsoleInfo = console.info.bind(console);
+
+    console.log = suppressIfNoisy(originalConsoleLog);
+    console.info = suppressIfNoisy(originalConsoleInfo);
+
+    hasInstalledActualNoiseFilter = true;
 };
 
 class ActualApi {
@@ -173,14 +211,8 @@ class ActualApi {
     }
 
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
-        const originalConsoleLog = console.log;
-        console.log = () => {};
-
-        try {
-            return await callback();
-        } finally {
-            console.log = originalConsoleLog;
-        }
+        installActualNoiseFilter();
+        return await callback();
     }
 }
 
