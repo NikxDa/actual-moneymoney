@@ -63,7 +63,11 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                 logger.error(`An unexpected error occured: ${e}`);
             }
 
-            throw new Error('Configuration validation failed.');
+            if (e instanceof Error) {
+                throw e;
+            }
+
+            throw new Error(`Configuration validation failed: ${String(e)}`);
         }
 
         logger.info('Configuration file is valid.');

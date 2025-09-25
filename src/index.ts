@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
-import yargs from 'yargs';
+import yargs, { Argv } from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import importCommand from './commands/import.command.js';
 import validateCommand from './commands/validate.command.js';
@@ -14,7 +14,7 @@ try {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const parser = yargs(hideBin(process.argv))
+const parser: Argv<unknown> = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
         description: 'Path to the configuration file',
@@ -34,7 +34,7 @@ const parser = yargs(hideBin(process.argv))
         throw new Error(msg);
     });
 
-const run = async () => {
+const run = async (): Promise<void> => {
     await parser.parseAsync();
 };
 
