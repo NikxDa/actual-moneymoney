@@ -21,6 +21,42 @@ type GetUserFilesResponse = {
     data: Array<UserFile>;
 };
 
+let hasInstalledActualNoiseFilter = false;
+
+const isActualNoise = (args: unknown[]) => {
+    if (args.length === 0) {
+        return false;
+    }
+
+    const message = util.format(...(args as [unknown, ...unknown[]]));
+
+    return message.startsWith('Got messages from server');
+};
+
+const installActualNoiseFilter = () => {
+    if (hasInstalledActualNoiseFilter) {
+        return;
+    }
+
+    const suppressIfNoisy =
+        <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
+        (...args: TArgs) => {
+            if (isActualNoise(args)) {
+                return;
+            }
+
+            original(...args);
+        };
+
+    const originalConsoleLog = console.log.bind(console);
+    const originalConsoleInfo = console.info.bind(console);
+
+    console.log = suppressIfNoisy(originalConsoleLog);
+    console.info = suppressIfNoisy(originalConsoleInfo);
+
+    hasInstalledActualNoiseFilter = true;
+};
+
 class ActualApi {
     protected isInitialized = false;
     private api: typeof actual | null = null;
@@ -175,38 +211,8 @@ class ActualApi {
     }
 
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
-        const originalConsoleLog = console.log;
-        const originalConsoleInfo = console.info;
-
-        const suppressIfNoisy =
-            <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
-            (...args: TArgs) => {
-                if (this.isActualNoise(args)) {
-                    return;
-                }
-
-                original(...args);
-            };
-
-        console.log = suppressIfNoisy(originalConsoleLog);
-        console.info = suppressIfNoisy(originalConsoleInfo);
-
-        try {
-            return await callback();
-        } finally {
-            console.log = originalConsoleLog;
-            console.info = originalConsoleInfo;
-        }
-    }
-
-    private isActualNoise(args: unknown[]) {
-        if (args.length === 0) {
-            return false;
-        }
-
-        const message = util.format(...(args as [unknown, ...unknown[]]));
-
-        return message.startsWith('Got messages from server');
+        installActualNoiseFilter();
+        return await callback();
     }
 }
 
