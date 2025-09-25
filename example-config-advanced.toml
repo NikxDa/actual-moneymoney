@@ -56,9 +56,9 @@ maskPayeeNamesInLogs = true  # Mask payee names unless log level is DEBUG
 
 # Optional: Ignore patterns for filtering transactions
 [import.ignorePatterns]
-commentPatterns = ["*test*", "*ignore*"]  # Supports shell-style * wildcards (case-insensitive)
-payeePatterns = ["*spam*", "*unwanted*"]
-purposePatterns = ["*internal*", "*transfer*"]
+commentPatterns = ["test", "ignore"]  # Uses simple case-insensitive substring matching (no wildcards)
+payeePatterns = ["spam", "unwanted"]
+purposePatterns = ["internal", "transfer"]
 
 # Actual servers configuration
 [[actualServers]]

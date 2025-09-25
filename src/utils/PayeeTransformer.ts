@@ -215,10 +215,8 @@ class PayeeTransformer {
         // Only fetch models once per instance
         if (!this.modelListInitialized) {
             this.logger.debug('Initializing model list...');
-            const modelsIterator = await this.openai.models.list();
-            this.availableModels = (await Array.fromAsync(modelsIterator)).map(
-                (m) => m.id
-            );
+            const response = await this.openai.models.list();
+            this.availableModels = response.data.map((m) => m.id);
             this.modelListInitialized = true;
             this.logger.debug(
                 `Found ${this.availableModels.length} available models.`
