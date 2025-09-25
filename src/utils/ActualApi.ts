@@ -217,14 +217,23 @@ class ActualApi {
                 info: console.info,
                 debug: console.debug,
             };
+
+            const originals = ActualApi.originals;
+
             console.log = suppressIfNoisy(
-                ActualApi.originals.log.bind(console)
+                (...args: Parameters<typeof console.log>) => {
+                    originals.log.apply(console, args);
+                }
             );
             console.info = suppressIfNoisy(
-                ActualApi.originals.info.bind(console)
+                (...args: Parameters<typeof console.info>) => {
+                    originals.info.apply(console, args);
+                }
             );
             console.debug = suppressIfNoisy(
-                ActualApi.originals.debug.bind(console)
+                (...args: Parameters<typeof console.debug>) => {
+                    originals.debug.apply(console, args);
+                }
             );
         }
 
