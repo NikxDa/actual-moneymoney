@@ -28,7 +28,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
             `Created default configuration file at: ${configPath}. Please edit it with your preferred settings.`
         );
 
-        process.exit(0);
+        return;
     } else {
         logger.info('Validating configuration...');
 
@@ -63,7 +63,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                 logger.error(`An unexpected error occured: ${e}`);
             }
 
-            process.exit(1);
+            throw new Error('Configuration validation failed.');
         }
 
         logger.info('Configuration file is valid.');

@@ -14,7 +14,7 @@ try {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const _ = yargs(hideBin(process.argv))
+const parser = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
         description: 'Path to the configuration file',
@@ -27,13 +27,25 @@ const _ = yargs(hideBin(process.argv))
     .command(validateCommand)
     .showHelpOnFail(false)
     .fail((msg, err) => {
-        const logger = new Logger();
-
         if (err) {
-            logger.error(err.message);
-        } else {
-            logger.error(msg);
+            throw err;
         }
 
-        process.exit(1);
-    }).argv;
+        throw new Error(msg);
+    });
+
+const run = async () => {
+    await parser.parseAsync();
+};
+
+run().catch((error: unknown) => {
+    const logger = new Logger();
+
+    if (error instanceof Error) {
+        logger.error(error.message);
+    } else {
+        logger.error(String(error));
+    }
+
+    process.exitCode = 1;
+});
