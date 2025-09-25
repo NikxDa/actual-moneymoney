@@ -50,8 +50,8 @@ const payeeTransformationSchema = z.object({
     modelConfig: z
         .object({
             temperature: z.number().min(0).max(2).optional(),
-            maxTokens: z.number().positive().optional(),
-            timeout: z.number().positive().optional(),
+            maxTokens: z.number().positive().int().optional(),
+            timeout: z.number().positive().int().optional(),
         })
         .optional(),
 });
@@ -62,6 +62,7 @@ export const configSchema = z
         import: z.object({
             importUncheckedTransactions: z.boolean(),
             synchronizeClearedStatus: z.boolean().default(true),
+            maskPayeeNamesInLogs: z.boolean().default(true),
             ignorePatterns: z
                 .object({
                     commentPatterns: z.array(z.string()).optional(),
@@ -122,12 +123,13 @@ export const getConfig = async (argv: ArgumentsCamelCase) => {
         const configData = toml.parse(configContent);
         return configSchema.parse(configData);
     } catch (e) {
-        if (e instanceof Error && e.name === 'SyntaxError') {
-            const line = 'line' in e ? e.line : -1;
-            const column = 'column' in e ? e.column : -1;
+        const parseError = e as Error & { line?: number; column?: number };
+        if (parseError instanceof Error && parseError.name === 'SyntaxError') {
+            const line = parseError.line ?? -1;
+            const column = parseError.column ?? -1;
 
             throw new Error(
-                `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
+                `Failed to parse configuration file: ${parseError.message} (line ${line}, column ${column})`
             );
         }
 

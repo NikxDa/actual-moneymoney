@@ -25,7 +25,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         );
     }
 
-    const isDryRun = (argv['dry-run'] as boolean) || false;
+    const isDryRun = Boolean(argv['dry-run'] ?? argv.dryRun);
     const fromDate = argv.from
         ? parse(argv.from as string, DATE_FORMAT, new Date())
         : undefined;
@@ -33,11 +33,18 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         ? parse(argv.to as string, DATE_FORMAT, new Date())
         : undefined;
     const account = argv.account as string | Array<string> | undefined;
+    const budget = argv.budget as string | Array<string> | undefined;
 
     let accountRefs: Array<string> | undefined;
     if (account) {
         accountRefs = Array.isArray(account) ? account : [account];
     }
+
+    const budgetSyncIds = budget
+        ? Array.isArray(budget)
+            ? budget
+            : [budget]
+        : undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
         throw new Error(
@@ -51,24 +58,52 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         );
     }
 
-    for (const serverConfig of config.actualServers) {
-        try {
-            logger.debug(`Checking MoneyMoney database access...`);
-            const isUnlocked = await checkDatabaseUnlocked();
-            if (!isUnlocked) {
-                throw new Error(
-                    `MoneyMoney database is locked. Please unlock it and try again.`
-                );
-            }
-            logger.debug(`MoneyMoney database is accessible.`);
-        } catch (error) {
-            logger.error(
-                `Failed to access MoneyMoney database: ${error instanceof Error ? error.message : 'Unknown error'}`
+    try {
+        logger.debug(`Checking MoneyMoney database access...`);
+        const isUnlocked = await checkDatabaseUnlocked();
+        if (!isUnlocked) {
+            throw new Error(
+                `MoneyMoney database is locked. Please unlock it and try again.`
             );
-            throw error;
+        }
+        logger.debug(`MoneyMoney database is accessible.`);
+    } catch (error) {
+        logger.error(
+            `Failed to access MoneyMoney database: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        throw error;
+    }
+
+    if (budgetSyncIds && budgetSyncIds.length > 0) {
+        const configuredBudgets = new Set(
+            config.actualServers.flatMap((server) =>
+                server.budgets.map((b) => b.syncId)
+            )
+        );
+        const missingBudgets = budgetSyncIds.filter(
+            (syncId) => !configuredBudgets.has(syncId)
+        );
+
+        if (missingBudgets.length > 0) {
+            const missingList = missingBudgets.join(', ');
+            throw new Error(
+                `Budget${missingBudgets.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
+            );
+        }
+    }
+
+    for (const serverConfig of config.actualServers) {
+        const budgetsToProcess = budgetSyncIds
+            ? serverConfig.budgets.filter((budgetConfig) =>
+                  budgetSyncIds.includes(budgetConfig.syncId)
+              )
+            : serverConfig.budgets;
+
+        if (budgetsToProcess.length === 0) {
+            continue;
         }
 
-        for (const budgetConfig of serverConfig.budgets) {
+        for (const budgetConfig of budgetsToProcess) {
             logger.debug(`Creating Actual API instance...`, [
                 `Server URL: ${serverConfig.serverUrl}`,
                 `Budget: ${budgetConfig.syncId}`,
@@ -125,8 +160,11 @@ export default {
     describe: 'Import data from MoneyMoney',
     builder: (yargs) => {
         return yargs
-            .boolean('dry-run')
-            .describe('dry-run', 'Do not import data')
+            .option('dry-run', {
+                type: 'boolean',
+                describe: 'Do not import data',
+            })
+            .alias('dry-run', 'dryRun')
             .string('account')
             .describe(
                 'account',
@@ -144,7 +182,7 @@ export default {
             )
             .string('to')
             .describe(
-                'from',
+                'to',
                 `Import transactions up to this date (${DATE_FORMAT})`
             );
     },

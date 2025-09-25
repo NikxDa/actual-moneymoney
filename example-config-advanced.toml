@@ -4,8 +4,8 @@
 # Payee transformation with advanced configuration
 [payeeTransformation]
 enabled = true
-openAiApiKey = "your-openai-api-key-here"
-openAiModel = "gpt-5-nano"  # Can be: gpt-3.5-turbo, gpt-4, gpt-4o, gpt-4o-mini, gpt-5, etc.
+openAiApiKey = "${OPENAI_API_KEY}"  # Recommended: load secrets from environment variables
+openAiModel = "gpt-4o-mini"  # Can be: gpt-3.5-turbo, gpt-4, gpt-4o, gpt-4o-mini, gpt-5, etc.
 
 # Optional: Custom prompt for payee transformation
 # If not provided, a default prompt optimized for financial classification will be used
@@ -38,9 +38,8 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.
 # Optional: Model-specific configuration
 [payeeTransformation.modelConfig]
 # Temperature: Controls randomness (0.0 = deterministic, 1.0 = creative, 2.0 = very creative)
-# IMPORTANT: Newer models (GPT-4o, GPT-5) don't support temperature=0, so this will be ignored for them
-# For these models, the system automatically uses the model's default behavior
-# Default behavior: GPT-3.5/4 models use temperature=0.0 (deterministic), GPT-4o/5 models use ~0.7
+# IMPORTANT: GPT-4o and GPT-5 models accept temperatures from 0.0 to 2.0, just like GPT-3.5/4.
+# Default behavior: GPT-3.5/4 models use temperature=0.0 (deterministic). GPT-4o/5 models default to ~0.7 but can be overridden.
 temperature = 0.0
 
 # Maximum tokens in the response (optional)
@@ -53,10 +52,11 @@ timeout = 45000
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
+maskPayeeNamesInLogs = true  # Mask payee names unless log level is DEBUG
 
 # Optional: Ignore patterns for filtering transactions
 [import.ignorePatterns]
-commentPatterns = ["*test*", "*ignore*"]
+commentPatterns = ["*test*", "*ignore*"]  # Supports shell-style * wildcards (case-insensitive)
 payeePatterns = ["*spam*", "*unwanted*"]
 purposePatterns = ["*internal*", "*transfer*"]
 
@@ -119,16 +119,16 @@ password = "your-encryption-password"
 # 💡 Best for: High-quality results with full control, temperature=0.0 (default)
 #
 # GPT-4o Models (gpt-4o, gpt-4o-mini):
-# ❌ No temperature support (parameter ignored)
+# ✅ Full temperature support (0.0-2.0)
 # ✅ Full max_tokens support
-# ⚠️ Uses default temperature (~0.7) - cannot be changed
-# 💡 Best for: Fast, high-quality results (no randomness control)
+# ⚠️ Defaults to ~0.7 temperature, but you can override it
+# 💡 Best for: Fast, high-quality results with optional randomness control
 #
 # GPT-5 Models (gpt-5, gpt-5-turbo, etc.):
-# ❌ No temperature support (parameter ignored)
+# ✅ Full temperature support (0.0-2.0)
 # ✅ Full max_tokens support
-# ⚠️ Uses default temperature (~0.7) - cannot be changed
-# 💡 Best for: Latest AI capabilities (no randomness control)
+# ⚠️ Defaults to ~0.7 temperature, but you can override it
+# 💡 Best for: Latest AI capabilities with full parameter control
 #
 # =============================================================================
 # TEMPERATURE GUIDELINES
@@ -141,9 +141,8 @@ password = "your-encryption-password"
 # 1.0+: Higher creativity, less predictable
 #
 # For newer models (GPT-4o, GPT-5):
-# Temperature setting is automatically ignored
-# Models use their default behavior (~0.7)
-# This provides a good balance of consistency and quality
+# Temperatures outside 0.0-2.0 are clamped by the API
+# Defaults remain around 0.7, but you can set a deterministic value when needed
 #
 # =============================================================================
 # RECOMMENDED CONFIGURATIONS
@@ -159,6 +158,6 @@ password = "your-encryption-password"
 #
 # For latest capabilities (newer models):
 # openAiModel = "gpt-4o-mini"  # or "gpt-5"
-# # temperature setting ignored automatically
+# temperature = 0.2
 #
 # =============================================================================

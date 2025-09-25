@@ -71,7 +71,18 @@ class PayeeTransformer {
             const output = response.choices[0].message.content;
 
             try {
-                const transformedPayees = JSON.parse(output) as {
+                const parsed = JSON.parse(output) as unknown;
+                if (
+                    typeof parsed !== 'object' ||
+                    parsed === null ||
+                    Array.isArray(parsed)
+                ) {
+                    throw new Error(
+                        'Transformed payee response is not an object'
+                    );
+                }
+
+                const transformedPayees = parsed as {
                     [key: string]: string;
                 };
 
@@ -183,21 +194,16 @@ class PayeeTransformer {
             defaultTemperature: 0.7,
         };
 
-        // Newer models (GPT-4o, GPT-4o-mini, GPT-5) don't support temperature=0
-        if (model.includes('gpt-4o') || model.includes('gpt-5')) {
-            capabilities.supportsTemperature = false;
-            capabilities.defaultTemperature = 0.7;
-        }
-
-        // GPT-4 models support temperature but with different defaults
-        else if (model.includes('gpt-4') && !model.includes('gpt-4o')) {
-            capabilities.supportsTemperature = true;
-            capabilities.defaultTemperature = 0.7;
-        }
-
-        // GPT-3.5 models fully support all parameters
-        else if (model.includes('gpt-3.5')) {
-            capabilities.supportsTemperature = true;
+        // GPT-4o/GPT-5 models expose full temperature control (0.0-2.0) and
+        // default closer to 0.7 for more creative responses. Older GPT-4 and
+        // GPT-3.5 series models default to the same midpoint but allow the
+        // full range to be configured explicitly when needed.
+        if (
+            model.includes('gpt-4o') ||
+            model.includes('gpt-5') ||
+            model.includes('gpt-4') ||
+            model.includes('gpt-3.5')
+        ) {
             capabilities.defaultTemperature = 0.7;
         }
 

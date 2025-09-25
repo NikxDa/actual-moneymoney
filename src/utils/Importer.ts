@@ -7,7 +7,7 @@ import {
 import { AccountMap } from './AccountMap.js';
 import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig, Config } from './config.js';
-import Logger from './Logger.js';
+import Logger, { LogLevel } from './Logger.js';
 import PayeeTransformer from './PayeeTransformer.js';
 import { DATE_FORMAT } from './shared.js';
 
@@ -20,6 +20,8 @@ class Importer {
         private accountMap: AccountMap,
         private payeeTransformer?: PayeeTransformer
     ) {}
+
+    private readonly patternCache = new Map<string, RegExp>();
 
     async importTransactions({
         accountRefs,
@@ -88,16 +90,19 @@ class Importer {
             const ignorePatterns = this.config.import.ignorePatterns;
 
             monMonTransactions = monMonTransactions.filter((t) => {
-                let isIgnored = (ignorePatterns.commentPatterns ?? []).some(
-                    (pattern) => t.comment?.includes(pattern)
+                let isIgnored = this.matchesPattern(
+                    t.comment,
+                    ignorePatterns.commentPatterns
                 );
 
-                isIgnored ||= (ignorePatterns.payeePatterns ?? []).some(
-                    (pattern) => t.name.includes(pattern)
+                isIgnored ||= this.matchesPattern(
+                    t.name,
+                    ignorePatterns.payeePatterns
                 );
 
-                isIgnored ||= (ignorePatterns.purposePatterns ?? []).some(
-                    (pattern) => t.purpose?.includes(pattern)
+                isIgnored ||= this.matchesPattern(
+                    t.purpose,
+                    ignorePatterns.purposePatterns
                 );
 
                 if (isIgnored) {
@@ -190,17 +195,34 @@ class Importer {
             }
 
             // Filter out transactions that already exist in Actual
-            createTransactions = createTransactions.filter(
-                async (transaction) => {
-                    const transactionExists = existingActualTransactions.some(
-                        (existingTransaction) =>
-                            existingTransaction.imported_id ===
-                            transaction.imported_id
-                    );
-
-                    return !transactionExists;
-                }
+            const existingImportedIds = new Set(
+                existingActualTransactions
+                    .map(
+                        (existingTransaction) => existingTransaction.imported_id
+                    )
+                    .filter((id): id is string => Boolean(id))
             );
+            const newImportedIds = new Set<string>();
+
+            createTransactions = createTransactions.filter((transaction) => {
+                const importedId = transaction.imported_id;
+
+                if (!importedId) {
+                    return true;
+                }
+
+                if (existingImportedIds.has(importedId)) {
+                    return false;
+                }
+
+                if (newImportedIds.has(importedId)) {
+                    return false;
+                }
+
+                newImportedIds.add(importedId);
+
+                return true;
+            });
 
             if (createTransactions.length === 0) {
                 this.logger.debug(
@@ -276,9 +298,22 @@ class Importer {
             }
 
             // Log final payee names being used for import
+            const shouldMaskPayees =
+                this.config.import.maskPayeeNamesInLogs &&
+                this.logger.getLevel() < LogLevel.DEBUG;
+            const payeeNamesForLog = createTransactions.map((t) => {
+                const payeeName = String(t.payee_name ?? '');
+                const value = shouldMaskPayees
+                    ? this.obfuscatePayeeName(payeeName)
+                    : payeeName;
+                return `"${value}"`;
+            });
+
             this.logger.debug(
-                `Final payee names for import:`,
-                createTransactions.map((t) => `"${t.payee_name}"`)
+                shouldMaskPayees
+                    ? 'Final payee names for import (masked):'
+                    : 'Final payee names for import:',
+                payeeNamesForLog
             );
 
             if (isDryRun) {
@@ -364,6 +399,43 @@ class Importer {
         );
 
         return startingBalance;
+    }
+
+    private matchesPattern(value: string | undefined, patterns?: string[]) {
+        if (!value || !patterns || patterns.length === 0) {
+            return false;
+        }
+
+        return patterns.some((pattern) => {
+            const regex = this.getPatternRegex(pattern);
+            return regex.test(value);
+        });
+    }
+
+    private getPatternRegex(pattern: string) {
+        let regex = this.patternCache.get(pattern);
+        if (!regex) {
+            const normalized = pattern
+                .split('*')
+                .map((segment) => segment.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+                .join('.*');
+            regex = new RegExp(`^${normalized}$`, 'i');
+            this.patternCache.set(pattern, regex);
+        }
+
+        return regex;
+    }
+
+    private obfuscatePayeeName(payee: string) {
+        if (payee.length <= 2) {
+            return '•'.repeat(Math.max(payee.length, 1));
+        }
+
+        const firstChar = payee[0];
+        const lastChar = payee[payee.length - 1];
+        const middle = '•'.repeat(payee.length - 2);
+
+        return `${firstChar}${middle}${lastChar}`;
     }
 }
 

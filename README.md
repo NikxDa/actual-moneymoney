@@ -84,6 +84,7 @@ For advanced configuration options including custom AI prompts, model-specific s
 - Multiple server and budget configurations
 - E2E encryption settings
 - Ignore patterns for transaction filtering
+- Privacy controls for payee logging
 - Detailed model compatibility information
 
 ### Payee Transformation
@@ -117,16 +118,17 @@ maxTokens = 1000   # Maximum tokens in response
 timeout = 30000    # Request timeout in milliseconds
 ```
 
-**Note**: Newer models (GPT-4o, GPT-5) don't support temperature control and will use their default behavior.
+**Note**: GPT-4o and GPT-5 models accept temperatures between 0.0 and 2.0. They default to ~0.7 but you can override this for deterministic behavior.
 
 ### Configuration Summary
 
 - **Payee transformation**: Automatically standardize payee names using AI
-- **Import settings**: Customize import behavior (unchecked transactions, cleared status)
+- **Import settings**: Customize import behavior (unchecked transactions, cleared status, payee masking in logs)
 - **Actual servers**: Specify which Actual Budget servers to import to
 - **Budget configurations**: Define budget files per server with sync IDs
 - **E2E encryption**: Handle encrypted budget files
 - **Account mapping**: Map MoneyMoney accounts to Actual accounts
+- **Ignore patterns**: Filter transactions with case-insensitive `*` wildcards for comments, payees, and purposes
 
 ## Usage
 
