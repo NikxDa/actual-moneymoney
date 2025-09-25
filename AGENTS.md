@@ -24,6 +24,12 @@ Run the following commands before committing changes:
 
 These checks ensure linting, formatting, and TypeScript compilation succeed.
 
+## Commit Messages
+- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification so that commitlint accepts new commits.
+- Start messages with a valid **type** (e.g., `feat`, `fix`, `docs`, `chore`) followed by a colon and a short, imperative **subject** (e.g., `fix: add budget syncing retries`).
+- For changes that include multiple scopes, you may include an optional scope in parentheses (e.g., `feat(sync): improve account mapping`).
+- Keep the subject under 72 characters and avoid ending it with a period.
+
 ## Additional Notes
 - Node.js version 16 or newer is required (per `package.json` engines).
 - Example configurations live at `example-config-advanced.toml` and should stay in sync with config schema changes.
