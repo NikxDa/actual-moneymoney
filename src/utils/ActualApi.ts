@@ -30,7 +30,14 @@ const isActualNoise = (args: unknown[]) => {
 
     const message = util.format(...(args as [unknown, ...unknown[]]));
 
-    return message.startsWith('Got messages from server');
+    const noisyPrefixes = [
+        'Got messages from server',
+        'Syncing since',
+        'SENT -------',
+        'RECEIVED -------',
+    ];
+
+    return noisyPrefixes.some((prefix) => message.startsWith(prefix));
 };
 
 const installActualNoiseFilter = () => {
