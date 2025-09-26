@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Actual object
  * {
@@ -175,19 +176,21 @@ declare module '@actual-app/api' {
         defaultCleared?: boolean;
     }
 
+    export type CreateTransaction = CreateTransactionPayload;
+
     const addTransactions: (
         accountId: ID,
-        transactions: CreateTransaction[]
+        transactions: CreateTransactionPayload[]
     ) => Promise<ID[]>;
     const importTransactions: (
         accountId: ID,
-        transactions: CreateTransaction[],
+        transactions: CreateTransactionPayload[],
         opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
     const getTransactions: (
         accountId: ID,
         startDate: DateString,
-        endDate: DateString
+        endDate?: DateString
     ) => Promise<ReadTransaction[]>;
     const updateTransaction: (
         transactionId: ID,
@@ -263,7 +266,7 @@ type ReadTransaction = Omit<BaseTransaction, 'payee_name'> & {
     subtransactions: ReadSubTransaction[];
 };
 
-export type CreateTransaction = Modify<
+type CreateTransactionPayload = Modify<
     BaseTransaction,
     | 'amount'
     | 'payee'
@@ -364,3 +367,5 @@ type ID = string;
 type MonthString = string;
 type DateString = string;
 type Amount = number;
+
+export type { CreateTransactionPayload as CreateTransaction };

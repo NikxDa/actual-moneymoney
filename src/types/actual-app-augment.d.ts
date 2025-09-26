@@ -1,5 +1,5 @@
-import type { ImportTransactionEntity } from '@actual-app/api/@types/loot-core/src/types/models/import-transaction';
+import type { CreateTransaction as LocalCreateTransaction } from './actual-app__api.js';
 
 declare module '@actual-app/api' {
-    export type CreateTransaction = ImportTransactionEntity;
+    export type CreateTransaction = LocalCreateTransaction;
 }
