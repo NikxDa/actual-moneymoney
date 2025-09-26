@@ -14,7 +14,7 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup Node
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v5
               with:
                   node-version: '20.9.0'
 
@@ -45,5 +45,3 @@ jobs:
               run: npx semantic-release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-              if: "!contains(github.event.head_commit.message, 'chore: graduate fork')"
