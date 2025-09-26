@@ -43,9 +43,7 @@ const budgetSchema = z
         earliestImportDate: isoDateSchema.optional(),
         e2eEncryption: z.object({
             enabled: z.boolean(),
-            password: trimmedNonEmptyString(
-                'Encryption password must not be empty'
-            ).optional(),
+            password: z.string().trim().optional(),
         }),
         accountMapping: z.record(z.string(), z.string()),
     })
