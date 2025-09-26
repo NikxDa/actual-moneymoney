@@ -42,9 +42,10 @@ git merge upstream/main --no-ff -m "chore: sync with upstream $(date +%Y-%m-%d)"
 ### 4. Resolve Conflicts (if any)
 
 If there are merge conflicts:
+
 1. Resolve conflicts in your editor
-2. `git add <resolved-files>`
-3. `git commit` (don't use `-m` to keep the merge message)
+1. `git add <resolved-files>`
+1. `git commit` (don't use `-m` to keep the merge message)
 
 ### 5. Test Changes
 
@@ -63,6 +64,7 @@ git push origin develop
 ## Sync Strategy
 
 ### What We Sync
+
 - ✅ Bug fixes
 - ✅ Security updates
 - ✅ Dependency updates
@@ -70,6 +72,7 @@ git push origin develop
 - ✅ Performance improvements
 
 ### What We Don't Sync
+
 - ❌ Breaking API changes (we maintain our enhanced API)
 - ❌ Feature removals (we keep our enhancements)
 - ❌ Configuration changes that conflict with our improvements
@@ -79,9 +82,9 @@ git push origin develop
 When conflicts occur:
 
 1. **Package.json conflicts**: Prefer our enhanced dependencies but update versions
-2. **Configuration conflicts**: Keep our enhanced config options
-3. **API conflicts**: Maintain our enhanced API surface
-4. **Test conflicts**: Keep our comprehensive test suite
+1. **Configuration conflicts**: Keep our enhanced config options
+1. **API conflicts**: Maintain our enhanced API surface
+1. **Test conflicts**: Keep our comprehensive test suite
 
 ## Quarterly Sync Schedule
 
@@ -107,9 +110,9 @@ git push origin develop
 If we develop fixes that would benefit upstream:
 
 1. Create a clean branch from upstream/main
-2. Cherry-pick or re-implement our fixes
-3. Submit PR to upstream
-4. Document the contribution in our changelog
+1. Cherry-pick or re-implement our fixes
+1. Submit PR to upstream
+1. Document the contribution in our changelog
 
 ## Monitoring Upstream
 
@@ -120,16 +123,20 @@ If we develop fixes that would benefit upstream:
 ## Troubleshooting
 
 ### Sync Conflicts
+
 If sync creates too many conflicts, consider:
+
 1. Rebasing our changes on a clean upstream branch
-2. Cherry-picking specific upstream commits
-3. Creating a new integration branch
+1. Cherry-picking specific upstream commits
+1. Creating a new integration branch
 
 ### Lost Changes
+
 If our changes are lost during sync:
+
 1. Check `git reflog` for lost commits
-2. Use `git cherry-pick` to restore specific changes
-3. Create a backup branch before major syncs
+1. Use `git cherry-pick` to restore specific changes
+1. Create a backup branch before major syncs
 
 ## Contact
 
