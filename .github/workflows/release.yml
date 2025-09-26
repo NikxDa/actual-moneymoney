@@ -3,7 +3,9 @@ on:
     push:
         branches:
             - main
-            - next
+            - develop
+        tags:
+            - 'v*'
 jobs:
     release:
         runs-on: ubuntu-latest
@@ -26,6 +28,12 @@ jobs:
 
             - name: Lint with Prettier
               run: npm run lint:prettier
+
+            - name: Type check
+              run: npm run typecheck
+
+            - name: Run tests
+              run: npm test
 
             - name: Build
               run: npm run build

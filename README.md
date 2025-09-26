@@ -4,7 +4,22 @@
 
 A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
 
-![GitHub Checks](https://badgers.space/github/checks/NikxDa/actual-moneymoney/main)
+> **Fork Notice**: This is an enhanced fork of [NikxDa/actual-moneymoney](https://github.com/NikxDa/actual-moneymoney) with significant improvements including comprehensive testing, enhanced error handling, timeout management, and advanced configuration options.
+
+![GitHub Checks](https://badgers.space/github/checks/1cu/actual-moneymoney/develop)
+
+## Enhanced Features (Fork Improvements)
+
+This fork includes significant enhancements over the upstream version:
+
+- **🧪 Comprehensive Testing**: Full Vitest test suite with 11 passing tests covering API, importer, and payee transformation
+- **⏱️ Timeout Management**: Configurable request timeouts with proper cleanup and error handling
+- **🔒 Privacy Protection**: Payee log masking to protect sensitive financial data
+- **🎯 Server Filtering**: Import specific accounts from selected MoneyMoney servers
+- **🤖 Enhanced AI**: Improved OpenAI integration with configurable models and better error handling
+- **📊 Better Logging**: Structured logging with proper error reporting and debug information
+- **🔄 Robust Imports**: Enhanced transaction deduplication and retry mechanisms
+- **⚙️ Advanced Configuration**: Extended TOML configuration with timeout and filtering options
 
 ## Table of Contents
 
