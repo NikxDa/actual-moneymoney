@@ -32,8 +32,10 @@ const isActualNoise = (args: unknown[]) => {
     return message.startsWith('Got messages from server');
 };
 const suppressIfNoisy =
-    <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
-    (...args: TArgs) => {
+    <TArgs extends unknown[]>(
+        original: (...args: TArgs) => void
+    ): ((...args: TArgs) => void) =>
+    (...args: TArgs): void => {
         if (isActualNoise(args)) {
             return;
         }
@@ -89,7 +91,7 @@ class ActualApi {
     async sync() {
         await this.ensureInitialization();
         await this.suppressConsoleLog(async () => {
-            await actual.internal.send('sync', undefined);
+            await actual.internal.send('sync');
         });
     }
 
@@ -146,7 +148,7 @@ class ActualApi {
         return this.suppressConsoleLog(() =>
             endDate
                 ? actual.getTransactions(accountId, startDate, endDate)
-                : actual.getTransactions(accountId, startDate, undefined)
+                : actual.getTransactions(accountId, startDate)
         );
     }
 
@@ -155,8 +157,11 @@ class ActualApi {
             return;
         }
 
-        await this.suppressConsoleLog(() => actual.shutdown());
-        this.isInitialized = false;
+        try {
+            await this.suppressConsoleLog(() => actual.shutdown());
+        } finally {
+            this.isInitialized = false;
+        }
     }
 
     private async getUserToken() {
@@ -210,14 +215,18 @@ class ActualApi {
         log: typeof console.log;
         info: typeof console.info;
         debug: typeof console.debug;
+        warn: typeof console.warn;
     } | null = null;
 
-    private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
+    private async suppressConsoleLog<T>(
+        callback: () => T | Promise<T>
+    ): Promise<Awaited<T>> {
         if (ActualApi.suppressDepth === 0) {
             ActualApi.originals = {
                 log: console.log,
                 info: console.info,
                 debug: console.debug,
+                warn: console.warn,
             };
 
             const originals = ActualApi.originals;
@@ -237,6 +246,11 @@ class ActualApi {
                     originals.debug.apply(console, args);
                 }
             );
+            console.warn = suppressIfNoisy(
+                (...args: Parameters<typeof console.warn>) => {
+                    originals.warn.apply(console, args);
+                }
+            );
         }
 
         ActualApi.suppressDepth++;
@@ -248,6 +262,7 @@ class ActualApi {
                 console.log = ActualApi.originals.log;
                 console.info = ActualApi.originals.info;
                 console.debug = ActualApi.originals.debug;
+                console.warn = ActualApi.originals.warn;
                 ActualApi.originals = null;
             }
         }
