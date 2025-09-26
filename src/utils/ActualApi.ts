@@ -109,7 +109,7 @@ class ActualApi {
                 return cappedMs;
             }
             this.logger.warn(
-                'requestTimeoutMs must be > 0; falling back to default'
+                `requestTimeoutMs must be > 0; falling back to ${FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS}ms`
             );
             return FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS;
         }
@@ -138,13 +138,31 @@ class ActualApi {
 
         const timeoutPromise = new Promise<never>((_, reject) => {
             timeoutHandle = setTimeout(() => {
-                reject(new ActualApiTimeoutError(operation, timeoutMs));
+                const timeoutError = new ActualApiTimeoutError(
+                    operation,
+                    timeoutMs
+                );
+                Promise.resolve(actual.shutdown())
+                    .catch((shutdownError) => {
+                        const reason =
+                            shutdownError instanceof Error
+                                ? shutdownError.message
+                                : String(shutdownError);
+                        this.logger.warn(
+                            `Actual client shutdown after timeout failed: ${reason}`,
+                            hints
+                        );
+                    })
+                    .finally(() => {
+                        this.isInitialized = false;
+                        reject(timeoutError);
+                    });
             }, timeoutMs);
         });
 
         let rawCallback: Promise<T>;
         try {
-            rawCallback = callback();
+            rawCallback = Promise.resolve(callback());
         } catch (error) {
             rawCallback = Promise.reject<T>(error);
         }
@@ -298,6 +316,13 @@ class ActualApi {
             transactions
         );
         const importOptions = { defaultCleared: false };
+        const removed = transactions.length - dedupedTransactions.length;
+        if (removed > 0) {
+            this.logger.debug(
+                `Deduplicated ${removed} duplicate transactions before import`,
+                [`Account ID: ${accountId}`]
+            );
+        }
 
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
@@ -457,8 +482,9 @@ class ActualApi {
     private patchConsole(): () => void {
         // Note: This temporarily monkey-patches the global console methods for the
         // entire process while an Actual request is in flight. Concurrent requests
-        // share the suppression window, so unrelated log output may be filtered
-        // until all pending Actual calls finish.
+        // share the suppression window, so unrelated log output may be filtered.
+        // The Actual client may still emit logs outside this window (e.g. after a
+        // timeout) because the SDK lacks granular logger hooks.
         if (ActualApi.suppressDepth === 0) {
             ActualApi.originals = {
                 log: console.log,

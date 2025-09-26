@@ -50,6 +50,7 @@ describe('ActualApi', () => {
         syncMock.mockReset();
         getTransactionsMock.mockReset();
         shutdownMock.mockReset();
+        shutdownMock.mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -198,6 +199,7 @@ describe('ActualApi', () => {
                 ])
             );
             expect(loadBudgetMock).not.toHaveBeenCalled();
+            expect(shutdownMock).toHaveBeenCalledTimes(1);
         } finally {
             // Ensure no timers remain and restore timers
             try {
