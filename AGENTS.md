@@ -5,9 +5,9 @@
 - This repository contains a TypeScript CLI that synchronises MoneyMoney data into Actual Budget.
 - Entry point: `src/index.ts` (bundled to `dist/index.js` via `npm run build`).
 - Core subsystems:
-    - `src/commands/`: individual yargs command modules (`*.command.ts`).
-    - `src/utils/`: shared helpers for API access, logging, importing, configuration, etc.
-    - `src/types/`: shared TypeScript type declarations.
+  - `src/commands/`: individual yargs command modules (`*.command.ts`).
+  - `src/utils/`: shared helpers for API access, logging, importing, configuration, etc.
+  - `src/types/`: shared TypeScript type declarations.
 
 ## Coding Conventions
 

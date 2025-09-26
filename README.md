@@ -11,9 +11,9 @@ A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actu
 - [Installation](#installation)
 - [Dependencies](#dependencies)
 - [Configuration](#configuration)
-    - [Basic Configuration](#basic-configuration)
-    - [Advanced Configuration](#advanced-configuration)
-    - [Payee Transformation](#payee-transformation)
+  - [Basic Configuration](#basic-configuration)
+  - [Advanced Configuration](#advanced-configuration)
+  - [Payee Transformation](#payee-transformation)
 - [Usage](#usage)
 - [Development](#development)
 - [Account Mapping](#account-mapping)
@@ -66,7 +66,8 @@ maskPayeeNamesInLogs = true  # Optional: keep payee names obfuscated in non-debu
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
-# requestTimeoutMs = 45000  # Optional: Override the Actual server request timeout (milliseconds, max 300000)
+# requestTimeoutMs = 45000  # Optional: Override the Actual server request timeout (milliseconds)
+# max 300000
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]

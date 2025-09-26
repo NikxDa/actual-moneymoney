@@ -4,7 +4,7 @@
 
 The importer has solid foundations, and the Actual adapter now completes the download → load → sync lifecycle while restoring console state after each request so Vitest no longer hangs.【F:src/utils/ActualApi.ts†L85-L219】【F:tests/ActualApi.test.ts†L53-L195】【chunk:25b872†L1-L8】 Remaining gaps include the `validate` command failing to create parent directories, thin network/error handling against the Actual server and OpenAI, and documentation promises (e.g., automatic config generation) that the code still only partially delivers.【F:src/commands/validate.command.ts†L22-L73】【F:src/utils/ActualApi.ts†L174-L217】【F:src/utils/PayeeTransformer.ts†L92-L188】 Priority shifts to hardening configuration DX and upstream API resilience, then aligning CI with the end-to-end workflow.
 
-**5-Point Action Plan**
+### 5-Point Action Plan
 
 1. ✅ Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter (completed in this PR's Actual adapter changes).
 2. Harden the CLI configuration path (recursive directory creation, actionable error messages).
@@ -22,15 +22,14 @@ The importer has solid foundations, and the Actual adapter now completes the dow
 
 ## 3. Design / Architecture Findings
 
-- **Actual API robustness**: `getUserToken`/`getUserFiles` never check `response.ok`, so network failures throw vague JSON errors.【F:src/utils/ActualApi.ts†L174-L217】 Add timeouts, status checks, and redact sensitive payloads in logs.
+- **Actual API robustness**: `getUserToken` never checks `response.ok`, so network failures throw vague JSON errors.【F:src/utils/ActualApi.ts†L174-L217】 Add timeouts, status checks, and redact sensitive payloads in logs.
 - ✅ **Scoped console patching**: `ActualApi` now wraps each request in a reference-counted `patchConsole`, restoring original loggers after the timeout race and keeping Vitest runs deterministic.【F:src/utils/ActualApi.ts†L85-L121】【F:src/utils/ActualApi.ts†L277-L325】 Continue to monitor concurrent calls, but the open-handle hang is resolved.
-- **Dead code**: `ActualApi.api` field and `getUserFiles` are unused—signalling unfinished file-browsing features and potential maintenance burden.【F:src/utils/ActualApi.ts†L53-L217】
 - **OpenAI coupling**: `PayeeTransformer` stores the model cache in plain text and logs payees at debug level (privacy leak).【F:src/utils/PayeeTransformer.ts†L92-L188】 Add masking/redaction even for debug logs.
 - **Starting balance heuristic**: For empty MoneyMoney slices the importer still creates a starting transaction from the current balance, causing jumps on partial imports.【F:src/utils/Importer.ts†L175-L199】 Add a guard or user-facing warning.
 
 ## 4. Refactor Backlog
 
-**Epic A – Harden Actual adapter**
+### Epic A – Harden Actual adapter
 _Target state:_ Stable import across multiple budgets/servers and transient server failures.
 _Acceptance criteria:_ Budget loads post-download, sync/retry on 5xx/timeout, console patching removed.
 _Risks:_ Changes to global logging, tests/mocks need updates.
@@ -39,7 +38,7 @@ _Risks:_ Changes to global logging, tests/mocks need updates.
 - ✅ Story A2 (M): refactor console suppression into a scoped helper with regression tests guarding against open handles.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】
 - Story A3 (S): wrap HTTP fetches with `AbortController`, status checks, and sensitive log redaction.【F:src/utils/ActualApi.ts†L174-L217】
 
-**Epic B – CLI & Config DX**
+### Epic B – CLI & Config DX
 _Target state:_ Users can create/validate configs anywhere.
 _Acceptance criteria:_ `validate` creates paths, error text offers guidance, README stays in sync.
 _Risks:_ Path handling on Windows/macOS.
@@ -47,7 +46,7 @@ _Risks:_ Path handling on Windows/macOS.
 - Story B1 (S): recursive `mkdir` before `writeFile`, add tests for success/error paths.【F:src/commands/validate.command.ts†L22-L29】
 - Story B2 (S): document CLI option normalisation (`--server`, `--budget`) and add tests for filter logic.【F:src/commands/import.command.ts†L84-L200】
 
-**Epic C – Test/CI hardening**
+### Epic C – Test/CI hardening
 _Target state:_ Deterministic tests locally and in CI (Node 20/22).
 _Acceptance criteria:_ `npm test` exits, coverage ≥80 % for importer pipeline.
 _Risks:_ MoneyMoney/Actual mocks more complex.
@@ -56,11 +55,11 @@ _Risks:_ MoneyMoney/Actual mocks more complex.
 - Story C2 (M): add integration tests for importer pipeline (mock MoneyMoney + Actual) covering dedupe/start balance.【F:src/utils/Importer.ts†L27-L210】
 - Story C3 (S): extend GitHub Actions with test/typecheck/audit, consolidate bun→npm usage.【F:.github/workflows/ci.yml†L1-L23】【F:package.json†L6-L13】
 
-**Quick Wins (<1 day)**
+### Quick Wins (<1 day)
 
 - ✅ Add missing `npm run typecheck` script and update README (completed).【F:package.json†L6-L13】
 - Allow masking toggle for `PayeeTransformer` debug logs.【F:src/utils/PayeeTransformer.ts†L110-L188】
-- Remove `getUserFiles` or document feature flag to reduce dead code.【F:src/utils/ActualApi.ts†L174-L217】
+- ✅ Removed `getUserFiles`, reducing dormant Actual adapter code paths.【F:src/utils/ActualApi.ts†L174-L217】
 
 ## 5. Test Strategy & Coverage
 
@@ -90,7 +89,6 @@ _Risks:_ MoneyMoney/Actual mocks more complex.
 ## 8. Appendix (Logs & Artefacts)
 
 - `npm install` refreshed dependencies (5 moderate advisories remain upstream).【chunk:cfc5fa†L1-L11】
-- `npm run lint` still missing (helpful to add wrapper script).【chunk:3025dc†L1-L10】
 - `npm run lint:eslint` succeeded.【chunk:926f53†L1-L5】
 - `npm run lint:prettier` succeeded.【chunk:49ce84†L1-L8】
 - `npm run typecheck` succeeded via the dedicated script.【chunk:9f4dd1†L1-L5】

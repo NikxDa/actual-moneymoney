@@ -6,7 +6,10 @@ import { createHash } from 'node:crypto';
 import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
-import { DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS } from './config.js';
+import {
+    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
+    FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+} from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -72,14 +75,23 @@ class ActualApi {
         const ms = this.serverConfig.requestTimeoutMs;
         if (typeof ms === 'number') {
             if (ms > 0) {
-                return ms;
+                const cappedMs = Math.min(
+                    ms,
+                    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS
+                );
+                if (cappedMs !== ms) {
+                    this.logger.warn(
+                        `requestTimeoutMs capped at ${DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS}ms`
+                    );
+                }
+                return cappedMs;
             }
             this.logger.warn(
                 'requestTimeoutMs must be > 0; falling back to default'
             );
-            return DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
+            return FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS;
         }
-        return DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
+        return FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS;
     }
 
     private createContextHints(additional?: string | string[]): string[] {
@@ -264,6 +276,7 @@ class ActualApi {
         );
         const dedupedTransactions: CreateTransaction[] = [];
         const seenImportedIds = new Set<string>();
+        const importOptions = { defaultCleared: false };
 
         for (const transaction of normalizedTransactions) {
             const importedId = transaction.imported_id;
@@ -282,9 +295,11 @@ class ActualApi {
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
             () =>
-                actual.importTransactions(accountId, dedupedTransactions, {
-                    defaultCleared: false,
-                }),
+                actual.importTransactions(
+                    accountId,
+                    dedupedTransactions,
+                    importOptions
+                ),
             [`Account ID: ${accountId}`]
         );
     }
@@ -362,9 +377,6 @@ class ActualApi {
             accountId,
             date: transaction.date,
             amount: transaction.amount,
-            payee: (transaction as { payee?: string }).payee ?? '',
-            payee_name:
-                (transaction as { payee_name?: string }).payee_name ?? '',
             imported_payee:
                 (transaction as { imported_payee?: string }).imported_payee ??
                 '',
@@ -378,7 +390,7 @@ class ActualApi {
                     : '',
         };
 
-        const hash = createHash('sha1')
+        const hash = createHash('sha256')
             .update(JSON.stringify(normalized))
             .digest('hex');
 

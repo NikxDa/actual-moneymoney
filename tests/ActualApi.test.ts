@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
 import type { CreateTransaction } from '@actual-app/api';
 
@@ -50,6 +50,11 @@ describe('ActualApi', () => {
         syncMock.mockReset();
         getTransactionsMock.mockReset();
         shutdownMock.mockReset();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     it('passes bounded date ranges to the Actual API and restores console state', async () => {

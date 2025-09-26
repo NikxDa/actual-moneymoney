@@ -34,7 +34,8 @@ const isoDateSchema = z
         }
     });
 
-export const DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS = 45000;
+export const DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS = 300000;
+export const FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS = 45000;
 
 const budgetSchema = z
     .object({
@@ -65,8 +66,11 @@ const actualServerSchema = z.object({
         .number()
         .int()
         .positive()
-        .max(5 * 60 * 1000, 'Actual server timeout must be 5 minutes or less')
-        .default(DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS),
+        .max(
+            DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
+            'Actual server timeout must be 5 minutes (300000 ms) or less'
+        )
+        .default(FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS),
     budgets: z.array(budgetSchema).min(1),
 });
 
