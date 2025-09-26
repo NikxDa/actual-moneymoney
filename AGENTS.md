@@ -26,6 +26,8 @@ Run the following commands before committing changes so local development matche
 
 These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
 
+Whenever a source file is modified, review and update the relevant automated tests to cover the change. If a bug is fixed, add a regression test when feasible to prevent the issue from reoccurring.
+
 ## Commit Messages
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification so that commitlint accepts new commits.
 - Start messages with a valid **type** (e.g., `feat`, `fix`, `docs`, `chore`) followed by a colon and a short, imperative **subject** (e.g., `fix: add budget syncing retries`).
