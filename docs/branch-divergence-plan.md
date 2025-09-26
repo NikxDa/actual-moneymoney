@@ -136,6 +136,7 @@
 ### 4.2 Steps
 
 - **branch/force-push commands (safe)**:
+
   ```bash
   # Create new main from develop
   git checkout develop
@@ -147,6 +148,7 @@
   git reset --hard develop
   git push origin main --force-with-lease
   ```
+
 - **README/LICENSE updates**: Update author attribution, add fork notice, update installation instructions (MIT license is inherited from upstream)
 - **CI, release tagging (v0.1.0)**: Update version to v0.1.0, create release workflow, add semantic versioning
 - **optional upstream-sync policy**: Document how to cherry-pick upstream fixes, set up upstream remote tracking
