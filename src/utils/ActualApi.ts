@@ -98,7 +98,7 @@ class ActualApi {
     async getAccounts() {
         await this.ensureInitialization();
         const accounts = await this.suppressConsoleLog(async () => {
-            return await actual.getAccounts();
+            return await actual.getAccounts(undefined, undefined);
         });
         return accounts;
     }

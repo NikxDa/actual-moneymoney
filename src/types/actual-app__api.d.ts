@@ -199,7 +199,10 @@ declare module '@actual-app/api' {
     const deleteTransaction: (transactionId: ID) => Promise<void>;
 
     // Accounts
-    const getAccounts: () => Promise<Account[]>;
+    const getAccounts: (
+        includeOffBudget?: boolean,
+        includeClosed?: boolean
+    ) => Promise<Account[]>;
     const createAccount: (
         account: CreateAccount,
         initialBalance?: number
