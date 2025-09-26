@@ -432,7 +432,7 @@ describe('ActualApi', () => {
         expect(shutdownMock).not.toHaveBeenCalled();
     });
 
-    it('handles directory naming mismatch by creating symlink', async () => {
+    it('handles directory naming mismatch by using correct directory', async () => {
         // This test verifies that the directory naming mismatch fix is working
         // by ensuring the loadBudget method can handle the scenario where
         // the budget directory has a different name than the sync ID

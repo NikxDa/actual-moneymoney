@@ -191,7 +191,6 @@ class ActualApi {
             const message =
                 error instanceof Error ? error.message : 'Unknown error';
 
-
             const wrappedError =
                 error instanceof Error
                     ? createErrorWithCause(
@@ -211,8 +210,8 @@ class ActualApi {
         }
     }
 
-    public async init(): Promise<void> {
-        const actualDataDir = DEFAULT_DATA_DIR;
+    public async init(customDataDir?: string): Promise<void> {
+        const actualDataDir = customDataDir ?? DEFAULT_DATA_DIR;
 
         const dataDirExists = await fs
             .access(actualDataDir)
@@ -241,9 +240,9 @@ class ActualApi {
         this.isInitialized = true;
     }
 
-    public async ensureInitialization(): Promise<void> {
+    public async ensureInitialization(customDataDir?: string): Promise<void> {
         if (!this.isInitialized) {
-            await this.init();
+            await this.init(customDataDir);
         }
     }
 
@@ -264,8 +263,6 @@ class ActualApi {
     }
 
     public async loadBudget(budgetId: string): Promise<void> {
-        await this.ensureInitialization();
-
         const budgetConfig = this.serverConfig.budgets.find(
             (b) => b.syncId === budgetId
         );
@@ -275,6 +272,37 @@ class ActualApi {
         }
 
         const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
+
+        // Find the actual budget directory name
+        const actualDataDir = DEFAULT_DATA_DIR;
+        const budgetDirs = await fs.readdir(actualDataDir).catch(() => []);
+        const matchingDir = budgetDirs.find((dir) => {
+            return dir !== '.' && dir !== '..';
+        });
+
+        let budgetDataDir = actualDataDir;
+        if (matchingDir) {
+            try {
+                const metadataPath = path.join(
+                    actualDataDir,
+                    matchingDir,
+                    'metadata.json'
+                );
+                const metadata = JSON.parse(
+                    await fs.readFile(metadataPath, 'utf8')
+                );
+                if (metadata.groupId === budgetConfig.syncId) {
+                    // Use the actual budget directory instead of the data directory
+                    budgetDataDir = path.join(actualDataDir, matchingDir);
+                    this.logger.debug(`Using budget directory: ${matchingDir}`);
+                }
+            } catch (_error) {
+                // Ignore metadata read errors, fall back to default data directory
+            }
+        }
+
+        // Initialize with the correct budget directory
+        await this.ensureInitialization(budgetDataDir);
 
         this.logger.debug(
             `Downloading budget with syncId '${budgetConfig.syncId}'...`
@@ -296,34 +324,6 @@ class ActualApi {
         this.logger.debug(
             `Loading budget with syncId '${budgetConfig.syncId}'...`
         );
-
-        // Handle directory naming mismatch - create symlink if needed
-        const actualDataDir = DEFAULT_DATA_DIR;
-        const budgetDirs = await fs.readdir(actualDataDir).catch(() => []);
-        const matchingDir = budgetDirs.find(dir => {
-            return dir !== '.' && dir !== '..';
-        });
-
-        if (matchingDir) {
-            try {
-                const metadataPath = path.join(actualDataDir, matchingDir, 'metadata.json');
-                const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
-                if (metadata.groupId === budgetConfig.syncId) {
-                    // Create symlink with sync ID name for the Actual API
-                    const syncIdDir = path.join(actualDataDir, budgetConfig.syncId);
-                    const actualDir = path.join(actualDataDir, matchingDir);
-
-                    try {
-                        await fs.access(syncIdDir);
-                    } catch {
-                        await fs.symlink(actualDir, syncIdDir);
-                        this.logger.debug(`Created symlink: ${budgetConfig.syncId} -> ${matchingDir}`);
-                    }
-                }
-            } catch (error) {
-                // Ignore metadata read errors
-            }
-        }
 
         await this.runActualRequest(
             `load budget '${budgetConfig.syncId}'`,
@@ -467,7 +467,6 @@ class ActualApi {
             imported_id: this.createFallbackImportedId(accountId, transaction),
         };
     }
-
 
     private createFallbackImportedId(
         accountId: string,
