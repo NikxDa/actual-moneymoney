@@ -357,10 +357,21 @@ class ActualApi {
         accountId: string,
         transaction: CreateTransaction
     ): CreateTransaction {
-        const importedId = transaction.imported_id?.trim();
+        const importedId = transaction.imported_id;
 
-        if (importedId) {
-            return transaction;
+        if (typeof importedId === 'string') {
+            const trimmedImportedId = importedId.trim();
+
+            if (trimmedImportedId.length > 0) {
+                if (trimmedImportedId === importedId) {
+                    return transaction;
+                }
+
+                return {
+                    ...transaction,
+                    imported_id: trimmedImportedId,
+                };
+            }
         }
 
         return {
