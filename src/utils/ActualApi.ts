@@ -41,6 +41,28 @@ const suppressIfNoisy =
         original(...args);
     };
 
+const normalizeForHash = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeForHash(item));
+    }
+
+    if (value && typeof value === 'object') {
+        const sortedEntries = Object.entries(
+            value as Record<string, unknown>
+        ).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+        return sortedEntries.reduce<Record<string, unknown>>(
+            (accumulator, [key, nestedValue]) => {
+                accumulator[key] = normalizeForHash(nestedValue);
+                return accumulator;
+            },
+            {}
+        );
+    }
+
+    return value;
+};
+
 const createErrorWithCause = (message: string, cause: Error): Error => {
     const ErrorCtor = Error as ErrorConstructor & {
         new (message?: string, options?: { cause?: unknown }): Error;
@@ -394,6 +416,17 @@ class ActualApi {
         accountId: string,
         transaction: CreateTransaction
     ): string {
+        const payeeId = (transaction as { payee_id?: string }).payee_id ?? '';
+        const payee = (transaction as { payee?: string }).payee ?? '';
+        const rawSubtransactions = (
+            transaction as {
+                subtransactions?: unknown;
+            }
+        ).subtransactions;
+        const normalizedSubtransactions = Array.isArray(rawSubtransactions)
+            ? (normalizeForHash(rawSubtransactions) as unknown[])
+            : [];
+
         const normalized = {
             accountId,
             date: transaction.date,
@@ -409,6 +442,9 @@ class ActualApi {
                 typeof transaction.cleared === 'boolean'
                     ? String(transaction.cleared)
                     : '',
+            payee_id: payeeId,
+            payee,
+            subtransactions: normalizedSubtransactions,
         };
 
         const hash = createHash('sha256')
