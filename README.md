@@ -39,7 +39,7 @@ The application will be accessible as a CLI tool with the name `actual-monmon`.
 
 The application needs to be configured with a TOML document to function. By default, Actual-MoneyMoney stores and reads configuration files from `~/.actually/config.toml`.
 
-You can validate (and automatically create) your configuration by running `actual-monmon validate`. If the configuration file does not exist yet, the command will create a starter file at the resolved path (default: `~/.actually/config.toml`). You can point to a different location with the `--config <path>` option when running any command.
+You can validate (and automatically create) your configuration by running `actual-monmon validate`. If the configuration file does not exist yet, the command will create a starter file at the resolved path (default: `~/.actually/config.toml`). When the file already exists, `validate` leaves it unchanged and only reports schema issues. You can point to a different location with the `--config <path>` option when running any command.
 
 For detailed command-line options, run `actual-monmon --help`.
 

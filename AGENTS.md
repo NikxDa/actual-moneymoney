@@ -13,7 +13,7 @@
 - Indent using **4 spaces** (match existing code style).
 - Prefer explicit types for function parameters/returns when not inferred from obvious context.
 - Keep logging consistent by using the `Logger` utility instead of `console.log` directly.
-- Follow existing naming patterns (`*.command.ts` for CLI commands, PascalCase for classes, camelCase for variables/functions`).
+- Follow existing naming patterns (`*.command.ts` for CLI commands, `PascalCase` for classes, `camelCase` for variables and functions).
 - When adding new configuration options or command-line flags, update the TOML schema/validation in `src/utils/config.ts`, the generated default config in `src/utils/shared.ts`, and relevant documentation (e.g., `README.md`, `example-config-advanced.toml`).
 
 ## Testing & Tooling
