@@ -6,7 +6,6 @@ name: "CodeQL Configuration"
 # Languages to analyze
 languages:
     - javascript
-    - typescript
 
 # Queries to run for each language
 queries:
