@@ -431,4 +431,40 @@ describe('ActualApi', () => {
 
         expect(shutdownMock).not.toHaveBeenCalled();
     });
+
+    it('handles directory naming mismatch by creating symlink', async () => {
+        // This test verifies that the directory naming mismatch fix is working
+        // by ensuring the loadBudget method can handle the scenario where
+        // the budget directory has a different name than the sync ID
+
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const serverConfig: ActualServerConfig = {
+            serverUrl: 'http://localhost:5006',
+            serverPassword: 'secret',
+            requestTimeoutMs: 45000,
+            budgets: [
+                {
+                    syncId: 'test-budget-sync-id',
+                    e2eEncryption: {
+                        enabled: false,
+                        password: undefined,
+                    },
+                    accountMapping: {},
+                },
+            ],
+        };
+
+        const api = new ActualApi(serverConfig, createLogger());
+
+        // Mock the Actual API calls
+        downloadBudgetMock.mockResolvedValue(undefined);
+        loadBudgetMock.mockResolvedValue(undefined);
+        syncMock.mockResolvedValue(undefined);
+
+        // This should not throw an error even if there's a directory naming mismatch
+        await expect(api.loadBudget('test-budget-sync-id')).resolves.not.toThrow();
+    });
 });

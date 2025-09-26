@@ -3,6 +3,7 @@ import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
@@ -190,6 +191,7 @@ class ActualApi {
             const message =
                 error instanceof Error ? error.message : 'Unknown error';
 
+
             const wrappedError =
                 error instanceof Error
                     ? createErrorWithCause(
@@ -294,6 +296,35 @@ class ActualApi {
         this.logger.debug(
             `Loading budget with syncId '${budgetConfig.syncId}'...`
         );
+
+        // Handle directory naming mismatch - create symlink if needed
+        const actualDataDir = DEFAULT_DATA_DIR;
+        const budgetDirs = await fs.readdir(actualDataDir).catch(() => []);
+        const matchingDir = budgetDirs.find(dir => {
+            return dir !== '.' && dir !== '..';
+        });
+
+        if (matchingDir) {
+            try {
+                const metadataPath = path.join(actualDataDir, matchingDir, 'metadata.json');
+                const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+                if (metadata.groupId === budgetConfig.syncId) {
+                    // Create symlink with sync ID name for the Actual API
+                    const syncIdDir = path.join(actualDataDir, budgetConfig.syncId);
+                    const actualDir = path.join(actualDataDir, matchingDir);
+
+                    try {
+                        await fs.access(syncIdDir);
+                    } catch {
+                        await fs.symlink(actualDir, syncIdDir);
+                        this.logger.debug(`Created symlink: ${budgetConfig.syncId} -> ${matchingDir}`);
+                    }
+                }
+            } catch (error) {
+                // Ignore metadata read errors
+            }
+        }
+
         await this.runActualRequest(
             `load budget '${budgetConfig.syncId}'`,
             () => actual.loadBudget(budgetConfig.syncId),
@@ -436,6 +467,7 @@ class ActualApi {
             imported_id: this.createFallbackImportedId(accountId, transaction),
         };
     }
+
 
     private createFallbackImportedId(
         accountId: string,
