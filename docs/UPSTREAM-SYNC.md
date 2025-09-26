@@ -86,7 +86,7 @@ When conflicts occur:
 ## Quarterly Sync Schedule
 
 - **Q1**: January 15th
-- **Q2**: April 15th  
+- **Q2**: April 15th
 - **Q3**: July 15th
 - **Q4**: October 15th
 
