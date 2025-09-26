@@ -14,64 +14,63 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
 
     logger.info(`Current configuration file: ${configPath}`);
 
-    const configFileExists = await fs
-        .access(configPath)
-        .then(() => true)
-        .catch(() => false);
+    let configContent: string;
+    try {
+        logger.debug(`Reading configuration file...`);
+        configContent = await fs.readFile(configPath, 'utf-8');
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            // Create path to file and file itself if it doesn't exist
+            await fs.writeFile(configPath, EXAMPLE_CONFIG);
 
-    if (!configFileExists) {
-        // Create path to file and file itself if it doesn't exist
-        await fs.writeFile(configPath, EXAMPLE_CONFIG);
+            logger.warn('Configuration file not found.');
+            logger.info(
+                `Created default configuration file at: ${configPath}. Please edit it with your preferred settings.`
+            );
 
-        logger.warn('Configuration file not found.');
-        logger.info(
-            `Created default configuration file at: ${configPath}. Please edit it with your preferred settings.`
-        );
+            return;
+        }
+        throw error;
+    }
 
-        return;
-    } else {
-        logger.info('Validating configuration...');
+    logger.info('Validating configuration...');
 
-        try {
-            logger.debug(`Reading configuration file...`);
-            const configContent = await fs.readFile(configPath, 'utf-8');
+    try {
+        logger.debug(`Parsing configuration file...`);
+        const configData = toml.parse(configContent);
 
-            logger.debug(`Parsing configuration file...`);
-            const configData = toml.parse(configContent);
-
-            logger.debug(`Parsing configuration schema...`);
-            configSchema.parse(configData);
-        } catch (e) {
-            if (e instanceof z.ZodError) {
-                logger.error('Configuration file is invalid:');
-                for (const issue of e.issues) {
-                    const path = issue.path.length
-                        ? issue.path.join('.')
-                        : '<root>';
-                    logger.error(
-                        `Code ${issue.code} at path [${path}]: ${issue.message}`
-                    );
-                }
-            } else if (e instanceof Error && e.name === 'SyntaxError') {
-                const line = 'line' in e ? e.line : -1;
-                const column = 'column' in e ? e.column : -1;
-
+        logger.debug(`Parsing configuration schema...`);
+        configSchema.parse(configData);
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            logger.error('Configuration file is invalid:');
+            for (const issue of e.issues) {
+                const path = issue.path.length
+                    ? issue.path.join('.')
+                    : '<root>';
                 logger.error(
-                    `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
+                    `Code ${issue.code} at path [${path}]: ${issue.message}`
                 );
-            } else {
-                logger.error(`An unexpected error occurred: ${e}`);
             }
+        } else if (e instanceof Error && e.name === 'SyntaxError') {
+            const line = 'line' in e ? e.line : -1;
+            const column = 'column' in e ? e.column : -1;
 
-            if (e instanceof Error) {
-                throw e;
-            }
-
-            throw new Error(`Configuration validation failed: ${String(e)}`);
+            logger.error(
+                `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
+            );
+        } else {
+            logger.error(`An unexpected error occurred: ${e}`);
         }
 
-        logger.info('Configuration file is valid.');
+        if (e instanceof Error) {
+            throw e;
+        }
+
+        throw new Error(`Configuration validation failed: ${String(e)}`);
     }
+
+    logger.info('Configuration file is valid.');
 };
 
 export default {

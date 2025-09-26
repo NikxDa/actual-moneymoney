@@ -1,6 +1,24 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
-import type { CreateTransaction } from '@actual-app/api';
+// Type for transaction import - matches the ImportTransaction interface
+type ImportTransaction = {
+    account?: string;
+    date: string;
+    amount?: number;
+    payee?: string;
+    payee_name?: string;
+    imported_payee?: string;
+    category?: string;
+    notes?: string;
+    imported_id?: string;
+    transfer_id?: string;
+    cleared?: boolean;
+    subtransactions?: Array<{
+        amount: number;
+        category?: string;
+        notes?: string;
+    }>;
+};
 
 import type { ActualServerConfig } from '../src/utils/config.js';
 import type Logger from '../src/utils/Logger.js';
@@ -236,7 +254,7 @@ describe('ActualApi', () => {
         // @ts-expect-error accessing protected test hook
         api.isInitialized = true;
 
-        const transactions: CreateTransaction[] = [
+        const transactions: ImportTransaction[] = [
             {
                 date: '2024-02-01',
                 amount: 100,
@@ -314,7 +332,7 @@ describe('ActualApi', () => {
             // @ts-expect-error accessing protected test hook
             api.isInitialized = true;
 
-            const transactions: CreateTransaction[] = [
+            const transactions: ImportTransaction[] = [
                 {
                     date: '2024-02-01',
                     amount: 100,
@@ -330,7 +348,7 @@ describe('ActualApi', () => {
                 },
             ];
 
-            const serverRecords = new Map<string, CreateTransaction>();
+            const serverRecords = new Map<string, ImportTransaction>();
             const callPayloads: string[][] = [];
 
             importTransactionsMock.mockImplementation((accountId, txns) => {
@@ -383,7 +401,7 @@ describe('ActualApi', () => {
             );
 
             expect(resolveFirstAttempt).toBeTruthy();
-            resolveFirstAttempt?.();
+            resolveFirstAttempt!();
             await Promise.resolve();
 
             const secondAttempt = api.importTransactions('account-1', transactions);
@@ -436,11 +454,11 @@ describe('ActualApi', () => {
         // This test verifies that the directory naming mismatch fix is working
         // by ensuring the loadBudget method can handle the scenario where
         // the budget directory has a different name than the sync ID
-        
+
         const { default: ActualApi } = await import(
             '../src/utils/ActualApi.js'
         );
-        
+
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
             serverPassword: 'secret',

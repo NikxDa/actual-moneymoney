@@ -142,18 +142,17 @@ export const getConfigFile = (argv: ArgumentsCamelCase): string => {
 export const getConfig = async (argv: ArgumentsCamelCase): Promise<Config> => {
     const configFile = getConfigFile(argv);
 
-    const configFileExists = await fs
-        .access(configFile)
-        .then(() => true)
-        .catch(() => false);
-
-    if (!configFileExists) {
-        throw new Error(
-            `Config file not found: '${configFile}'. Create it or use the --config option to specify a different path.`
-        );
+    let configContent: string;
+    try {
+        configContent = await fs.readFile(configFile, 'utf-8');
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw new Error(
+                `Config file not found: '${configFile}'. Create it or use the --config option to specify a different path.`
+            );
+        }
+        throw error;
     }
-
-    const configContent = await fs.readFile(configFile, 'utf-8');
 
     try {
         const configData = toml.parse(configContent);
