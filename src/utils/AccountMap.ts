@@ -3,6 +3,22 @@ import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig } from './config.js';
 import Logger from './Logger.js';
 
+// Define the Actual Account interface based on the types
+interface ActualAccount {
+    id: string;
+    name: string;
+    type:
+        | 'checking'
+        | 'savings'
+        | 'credit'
+        | 'investment'
+        | 'mortgage'
+        | 'debt'
+        | 'other';
+    offbudget: boolean;
+    closed: boolean;
+}
+
 export class AccountMap {
     constructor(
         private budgetConfig: ActualBudgetConfig,
@@ -10,15 +26,23 @@ export class AccountMap {
         private actualApi: ActualApi
     ) {}
 
-    private moneyMoneyAccounts: Array<MonMonAccount>;
-    private actualAccounts: Array<Account>;
+    private moneyMoneyAccounts: Array<MonMonAccount> = [];
+    private actualAccounts: Array<ActualAccount> = [];
 
-    private mapping: Map<MonMonAccount, Account>;
+    private mapping: Map<MonMonAccount, ActualAccount> | null = null;
 
-    public getMap(moneyMoneyAccountRefs?: Array<string>) {
+    public getMap(
+        moneyMoneyAccountRefs?: Array<string>
+    ): Map<MonMonAccount, ActualAccount> {
+        if (!this.mapping) {
+            throw new Error(
+                'Account mapping has not been loaded. Call loadFromConfig() before accessing the map.'
+            );
+        }
+
         if (!moneyMoneyAccountRefs) return this.mapping;
 
-        const customMap = new Map<MonMonAccount, Account>();
+        const customMap = new Map<MonMonAccount, ActualAccount>();
         for (const ref of moneyMoneyAccountRefs) {
             const monMonAccount = this.getMoneyMoneyAccountByRef(ref);
 
@@ -72,7 +96,7 @@ export class AccountMap {
         return matchingAccounts[0];
     }
 
-    private checkActualAccountRef(account: Account, ref: string) {
+    private checkActualAccountRef(account: ActualAccount, ref: string) {
         return account.id === ref || account.name === ref;
     }
 
@@ -98,7 +122,8 @@ export class AccountMap {
         if (this.mapping) return;
 
         const accountMapping = this.budgetConfig.accountMapping;
-        const parsedAccountMapping: Map<MonMonAccount, Account> = new Map();
+        const parsedAccountMapping: Map<MonMonAccount, ActualAccount> =
+            new Map();
 
         this.moneyMoneyAccounts = await getAccounts();
         this.logger.debug(

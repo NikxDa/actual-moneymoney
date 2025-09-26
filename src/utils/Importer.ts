@@ -1,4 +1,5 @@
 import { format, subMonths } from 'date-fns';
+import type { CreateTransaction } from '@actual-app/api';
 import {
     Account as MonMonAccount,
     Transaction as MonMonTransaction,
@@ -7,7 +8,7 @@ import {
 import { AccountMap } from './AccountMap.js';
 import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig, Config } from './config.js';
-import Logger from './Logger.js';
+import Logger, { LogLevel } from './Logger.js';
 import PayeeTransformer from './PayeeTransformer.js';
 import { DATE_FORMAT } from './shared.js';
 
@@ -21,6 +22,8 @@ class Importer {
         private payeeTransformer?: PayeeTransformer
     ) {}
 
+    private readonly patternCache = new Map<string, RegExp>();
+
     async importTransactions({
         accountRefs,
         from,
@@ -32,6 +35,7 @@ class Importer {
         to?: Date;
         isDryRun?: boolean;
     }) {
+        const importStartTime = Date.now();
         const fromDate = from ?? subMonths(new Date(), 1);
         const earliestImportDate = this.budgetConfig.earliestImportDate
             ? new Date(this.budgetConfig.earliestImportDate)
@@ -59,10 +63,15 @@ class Importer {
             }`
         );
 
+        const fetchStartTime = Date.now();
         let monMonTransactions = await getTransactions({
             from: importDate,
             to: toDate,
         });
+        const fetchEndTime = Date.now();
+        this.logger.debug(
+            `MoneyMoney transaction fetch completed in ${fetchEndTime - fetchStartTime}ms`
+        );
 
         if (monMonTransactions.length === 0) {
             this.logger.info(
@@ -82,16 +91,19 @@ class Importer {
             const ignorePatterns = this.config.import.ignorePatterns;
 
             monMonTransactions = monMonTransactions.filter((t) => {
-                let isIgnored = (ignorePatterns.commentPatterns ?? []).some(
-                    (pattern) => t.comment?.includes(pattern)
+                let isIgnored = this.matchesPattern(
+                    t.comment,
+                    ignorePatterns.commentPatterns
                 );
 
-                isIgnored ||= (ignorePatterns.payeePatterns ?? []).some(
-                    (pattern) => t.name.includes(pattern)
+                isIgnored ||= this.matchesPattern(
+                    t.name,
+                    ignorePatterns.payeePatterns
                 );
 
-                isIgnored ||= (ignorePatterns.purposePatterns ?? []).some(
-                    (pattern) => t.purpose?.includes(pattern)
+                isIgnored ||= this.matchesPattern(
+                    t.purpose,
+                    ignorePatterns.purposePatterns
                 );
 
                 if (isIgnored) {
@@ -135,9 +147,11 @@ class Importer {
         }
 
         const accountMapping = this.accountMap.getMap(accountRefs);
+        let hasNewTransactions = false;
 
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
+            const accountStartTime = Date.now();
             const monMonTransactions =
                 monMonTransactionMap[monMonAccount.uuid] ?? [];
 
@@ -149,7 +163,10 @@ class Importer {
             }
 
             const existingActualTransactions =
-                await this.actualApi.getTransactions(actualAccount.id);
+                await this.actualApi.getTransactions(actualAccount.id, {
+                    from: importDate,
+                    to: toDate ?? undefined,
+                });
 
             this.logger.debug(
                 `Found ${existingActualTransactions.length} existing transactions for Actual account '${actualAccount.name}'`
@@ -183,17 +200,34 @@ class Importer {
             }
 
             // Filter out transactions that already exist in Actual
-            createTransactions = createTransactions.filter(
-                async (transaction) => {
-                    const transactionExists = existingActualTransactions.some(
-                        (existingTransaction) =>
-                            existingTransaction.imported_id ===
-                            transaction.imported_id
-                    );
-
-                    return !transactionExists;
-                }
+            const existingImportedIds = new Set(
+                existingActualTransactions
+                    .map(
+                        (existingTransaction) => existingTransaction.imported_id
+                    )
+                    .filter((id): id is string => Boolean(id))
             );
+            const newImportedIds = new Set<string>();
+
+            createTransactions = createTransactions.filter((transaction) => {
+                const importedId = transaction.imported_id;
+
+                if (!importedId) {
+                    return true;
+                }
+
+                if (existingImportedIds.has(importedId)) {
+                    return false;
+                }
+
+                if (newImportedIds.has(importedId)) {
+                    return false;
+                }
+
+                newImportedIds.add(importedId);
+
+                return true;
+            });
 
             if (createTransactions.length === 0) {
                 this.logger.debug(
@@ -206,11 +240,14 @@ class Importer {
                 `Considering ${createTransactions.length} transactions for Actual account '${actualAccount.name}'...`
             );
 
+            hasNewTransactions = true;
+
             if (this.payeeTransformer && !isDryRun) {
                 this.logger.debug(
                     `Cleaning up payee names for ${createTransactions.length} transaction/s using OpenAI...`
                 );
 
+                const startTime = Date.now();
                 const transactionPayees = createTransactions.map(
                     (t) => t.imported_payee as string
                 );
@@ -220,11 +257,28 @@ class Importer {
                         transactionPayees
                     );
 
+                const endTime = Date.now();
+                this.logger.debug(
+                    `Payee transformation completed in ${endTime - startTime}ms`
+                );
+
                 if (transformedPayees !== null) {
+                    this.logger.debug(
+                        `Applying transformed payee names to transactions...`
+                    );
                     createTransactions.forEach((t) => {
+                        const originalPayee = t.imported_payee as string;
+                        const newPayee = transformedPayees[originalPayee];
+
+                        // Use original payee name if transformation is undefined, null, or "Unknown"
                         t.payee_name =
-                            transformedPayees[t.imported_payee as string];
+                            newPayee && newPayee !== 'Unknown'
+                                ? newPayee
+                                : originalPayee;
                     });
+                    this.logger.debug(
+                        `Payee transformation completed successfully.`
+                    );
                 } else {
                     this.logger.warn(
                         'Payee transformation failed. Using default payee names...'
@@ -235,18 +289,49 @@ class Importer {
                     });
                 }
             } else {
-                this.logger.debug(
-                    isDryRun
-                        ? `Skipping payee transformation in dry run mode, using default payee names...`
-                        : `Payee transformation is disabled. Using default payee names...`
-                );
+                if (isDryRun) {
+                    this.logger.debug(
+                        `Skipping payee transformation in dry run mode, using default payee names...`
+                    );
+                } else if (!this.payeeTransformer) {
+                    this.logger.debug(
+                        `Payee transformation is disabled. Using default payee names...`
+                    );
+                }
 
                 createTransactions.forEach((t) => {
                     t.payee_name = t.imported_payee;
                 });
             }
 
-            if (!isDryRun) {
+            // Log final payee names being used for import
+            const shouldMaskPayees =
+                this.config.import.maskPayeeNamesInLogs &&
+                this.logger.getLevel() < LogLevel.DEBUG;
+            const payeeNamesForLog = createTransactions.map((t) => {
+                const payeeName = String(t.payee_name ?? '');
+                const value = shouldMaskPayees
+                    ? this.obfuscatePayeeName(payeeName)
+                    : payeeName;
+                return `"${value}"`;
+            });
+
+            this.logger.debug(
+                shouldMaskPayees
+                    ? 'Final payee names for import (masked):'
+                    : 'Final payee names for import:',
+                payeeNamesForLog
+            );
+
+            if (isDryRun) {
+                this.logger.info(
+                    `DRY RUN - Would import to account '${actualAccount.name}'`,
+                    [
+                        `Would add ${createTransactions.length} new transaction(s).`,
+                        `No changes made.`,
+                    ]
+                );
+            } else {
                 const result = await this.actualApi.importTransactions(
                     actualAccount.id,
                     createTransactions
@@ -272,6 +357,20 @@ class Importer {
                     ]
                 );
             }
+
+            const accountEndTime = Date.now();
+            this.logger.debug(
+                `Account '${actualAccount.name}' processing completed in ${accountEndTime - accountStartTime}ms`
+            );
+        }
+
+        const totalImportTime = Date.now() - importStartTime;
+        this.logger.debug(
+            `Total import process completed in ${totalImportTime}ms`
+        );
+
+        if (!hasNewTransactions) {
+            this.logger.info('No new transactions to import.');
         }
     }
 
@@ -311,6 +410,43 @@ class Importer {
         );
 
         return startingBalance;
+    }
+
+    private matchesPattern(value: string | undefined, patterns?: string[]) {
+        if (!value || !patterns || patterns.length === 0) {
+            return false;
+        }
+
+        return patterns.some((pattern) => {
+            const regex = this.getPatternRegex(pattern);
+            return regex.test(value);
+        });
+    }
+
+    private getPatternRegex(pattern: string) {
+        let regex = this.patternCache.get(pattern);
+        if (!regex) {
+            const normalized = pattern
+                .split('*')
+                .map((segment) => segment.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+                .join('.*');
+            regex = new RegExp(`^${normalized}$`, 'i');
+            this.patternCache.set(pattern, regex);
+        }
+
+        return regex;
+    }
+
+    private obfuscatePayeeName(payee: string) {
+        if (payee.length <= 2) {
+            return '•'.repeat(Math.max(payee.length, 1));
+        }
+
+        const firstChar = payee[0];
+        const lastChar = payee[payee.length - 1];
+        const middle = '•'.repeat(payee.length - 2);
+
+        return `${firstChar}${middle}${lastChar}`;
     }
 }
 

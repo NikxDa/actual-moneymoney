@@ -20,6 +20,14 @@ export const EXAMPLE_CONFIG = `
 [payeeTransformation]
 enabled = false
 openAiApiKey = "<openAiKey>"
+openAiModel = "gpt-3.5-turbo"
+# maskPayeeNamesInLogs = true
+# skipModelValidation = false # Optional: Skip contacting OpenAI to verify the model name
+# customPrompt = "Your custom prompt here..." # Optional: Override default prompt
+# [payeeTransformation.modelConfig] # Optional: Model-specific settings
+# temperature = 0.0 # 0.0 = deterministic, 1.0 = creative (0.0-2.0)
+# maxTokens = 1000 # Maximum tokens in response
+# timeout = 30000 # Request timeout in milliseconds
 
 # Import settings
 [import]
@@ -29,6 +37,7 @@ importUncheckedTransactions = true
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
+# requestTimeoutMs = 45000 # Optional: Override the Actual server request timeout (ms, max 300000)
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]

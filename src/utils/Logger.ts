@@ -38,6 +38,7 @@ class Logger {
 
     private log(level: LogLevel, message: string, hint?: LogHint) {
         if (this.logLevel >= level) {
+            const timestamp = new Date().toISOString();
             const prefix = `[${LogLevel[level].toUpperCase()}]`;
             const chalkColor = {
                 [LogLevel.ERROR]: chalk.red,
@@ -46,16 +47,21 @@ class Logger {
                 [LogLevel.DEBUG]: chalk.gray,
             }[level];
 
-            console.log(chalkColor(prefix), message);
+            console.log(chalkColor(prefix), `[${timestamp}]`, message);
             if (hint) {
                 const arrayHint = Array.isArray(hint) ? hint : [hint];
+                const hintIndent = ' '.repeat(
+                    `${prefix} [${timestamp}] `.length
+                );
                 for (const hint of arrayHint) {
-                    console.log(
-                        chalk.gray(' '.repeat(prefix.length), '↳', hint)
-                    );
+                    console.log(chalk.gray(hintIndent, '↳ ', hint));
                 }
             }
         }
+    }
+
+    public getLevel(): LogLevel {
+        return this.logLevel;
     }
 }
 

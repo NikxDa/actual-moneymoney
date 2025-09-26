@@ -1,17 +1,78 @@
 name: ci
-on: [push, pull_request]
+on:
+    push:
+        branches:
+            - main
+    pull_request:
 jobs:
-    test:
-        name: test
+    lint:
+        name: lint
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - uses: oven-sh/setup-bun@v1
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - name: Install dependencies
+              run: npm ci
+            - name: ESLint
+              run: npm run lint:eslint
+            - name: Prettier
+              run: npm run lint:prettier
 
-            - run: bun install
-            - run: bun run lint:eslint
-            - run: bun run lint:prettier
-            - run: bun run build
+    typecheck:
+        name: typecheck
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - name: Install dependencies
+              run: npm ci
+            - name: Type check
+              run: npm run typecheck
+
+    build:
+        name: build
+        needs:
+            - lint
+            - typecheck
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - name: Install dependencies
+              run: npm ci
+            - name: Build
+              run: npm run build
+
+    test:
+        name: test
+        needs:
+            - lint
+            - typecheck
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - name: Install dependencies
+              run: npm ci
+            - name: Run tests
+              run: npm test
 
     commitlint:
         runs-on: ubuntu-latest
@@ -20,8 +81,10 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Setup Node
-              uses: actions/setup-node@v3
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
 
             - name: Print versions
               run: |

@@ -28,7 +28,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
             `Created default configuration file at: ${configPath}. Please edit it with your preferred settings.`
         );
 
-        process.exit(0);
+        return;
     } else {
         logger.info('Validating configuration...');
 
@@ -44,9 +44,12 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         } catch (e) {
             if (e instanceof z.ZodError) {
                 logger.error('Configuration file is invalid:');
-                for (const error of e.errors) {
+                for (const issue of e.issues) {
+                    const path = issue.path.length
+                        ? issue.path.join('.')
+                        : '<root>';
                     logger.error(
-                        `Path [${error.path.join('.')}]: ${error.message}`
+                        `Code ${issue.code} at path [${path}]: ${issue.message}`
                     );
                 }
             } else if (e instanceof Error && e.name === 'SyntaxError') {
@@ -57,10 +60,14 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                     `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
                 );
             } else {
-                logger.error(`An unexpected error occured: ${e}`);
+                logger.error(`An unexpected error occurred: ${e}`);
             }
 
-            process.exit(1);
+            if (e instanceof Error) {
+                throw e;
+            }
+
+            throw new Error(`Configuration validation failed: ${String(e)}`);
         }
 
         logger.info('Configuration file is valid.');
