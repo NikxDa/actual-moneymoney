@@ -1,323 +1,105 @@
 # Source Code Guidelines for `actual-moneymoney`
 
-## Command Module Patterns
+## CLI structure (`src/index.ts`)
 
-All commands follow this pattern in [src/commands/](mdc:src/commands/):
+- `src/index.ts` initialises the CLI, ensures the application data directory exists, and registers command modules.
+- Global options:
+  - `--config` allows an alternative TOML configuration path.
+  - `--logLevel` controls the `Logger` verbosity (0-3).
+- The parser uses `.fail()` to surface yargs validation errors as real `Error` instances. Preserve this behaviour when adding new options.
 
-### Available Commands
+## Command modules (`src/commands/`)
 
-- `import`: Import transactions from MoneyMoney to Actual Budget
-- `validate`: Validate and create configuration files
+### General expectations
 
-### Command Structure
+- Export a default `CommandModule<ArgumentsCamelCase>`.
+- Keep handlers async and delegate to a `handle*` helper to keep the exported module lightweight.
+- Always resolve configuration via `getConfig(argv)` so shared CLI flags stay consistent across commands.
+- Instantiate `Logger` with the requested log level and reuse it for all logging.
 
-```typescript
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
+### `import.command.ts`
 
-const handleCommand = async (argv: ArgumentsCamelCase) => {
-    // Command implementation
-};
+- Supports filters for server (`--server`), budget (`--budget`), account (`--account`), and date ranges (`--from`, `--to`). Options should accept either a single value or an array; coerce values into arrays before processing.
+- Parse dates with `date-fns/parse` using `DATE_FORMAT` from `src/utils/shared.ts`. Reject invalid dates with actionable error messages.
+- Require at least one Actual server in the configuration and surface missing server/budget filters with explicit errors.
+- Before importing, call `checkDatabaseUnlocked()` from `moneymoney` and fail fast if the database is locked.
+- For each selected server/budget combination:
+  - Create an `ActualApi` instance, call `init()`, then `loadBudget()` before performing any work, and always `shutdown()` inside a `finally` block.
+  - Build an `AccountMap` and load it up front via `loadFromConfig()`.
+  - Instantiate `Importer` with the resolved config, budget, API, logger, account map, and optional `PayeeTransformer` (only when `config.payeeTransformation.enabled` is true).
+  - Pass `isDryRun` through to `Importer.importTransactions()`; the importer is responsible for enforcing the dry-run logic.
 
-export default {
-    command: 'command-name',
-    describe: 'Command description',
-    builder: (yargs) => {
-        // yargs options configuration
-    },
-    handler: (argv) => handleCommand(argv),
-} as CommandModule;
-```
+### `validate.command.ts`
 
-### Command Implementation Guidelines
+- Uses `getConfigFile(argv)` to resolve the path and logs which file was inspected.
+- If the file does not exist, create it using `EXAMPLE_CONFIG` from `src/utils/shared.ts` and exit early after logging guidance.
+- Parse the TOML file, validate against `configSchema`, and print Zod issues with `path`, `code`, and `message` details. Forward syntax errors with line/column information.
 
-- **Async Handlers**: All command handlers should be async functions
-- **Configuration Loading**: Use `getConfig(argv)` to load and validate configuration
-- **Logging**: Create logger instance with `new Logger(logLevel)`
-- **Error Handling**: Provide meaningful error messages with context
-- **Validation**: Validate command arguments before processing
+## Utilities (`src/utils/`)
 
-### Yargs Integration
+### `config.ts`
 
-- Use `ArgumentsCamelCase` type for argv parameter
-- Configure options in the `builder` function
-- Use descriptive option names and descriptions
-- Support both kebab-case and camelCase for options (e.g., `--dry-run` and `--dryRun`)
+- Central Zod schema (`configSchema`) describes the entire configuration. Add new options with exhaustive validation and update the corresponding inferred types (`Config`, `ActualServerConfig`, etc.).
+- `budgetSchema` enforces end-to-end encryption requirements (password required when enabled) and earliest import date format. Keep the schema and error messages aligned with tests in `tests/config.test.ts`.
+- `getConfig(argv)` handles missing files, TOML parsing, and schema validation. Preserve detailed error messaging when adjusting behaviour.
+- Maintain constants such as `DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS` (5 minutes) and `FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS` (45 seconds) alongside the schema so command code can reuse them.
 
-### Common Patterns
+### `shared.ts`
 
-- **Date Parsing**: Use `parse()` from date-fns with [DATE_FORMAT](mdc:src/utils/shared.ts)
-- **Array Handling**: Support both single values and arrays for filters
-- **Server/Budget Filtering**: Validate against configured servers and budgets
-- **Dry Run Support**: Implement `--dry-run` flag for safe testing
+- Exposes reusable constants:
+  - `DATE_FORMAT` (`yyyy-MM-dd`) used by commands and importer.
+  - `APPLICATION_DIRECTORY`, `DEFAULT_DATA_DIR`, and `DEFAULT_CONFIG_FILE` for filesystem paths.
+  - `EXAMPLE_CONFIG` string used by the `validate` command. Update it whenever the configuration schema evolves.
 
-### Error Messages
+### `Logger.ts`
 
-- Use consistent error message format
-- Include relevant context (server URLs, budget IDs, etc.)
-- Provide actionable guidance for fixing issues
+- Provides a coloured console logger with four levels (`ERROR`, `WARN`, `INFO`, `DEBUG`).
+- All code should log via this utility instead of `console.log` directly so hint formatting and log levels remain consistent.
+- Use the `hint` argument (string or string array) to provide contextual details such as server URLs, budget IDs, or suggestion text.
 
-## Configuration Patterns
+### `ActualApi.ts`
 
-The application uses TOML configuration files with Zod validation.
+- Wraps `@actual-app/api` and provides higher-level helpers (`init`, `loadBudget`, `getAccounts`, `getTransactions`, `importTransactions`, `shutdown`).
+- All SDK calls must go through `runActualRequest()` to benefit from timeout protection, noise suppression, and consistent error logging. Passing `additionalHints` helps the logger provide context when errors occur.
+- Console output from Actual is noisy; `patchConsole()` filters known prefixes. Restore the console in `finally` blocks when modifying the behaviour.
+- `ActualApiTimeoutError` is thrown when requests exceed the configured timeout; propagate this class so callers can differentiate timeout failures.
 
-### Configuration Schema
+### `AccountMap.ts`
 
-- **Location**: [src/utils/config.ts](mdc:src/utils/config.ts)
-- **Default Path**: `~/.actually/config.toml`
-- **Validation**: Zod schemas with descriptive error messages
-- **Types**: Exported TypeScript types from Zod schemas
+- Fetches MoneyMoney accounts via `getAccounts()` and Actual accounts via `ActualApi.getAccounts()` before building the mapping described in the configuration.
+- Supports flexible account references (UUID, account number, or name for MoneyMoney; ID or name for Actual). Preserve these matching rules when extending the mapper.
+- `loadFromConfig()` must be called before `getMap()`. When adjusting the public API, maintain this contract to avoid runtime errors in the importer.
 
-### Configuration Structure
+### `Importer.ts`
 
-```typescript
-// Schema definition
-export const configSchema = z.object({
-    payeeTransformation: payeeTransformationSchema,
-    import: importConfigSchema,
-    actualServers: z.array(actualServerSchema).min(1),
-});
+- Orchestrates fetching MoneyMoney transactions, filtering them, and pushing new entries into Actual.
+- Respect budget-level settings:
+  - `earliestImportDate` acts as a floor for import range.
+  - `config.import.importUncheckedTransactions` and `synchronizeClearedStatus` govern which transactions are processed and how clear flags are handled.
+  - `config.import.ignorePatterns` contains optional regex lists for comments, payees, and purposes; cache compiled regexes in `patternCache`.
+- Build Actual transactions with the correct identifiers so duplicates can be detected (`imported_id` is derived from MoneyMoney data). A synthetic starting balance transaction is created when the Actual account has no history; preserve this behaviour.
+- Honour dry-run mode by skipping `ActualApi.importTransactions()` and logging that no changes were made.
 
-// Type inference
-export type Config = z.infer<typeof configSchema>;
-```
+### `PayeeTransformer.ts`
 
-### Configuration Loading
+- Integrates with the OpenAI API to normalise payee names.
+- Validate configuration in the constructor (require `openAiApiKey` when enabled) and configure the client with the model options from the schema.
+- Cache model lookups on disk (`openai-model-cache.json` inside `DEFAULT_DATA_DIR`) and keep the in-memory `transformationCache` for repeated payees.
+- Respect the masking configuration when logging payee names. Never log raw names when `maskPayeeNamesInLogs` is true.
 
-- Use `getConfig(argv)` to load configuration
-- Handle missing config files gracefully
-- Provide clear error messages for validation failures
-- Support custom config paths via `--config` option
+### `types/`
 
-### Validation Patterns
+- Contains custom type declarations/augmentations for the Actual SDK. Update these definitions alongside any SDK upgrades so TypeScript stays accurate.
 
-- Use Zod for runtime validation
-- Provide custom error messages for better UX
-- Validate cross-field dependencies with `superRefine()`
-- Handle TOML parsing errors with line/column information
+## Coding standards
 
-### Default Configuration
+- TypeScript files use 4-space indentation, single quotes, semicolons, and Prettier-enforced wrapping (default print width 80). Run the format and lint scripts before committing.
+- This project is ESM-first. When importing internal modules, include the `.js` extension (`import Logger from './Logger.js';`).
+- Group imports by origin: external dependencies first, then Node built-ins, then internal modules.
+- Keep functions and classes strongly typed; avoid implicit `any` by leveraging existing types from utilities and the configuration schema.
 
-- Generate default config in [src/utils/shared.ts](mdc:src/utils/shared.ts)
-- Keep example configs in sync with schema changes
-- Update documentation when adding new options
+## Testing expectations
 
-### Configuration Error Handling
+- Add or update Vitest coverage in `tests/` whenever changing behaviour. Command logic is exercised indirectly through utility tests; keep the unit tests for `ActualApi`, `Importer`, `PayeeTransformer`, and configuration validation in sync with implementation changes.
+- Use `vi.mock()` to isolate external services (`@actual-app/api`, `moneymoney`, `openai`) and prefer per-test resets via `beforeEach`/`afterEach`.
 
-- Distinguish between TOML parsing errors and validation errors
-- Provide actionable error messages
-- Include file path and line numbers for parsing errors
-- Format Zod validation errors clearly
-
-## Utility Class Patterns
-
-### Logger Utility
-
-The [Logger](mdc:src/utils/Logger.ts) class provides consistent logging across the application.
-
-#### Usage Patterns
-
-```typescript
-import Logger, { LogLevel } from './Logger.js';
-
-const logger = new Logger(LogLevel.INFO);
-logger.info('Message', ['hint1', 'hint2']);
-logger.error('Error message');
-logger.debug('Debug information');
-```
-
-#### Log Levels
-
-- `ERROR` (0): Critical errors
-- `WARN` (1): Warnings
-- `INFO` (2): General information
-- `DEBUG` (3): Detailed debugging
-
-### API Client Patterns
-
-#### ActualApi Class
-
-- Initialize with server configuration and logger
-- Handle connection lifecycle (init, loadBudget, shutdown)
-- Implement proper error handling and timeouts
-- Use console state management for testing
-
-#### PayeeTransformer Class
-
-- AI-powered payee name transformation
-- OpenAI integration with configurable models
-- Caching and error handling
-- Log redaction for sensitive data
-
-### Data Transformation
-
-#### AccountMap Class
-
-- Maps MoneyMoney accounts to Actual accounts using configuration
-- Handles account creation and synchronization
-- Provides account lookup functionality with ref-based filtering
-- Supports custom account mapping via configuration
-- Manages account type mapping (checking, savings, credit, etc.)
-
-#### Importer Class
-
-- Core import logic for transactions with pattern matching
-- Handles date filtering and account mapping
-- Supports dry-run mode for testing
-- Integrates with PayeeTransformer for AI-powered payee cleaning
-- Implements ignore patterns for comments, payees, and purposes
-- Supports transaction status synchronization (cleared/uncleared)
-
-### Configuration Utilities
-
-#### Config Loading
-
-- TOML parsing with error handling
-- Zod validation with descriptive errors
-- Support for custom config paths
-- Default configuration generation
-
-#### Shared Constants
-
-- Date formats and application directories
-- Default timeouts and configuration values
-- Example configuration templates
-
-### Error Handling Patterns
-
-- Use try/catch blocks for async operations
-- Provide context in error messages
-- Log errors with appropriate levels
-- Handle external API failures gracefully
-
-## API Integration Patterns
-
-### Actual Budget API
-
-#### Connection Management
-
-- Use [ActualApi](mdc:src/utils/ActualApi.ts) class for all Actual Budget interactions
-- Initialize with server configuration and logger
-- Handle connection lifecycle: `init()` → `loadBudget()` → operations → `shutdown()`
-- Implement proper timeout handling and error recovery
-
-#### Budget Operations
-
-```typescript
-const actualApi = new ActualApi(serverConfig, logger);
-await actualApi.init();
-await actualApi.loadBudget(budgetSyncId);
-// Perform operations
-await actualApi.shutdown();
-```
-
-#### Transaction Import
-
-- Use `importTransactions()` for bulk transaction imports
-- Handle duplicate detection and conflict resolution
-- Support dry-run mode for testing
-- Implement proper error handling for API failures
-
-### MoneyMoney Integration
-
-#### Database Access
-
-- Use `checkDatabaseUnlocked()` to verify MoneyMoney accessibility
-- Handle locked database scenarios gracefully
-- Provide clear error messages for access issues
-
-#### Data Extraction
-
-- Extract accounts and transactions from MoneyMoney database
-- Handle different account types and transaction formats
-- Support date range filtering for imports
-
-### OpenAI Integration
-
-#### Payee Transformation
-
-- Use [PayeeTransformer](mdc:src/utils/PayeeTransformer.ts) for AI-powered payee name cleaning
-- Implement caching to reduce API calls
-- Handle API failures gracefully with fallback to original names
-- Mask sensitive data in logs when configured
-
-#### Configuration
-
-- Support configurable OpenAI models and parameters
-- Implement timeout handling for API calls
-- Provide custom prompt support for specialized use cases
-
-### API Error Handling
-
-#### Network Errors
-
-- Implement retry logic for transient failures
-- Handle timeout scenarios appropriately
-- Provide user-friendly error messages
-
-#### Data Validation
-
-- Validate data before API calls
-- Handle malformed responses gracefully
-- Log errors with appropriate detail levels
-
-## Source Code Standards
-
-### TypeScript Standards
-
-- Use modern TypeScript with ECMAScript modules (`import ... from './module.js'`)
-- Indent using **4 spaces** (not tabs) - match existing code style
-- **Line Length**: Maximum 80 characters (Prettier enforced)
-- **Semicolons**: Always use semicolons
-- **Quotes**: Single quotes for strings
-- **Trailing Commas**: ES5 style (objects and arrays)
-- Prefer explicit types for function parameters/returns when not inferred from obvious context
-- Use `PascalCase` for classes, `camelCase` for variables and functions
-- Follow existing naming patterns (`*.command.ts` for CLI commands)
-
-### Import/Export Patterns
-
-- Use ES modules with `.js` extensions in imports (TypeScript requirement)
-- Group imports: external packages first, then internal modules
-- Use named exports when possible, default exports for main classes
-
-### Error Handling
-
-- Use the `Logger` utility instead of `console.log` directly
-- Provide meaningful error messages with context
-- Handle async operations with proper try/catch blocks
-- Use Zod for runtime validation with descriptive error messages
-
-### Configuration Updates
-
-- When adding new configuration options or command-line flags, update:
-  - TOML schema/validation in `src/utils/config.ts`
-  - Generated default config in `src/utils/shared.ts`
-  - Documentation (README.md, example-config-advanced.toml)
-
-## Advanced Patterns
-
-### E2E Encryption Support
-
-- Handle encrypted Actual Budget connections with password-based encryption
-- Support both encrypted and unencrypted budget configurations
-- Implement proper error handling for encryption failures
-
-### Pattern Matching and Filtering
-
-- Use regex patterns for transaction filtering (comments, payees, purposes)
-- Implement caching for compiled regex patterns
-- Support case-insensitive pattern matching
-- Handle pattern compilation errors gracefully
-
-### Console State Management
-
-- Suppress noisy Actual API console output during testing
-- Restore console state after API operations
-- Use console spies for testing without affecting production logs
-
-### Caching Strategies
-
-- Implement file-based caching for OpenAI responses
-- Use temporary directories for test isolation
-- Handle cache invalidation and cleanup
-- Support configurable cache locations
