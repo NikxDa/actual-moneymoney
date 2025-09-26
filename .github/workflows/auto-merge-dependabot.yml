@@ -12,6 +12,11 @@ jobs:
             contents: write
             pull-requests: write
         steps:
+            - name: Auto-approve Dependabot PR
+              uses: hmarr/auto-approve-action@v3
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  
             - name: Auto-merge minor and patch updates
               uses: fastify/github-action-merge-dependabot@v3
               with:
