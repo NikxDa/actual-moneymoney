@@ -13,9 +13,6 @@ queries:
     # Use the default security and quality queries
     - name: security-and-quality
       uses: security-and-quality
-    # Include JavaScript/TypeScript specific security queries
-    - name: javascript-security
-      uses: security-and-quality/javascript
 
 # Paths to exclude from analysis
 paths-ignore:
