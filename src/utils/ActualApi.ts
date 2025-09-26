@@ -51,7 +51,7 @@ const createErrorWithCause = (message: string, cause: Error): Error => {
     }
 };
 
-class ActualApiTimeoutError extends Error {
+export class ActualApiTimeoutError extends Error {
     constructor(operation: string, timeoutMs: number) {
         super(
             `Actual API operation '${operation}' timed out after ${timeoutMs}ms`
@@ -71,7 +71,13 @@ class ActualApi {
     private getRequestTimeoutMs(): number {
         const ms = this.serverConfig.requestTimeoutMs;
         if (typeof ms === 'number') {
-            return ms > 0 ? ms : DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
+            if (ms > 0) {
+                return ms;
+            }
+            this.logger.warn(
+                'requestTimeoutMs must be > 0; falling back to default'
+            );
+            return DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
         }
         return DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
     }
@@ -102,7 +108,13 @@ class ActualApi {
             }, timeoutMs);
         });
 
-        const rawCallback = callback();
+        let rawCallback: Promise<T>;
+        try {
+            rawCallback = callback();
+        } catch (error) {
+            rawCallback = Promise.reject<T>(error);
+        }
+
         const racingCallback = rawCallback.then(
             (value) => value,
             (error) => {

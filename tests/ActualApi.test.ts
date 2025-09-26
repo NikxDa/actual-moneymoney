@@ -150,7 +150,7 @@ describe('ActualApi', () => {
         vi.useFakeTimers();
 
         try {
-            const { default: ActualApi } = await import(
+            const { default: ActualApi, ActualApiTimeoutError } = await import(
                 '../src/utils/ActualApi.js'
             );
 
@@ -180,10 +180,11 @@ describe('ActualApi', () => {
             );
 
             const loadPromise = api.loadBudget('budget');
-            const rejection = expect(loadPromise).rejects.toThrow(/timed out/);
+            const capturedError = loadPromise.catch((error) => error);
 
             await vi.advanceTimersByTimeAsync(10);
-            await rejection;
+            const timeoutError = await capturedError;
+            expect(timeoutError).toBeInstanceOf(ActualApiTimeoutError);
             expect(logger.error).toHaveBeenCalledWith(
                 expect.stringContaining('timed out'),
                 expect.arrayContaining([
@@ -273,6 +274,128 @@ describe('ActualApi', () => {
         expect(new Set(sentTransactions.map((tx) => tx.imported_id)).size).toBe(
             sentTransactions.length
         );
+    });
+
+    it('retries timed out imports without creating duplicate transactions', async () => {
+        vi.useFakeTimers();
+
+        let resolveFirstAttempt: (() => void) | null = null;
+
+        try {
+            const { default: ActualApi, ActualApiTimeoutError } = await import(
+                '../src/utils/ActualApi.js'
+            );
+
+            const serverConfig: ActualServerConfig = {
+                serverUrl: 'http://localhost:5006',
+                serverPassword: 'secret',
+                requestTimeoutMs: 5,
+                budgets: [
+                    {
+                        syncId: 'budget',
+                        e2eEncryption: {
+                            enabled: false,
+                            password: undefined,
+                        },
+                        accountMapping: {},
+                    },
+                ],
+            };
+
+            const logger = createLogger();
+            const api = new ActualApi(serverConfig, logger);
+            // @ts-expect-error accessing protected test hook
+            api.isInitialized = true;
+
+            const transactions: CreateTransaction[] = [
+                {
+                    date: '2024-02-01',
+                    amount: 100,
+                    imported_id: 'existing',
+                    imported_payee: 'Alpha',
+                    notes: 'first',
+                },
+                {
+                    date: '2024-02-03',
+                    amount: 300,
+                    imported_payee: 'Gamma',
+                    notes: 'needs id',
+                },
+            ];
+
+            const serverRecords = new Map<string, CreateTransaction>();
+            const callPayloads: string[][] = [];
+
+            importTransactionsMock.mockImplementation((accountId, txns) => {
+                expect(accountId).toBe('account-1');
+                const ids = txns.map((tx) => tx.imported_id ?? '');
+                callPayloads.push(ids);
+                expect(new Set(ids).size).toBe(ids.length);
+
+                const newTransactions = txns.filter((tx) => {
+                    const importedId = tx.imported_id;
+                    expect(importedId).toBeTruthy();
+                    return importedId ? !serverRecords.has(importedId) : false;
+                });
+
+                const finalize = () => {
+                    for (const tx of newTransactions) {
+                        serverRecords.set(tx.imported_id as string, tx);
+                    }
+                };
+
+                if (!resolveFirstAttempt) {
+                    return new Promise((resolve) => {
+                        resolveFirstAttempt = () => {
+                            finalize();
+                            resolve({ added: newTransactions, updated: [] });
+                        };
+                    });
+                }
+
+                finalize();
+                return Promise.resolve({ added: newTransactions, updated: [] });
+            });
+
+            const firstAttempt = api.importTransactions(
+                'account-1',
+                transactions
+            );
+            const firstAttemptError = firstAttempt.catch((error) => error);
+
+            await vi.advanceTimersByTimeAsync(10);
+
+            const timeoutError = await firstAttemptError;
+            expect(timeoutError).toBeInstanceOf(ActualApiTimeoutError);
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('timed out'),
+                expect.arrayContaining([
+                    'Server URL: http://localhost:5006',
+                    'Account ID: account-1',
+                ])
+            );
+
+            expect(resolveFirstAttempt).toBeTruthy();
+            resolveFirstAttempt?.();
+            await Promise.resolve();
+
+            const secondAttempt = api.importTransactions('account-1', transactions);
+            await secondAttempt;
+
+            expect(callPayloads).toHaveLength(2);
+            expect(callPayloads[0]).toEqual(callPayloads[1]);
+            expect(importTransactionsMock).toHaveBeenCalledTimes(2);
+            const secondPayloadIds = callPayloads[1];
+            expect(new Set(secondPayloadIds).size).toBe(secondPayloadIds.length);
+            expect(serverRecords.size).toBe(2);
+        } finally {
+            try {
+                await vi.runOnlyPendingTimersAsync();
+                vi.clearAllTimers();
+            } finally {
+                vi.useRealTimers();
+            }
+        }
     });
 
     it('ignores shutdown when the API was never initialised', async () => {
