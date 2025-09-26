@@ -81,6 +81,7 @@ class ActualApi {
         const timeoutMs = this.getRequestTimeoutMs();
         let timeoutHandle: NodeJS.Timeout | null = null;
         const hints = this.createContextHints(additionalHints);
+        const unpatch = this.patchConsole();
 
         const timeoutPromise = new Promise<never>((_, reject) => {
             timeoutHandle = setTimeout(() => {
@@ -90,7 +91,7 @@ class ActualApi {
 
         try {
             const result = (await Promise.race([
-                this.suppressConsoleLog(callback),
+                callback(),
                 timeoutPromise,
             ])) as T;
             return result;
@@ -116,6 +117,7 @@ class ActualApi {
             if (timeoutHandle) {
                 clearTimeout(timeoutHandle);
             }
+            unpatch();
         }
     }
 
@@ -280,9 +282,7 @@ class ActualApi {
         warn: typeof console.warn;
     } | null = null;
 
-    private async suppressConsoleLog<T>(
-        callback: () => T | Promise<T>
-    ): Promise<Awaited<T>> {
+    private patchConsole(): () => void {
         if (ActualApi.suppressDepth === 0) {
             ActualApi.originals = {
                 log: console.log,
@@ -290,9 +290,7 @@ class ActualApi {
                 debug: console.debug,
                 warn: console.warn,
             };
-
             const originals = ActualApi.originals;
-
             console.log = suppressIfNoisy(
                 (...args: Parameters<typeof console.log>) => {
                     originals.log.apply(console, args);
@@ -314,11 +312,8 @@ class ActualApi {
                 }
             );
         }
-
         ActualApi.suppressDepth++;
-        try {
-            return await callback();
-        } finally {
+        return () => {
             ActualApi.suppressDepth--;
             if (ActualApi.suppressDepth === 0 && ActualApi.originals) {
                 console.log = ActualApi.originals.log;
@@ -327,7 +322,7 @@ class ActualApi {
                 console.warn = ActualApi.originals.warn;
                 ActualApi.originals = null;
             }
-        }
+        };
     }
 }
 
