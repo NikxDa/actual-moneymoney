@@ -20,8 +20,8 @@
             {
                 "assets": [
                     {
-                        "path": "dist/**/*",
-                        "label": "Distribution files"
+                        "path": "dist/index.js",
+                        "label": "CLI Binary"
                     }
                 ]
             }
