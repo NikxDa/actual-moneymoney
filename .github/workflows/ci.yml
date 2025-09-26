@@ -9,7 +9,7 @@ jobs:
         name: lint
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
@@ -27,7 +27,7 @@ jobs:
         needs: lint
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
@@ -45,7 +45,7 @@ jobs:
             - typecheck
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
@@ -63,7 +63,7 @@ jobs:
             - typecheck
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
@@ -77,7 +77,7 @@ jobs:
     commitlint:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
 
