@@ -41,6 +41,13 @@ jobs:
                   git config --global user.name "github-actions[bot]"
                   git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+            - name: Clean up existing tags
+              run: |
+                  # Remove local tags that might conflict
+                  git tag -l | xargs -I {} git tag -d {} || true
+                  # Fetch all tags from remote
+                  git fetch --tags --force
+
             - name: Semantic Release
               run: npx semantic-release
               env:

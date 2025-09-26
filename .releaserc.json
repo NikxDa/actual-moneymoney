@@ -26,5 +26,7 @@
                 ]
             }
         ]
-    ]
+    ],
+    "tagFormat": "v${version}",
+    "preset": "conventionalcommits"
 }
