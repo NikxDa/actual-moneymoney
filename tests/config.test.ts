@@ -96,6 +96,31 @@ describe('Config Validation', () => {
             expect(() => configSchema.parse(invalidConfig)).toThrow();
         });
 
+        it('should reject whitespace-only password when encryption is enabled', () => {
+            const invalidConfig = {
+                payeeTransformation: { enabled: false },
+                import: { importUncheckedTransactions: true },
+                actualServers: [
+                    {
+                        serverUrl: 'http://localhost:5006',
+                        serverPassword: 'test-password',
+                        budgets: [
+                            {
+                                syncId: 'test-sync-id',
+                                e2eEncryption: {
+                                    enabled: true,
+                                    password: '   ',
+                                },
+                                accountMapping: { 'test-account': 'actual-account-id' },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            expect(() => configSchema.parse(invalidConfig)).toThrow();
+        });
+
         it('should require password when encryption is enabled (undefined password)', () => {
             const invalidConfig = {
                 payeeTransformation: {

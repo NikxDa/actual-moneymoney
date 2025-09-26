@@ -53,6 +53,7 @@ const budgetSchema = z
                 code: ZodIssueCode.custom,
                 message:
                     'Password must not be empty if end-to-end encryption is enabled',
+                path: ['e2eEncryption', 'password'],
             });
         }
     });
@@ -117,6 +118,7 @@ export const configSchema = z
                 code: ZodIssueCode.custom,
                 message:
                     'OpenAI key must not be empty if payeeTransformation is enabled',
+                path: ['payeeTransformation', 'openAiApiKey'],
             });
         }
     });
@@ -128,7 +130,7 @@ export type ActualServerConfig = z.infer<typeof actualServerSchema>;
 export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
 export type Config = z.infer<typeof configSchema>;
 
-export const getConfigFile = (argv: ArgumentsCamelCase) => {
+export const getConfigFile = (argv: ArgumentsCamelCase): string => {
     if (argv.config) {
         const argvConfigFile = path.resolve(argv.config as string);
         return argvConfigFile;
@@ -137,7 +139,7 @@ export const getConfigFile = (argv: ArgumentsCamelCase) => {
     return DEFAULT_CONFIG_FILE;
 };
 
-export const getConfig = async (argv: ArgumentsCamelCase) => {
+export const getConfig = async (argv: ArgumentsCamelCase): Promise<Config> => {
     const configFile = getConfigFile(argv);
 
     const configFileExists = await fs
