@@ -8,19 +8,11 @@ jobs:
     auto-merge:
         if: github.actor == 'dependabot[bot]'
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
         steps:
-            - name: Check if PR is safe to auto-merge
-              id: check
-              run: |
-                  # Check if it's a minor or patch update
-                  if [[ "${{ github.event.pull_request.title }}" =~ ^(chore|fix) ]]; then
-                      echo "safe=true" >> $GITHUB_OUTPUT
-                  else
-                      echo "safe=false" >> $GITHUB_OUTPUT
-                  fi
-
-            - name: Auto-merge safe updates
-              if: steps.check.outputs.safe == 'true'
+            - name: Auto-merge minor and patch updates
               uses: fastify/github-action-merge-dependabot@v3
               with:
                   target: minor
