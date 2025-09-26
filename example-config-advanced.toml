@@ -66,6 +66,8 @@ purposePatterns = ["internal", "transfer*"]
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "your-server-password"
+# Optional: Override the default Actual server timeout (in milliseconds, max 300000)
+# requestTimeoutMs = 45000
 
 # Budgets for this server
 [[actualServers.budgets]]
@@ -89,6 +91,7 @@ password = ""
 [[actualServers]]
 serverUrl = "https://your-remote-server.com"
 serverPassword = "remote-server-password"
+# requestTimeoutMs = 45000 # max 300000
 
 [[actualServers.budgets]]
 syncId = "remote-sync-id"
