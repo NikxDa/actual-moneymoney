@@ -69,6 +69,7 @@ const payeeTransformationSchema = z.object({
     ).optional(),
     openAiModel: z.string().trim().optional().default('gpt-3.5-turbo'),
     skipModelValidation: z.boolean().default(false),
+    maskPayeeNamesInLogs: z.boolean().default(true),
     customPrompt: z.string().optional(),
     modelConfig: z
         .object({
