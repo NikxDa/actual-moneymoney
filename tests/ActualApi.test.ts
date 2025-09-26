@@ -436,11 +436,11 @@ describe('ActualApi', () => {
         // This test verifies that the directory naming mismatch fix is working
         // by ensuring the loadBudget method can handle the scenario where
         // the budget directory has a different name than the sync ID
-
+        
         const { default: ActualApi } = await import(
             '../src/utils/ActualApi.js'
         );
-
+        
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
             serverPassword: 'secret',
@@ -465,6 +465,7 @@ describe('ActualApi', () => {
         syncMock.mockResolvedValue(undefined);
 
         // This should not throw an error even if there's a directory naming mismatch
+        // The test verifies that the method handles the mismatch gracefully
         await expect(api.loadBudget('test-budget-sync-id')).resolves.not.toThrow();
     });
 });
