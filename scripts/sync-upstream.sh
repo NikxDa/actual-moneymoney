@@ -6,9 +6,33 @@ set -e
 
 echo "🔄 Syncing with upstream repository..."
 
+# Cleanup function to remove upstream remote if it was added by this script
+cleanup() {
+    if git remote get-url upstream >/dev/null 2>&1; then
+        echo "🧹 Cleaning up temporary upstream remote..."
+        git remote remove upstream
+    fi
+}
+
+# Set up cleanup on script exit
+trap cleanup EXIT
+
+# Check if upstream remote exists, if not add it temporarily
+if ! git remote get-url upstream >/dev/null 2>&1; then
+    echo "📡 Adding temporary upstream remote..."
+    git remote add upstream https://github.com/NikxDa/actual-moneymoney.git
+    echo "✅ Upstream remote added (will be removed when script exits)"
+fi
+
 # Fetch latest changes from upstream
 echo "📥 Fetching upstream changes..."
 git fetch upstream
+
+# Check if there are any changes to sync
+if git merge-base --is-ancestor upstream/main develop; then
+    echo "✅ Develop is already up to date with upstream"
+    exit 0
+fi
 
 # Show what's new in upstream
 echo "📊 Upstream changes since last sync:"
