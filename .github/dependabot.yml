@@ -1,5 +1,6 @@
 version: 2
 updates:
+    # All dependency updates target main branch only
     # Main npm dependencies
     - package-ecosystem: npm
       directory: '/'
@@ -37,46 +38,11 @@ updates:
           - dependency-name: 'openai'
             update-types: ['version-update:semver-major']
 
-    # Develop branch dependencies (same as main but different target)
-    - package-ecosystem: npm
-      directory: '/'
-      target-branch: develop
-      schedule:
-          interval: weekly
-          day: monday
-          time: '09:00'
-      commit-message:
-          prefix: chore
-          prefix-development: chore
-          include: scope
-      # Group minor and patch updates together
-      groups:
-          minor-and-patch:
-              patterns:
-                  - '*'
-              update-types:
-                  - minor
-                  - patch
-      # Limit concurrent pull requests
-      open-pull-requests-limit: 10
-      # Ignore major version updates for critical dependencies
-      ignore:
-          # Keep zod pinned due to OpenAI compatibility
-          - dependency-name: 'zod'
-            update-types: ['version-update:semver-major']
-          # Be cautious with @actual-app/api major updates
-          - dependency-name: '@actual-app/api'
-            update-types: ['version-update:semver-major']
-          # Review moneymoney major updates carefully
-          - dependency-name: 'moneymoney'
-            update-types: ['version-update:semver-major']
-          # OpenAI major updates need careful review
-          - dependency-name: 'openai'
-            update-types: ['version-update:semver-major']
 
     # GitHub Actions dependencies
     - package-ecosystem: github-actions
       directory: '/'
+      target-branch: main
       schedule:
           interval: monthly
       commit-message:
