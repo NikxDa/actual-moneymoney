@@ -89,7 +89,7 @@ class ActualApi {
     async sync() {
         await this.ensureInitialization();
         await this.suppressConsoleLog(async () => {
-            await actual.internal.send('sync');
+            await actual.internal.send('sync', undefined);
         });
     }
 
