@@ -10,7 +10,7 @@ export enum LogLevel {
 type LogHint = string | string[];
 
 class Logger {
-    private logLevel: LogLevel = LogLevel.INFO;
+    private logLevel: LogLevel;
 
     constructor(logLevel = LogLevel.INFO) {
         this.logLevel = logLevel;

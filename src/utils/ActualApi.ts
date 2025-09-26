@@ -1,5 +1,23 @@
 import actual from '@actual-app/api';
-import type { CreateTransaction } from '@actual-app/api';
+// Type for transaction import - matches the ImportTransaction interface
+type ImportTransaction = {
+    account?: string;
+    date: string;
+    amount?: number;
+    payee?: string;
+    payee_name?: string;
+    imported_payee?: string;
+    category?: string;
+    notes?: string;
+    imported_id?: string;
+    transfer_id?: string;
+    cleared?: boolean;
+    subtransactions?: Array<{
+        amount: number;
+        category?: string;
+        notes?: string;
+    }>;
+};
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import { createHash } from 'node:crypto';
@@ -357,7 +375,7 @@ class ActualApi {
 
     public async importTransactions(
         accountId: string,
-        transactions: CreateTransaction[]
+        transactions: ImportTransaction[]
     ): ReturnType<typeof actual.importTransactions> {
         await this.ensureInitialization();
         const dedupedTransactions = this.normalizeAndDeduplicateTransactions(
@@ -387,9 +405,9 @@ class ActualApi {
 
     private normalizeAndDeduplicateTransactions(
         accountId: string,
-        transactions: CreateTransaction[]
-    ): CreateTransaction[] {
-        const dedupedTransactions: CreateTransaction[] = [];
+        transactions: ImportTransaction[]
+    ): ImportTransaction[] {
+        const dedupedTransactions: ImportTransaction[] = [];
         const seenImportedIds = new Set<string>();
 
         for (const transaction of transactions) {
@@ -461,8 +479,8 @@ class ActualApi {
 
     private ensureImportedId(
         accountId: string,
-        transaction: CreateTransaction
-    ): CreateTransaction {
+        transaction: ImportTransaction
+    ): ImportTransaction {
         const importedId = transaction.imported_id;
 
         if (typeof importedId === 'string') {
@@ -488,7 +506,7 @@ class ActualApi {
 
     private createFallbackImportedId(
         accountId: string,
-        transaction: CreateTransaction
+        transaction: ImportTransaction
     ): string {
         const payeeId = (transaction as { payee_id?: string }).payee_id ?? '';
         const payee = (transaction as { payee?: string }).payee ?? '';
