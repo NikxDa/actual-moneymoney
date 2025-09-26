@@ -28,6 +28,30 @@ This project uses a distributed documentation approach with specific guidelines 
 - **Pre-commit Checks**: Quality assurance workflow
 - **Test Maintenance**: Keeping tests in sync with source changes
 
+## Development Workflow
+
+### Pre-commit Checks
+
+Run the following commands before committing changes so local development matches CI:
+
+1. `npm run lint:eslint`
+1. `npm run lint:prettier`
+1. `npm run typecheck`
+1. `npm run build`
+1. `npm test`
+
+These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
+
+### Available Scripts
+
+- **Build**: `npm run build` - Compile TypeScript to JavaScript
+- **Type Check**: `npm run typecheck` - Check types without emitting files
+- **Lint**: `npm run lint:eslint` - ESLint code quality checks
+- **Format**: `npm run lint:prettier` - Check code formatting
+- **Format Fix**: `npm run lint:prettier:fix` - Auto-fix formatting issues
+- **Test**: `npm test` - Run test suite
+- **Start**: `npm start` - Run the compiled application
+
 ## Quick Start
 
 ### For Source Code Development
