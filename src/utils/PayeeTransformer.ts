@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
 import Logger from './Logger.js';
-import { PayeeTransformationConfig } from './config.js';
+import type { PayeeTransformationConfig } from './config.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
 interface ModelCapabilities {
@@ -18,11 +18,10 @@ interface ModelCache {
 
 const MODEL_CACHE_FILENAME = 'openai-model-cache.json';
 const MODEL_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
+const MAX_LOG_ENTRIES = 50;
 
 type ExtendedChatCompletionCreateParams =
-    OpenAI.Chat.Completions.ChatCompletionCreateParams & {
-        temperature?: number;
-    };
+    OpenAI.Chat.Completions.ChatCompletionCreateParams;
 
 class PayeeTransformer {
     private openai: OpenAI;
@@ -33,15 +32,15 @@ class PayeeTransformer {
 
     private static modelCache: ModelCache | null = null;
 
-    private static getCacheFilePath() {
+    private static getCacheFilePath(): string {
         return path.join(DEFAULT_DATA_DIR, MODEL_CACHE_FILENAME);
     }
 
-    private static async ensureCacheDirExists() {
+    private static async ensureCacheDirExists(): Promise<void> {
         await fs.mkdir(DEFAULT_DATA_DIR, { recursive: true });
     }
 
-    private static async readModelCacheFromDisk() {
+    private static async readModelCacheFromDisk(): Promise<ModelCache | null> {
         try {
             const cacheFile = PayeeTransformer.getCacheFilePath();
             const cacheContent = await fs.readFile(cacheFile, 'utf-8');
@@ -63,7 +62,9 @@ class PayeeTransformer {
         }
     }
 
-    private static async writeModelCacheToDisk(cache: ModelCache) {
+    private static async writeModelCacheToDisk(
+        cache: ModelCache
+    ): Promise<void> {
         try {
             await PayeeTransformer.ensureCacheDirExists();
             const cacheFile = PayeeTransformer.getCacheFilePath();
@@ -260,7 +261,7 @@ class PayeeTransformer {
                             `Attempt ${attempt} failed, retrying... (${status})`
                         );
                         await new Promise((resolve) =>
-                            setTimeout(resolve, 1000 * attempt)
+                            setTimeout(resolve, 1000 * 2 ** (attempt - 1))
                         ); // Exponential backoff
                         continue;
                     }
@@ -469,11 +470,11 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
     }
 
     private formatPayeeListForLog(payees: Array<string>): Array<string> {
-        if (!this.shouldMaskPayeeLogs()) {
-            return payees;
-        }
+        const prepared = this.shouldMaskPayeeLogs()
+            ? payees.map((payee) => this.obfuscatePayeeName(payee))
+            : payees;
 
-        return payees.map((payee) => this.obfuscatePayeeName(payee));
+        return this.summarizeLogEntries(prepared);
     }
 
     private formatPayeeMappingForLog(
@@ -481,27 +482,40 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
     ): Array<string> {
         const shouldMask = this.shouldMaskPayeeLogs();
 
-        return Object.entries(mappings).map(([original, transformed]) => {
-            const displayOriginal = shouldMask
-                ? this.obfuscatePayeeName(original)
-                : original;
-            const displayTransformed = shouldMask
-                ? this.obfuscatePayeeName(transformed)
-                : transformed;
+        const formatted = Object.entries(mappings).map(
+            ([original, transformed]) => {
+                const displayOriginal = shouldMask
+                    ? this.obfuscatePayeeName(original)
+                    : original;
+                const displayTransformed = shouldMask
+                    ? this.obfuscatePayeeName(transformed)
+                    : transformed;
 
-            return `  "${displayOriginal}" → "${displayTransformed}"`;
-        });
+                return `  "${displayOriginal}" → "${displayTransformed}"`;
+            }
+        );
+
+        return this.summarizeLogEntries(formatted);
+    }
+
+    private summarizeLogEntries(entries: Array<string>): Array<string> {
+        if (entries.length <= MAX_LOG_ENTRIES) {
+            return entries;
+        }
+
+        const visibleEntries = entries.slice(0, MAX_LOG_ENTRIES);
+        const remaining = entries.length - MAX_LOG_ENTRIES;
+        return [...visibleEntries, `…and ${remaining} more`];
     }
 
     private obfuscatePayeeName(payee: string): string {
-        if (payee.length <= 2) {
-            return '•'.repeat(Math.max(payee.length, 1));
+        const chars = Array.from(payee); // code point–aware
+        if (chars.length <= 2) {
+            return '•'.repeat(Math.max(chars.length, 1));
         }
-
-        const firstChar = payee[0];
-        const lastChar = payee[payee.length - 1];
-        const middle = '•'.repeat(payee.length - 2);
-
+        const firstChar = chars[0];
+        const lastChar = chars[chars.length - 1];
+        const middle = '•'.repeat(chars.length - 2);
         return `${firstChar}${middle}${lastChar}`;
     }
 
