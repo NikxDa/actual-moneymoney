@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
-import Logger, { LogLevel } from './Logger.js';
+import Logger from './Logger.js';
 import { PayeeTransformationConfig } from './config.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -204,7 +204,7 @@ class PayeeTransformer {
         payeeList: string[],
         model: string,
         retries = 3
-    ) {
+    ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
         const capabilities = await this.getModelCapabilities(model);
 
         for (let attempt = 1; attempt <= retries; attempt++) {
@@ -268,6 +268,8 @@ class PayeeTransformer {
                 throw error;
             }
         }
+
+        throw new Error('Failed to complete OpenAI request');
     }
 
     private async getModelCapabilities(
@@ -301,7 +303,7 @@ class PayeeTransformer {
         return capabilities;
     }
 
-    private async getConfiguredModel() {
+    private async getConfiguredModel(): Promise<string> {
         if (this.config.skipModelValidation) {
             this.logger.debug('Skipping OpenAI model validation.');
             return this.config.openAiModel;
@@ -320,7 +322,7 @@ class PayeeTransformer {
         return this.config.openAiModel;
     }
 
-    private async getAvailableModels() {
+    private async getAvailableModels(): Promise<Array<string>> {
         if (this.modelListInitialized && this.availableModels) {
             return this.availableModels;
         }
@@ -369,7 +371,7 @@ class PayeeTransformer {
         return models;
     }
 
-    private generatePrompt() {
+    private generatePrompt(): string {
         // Use custom prompt if provided, otherwise use default
         if (this.config.customPrompt) {
             this.logger.debug('Using custom prompt from configuration');
@@ -411,7 +413,7 @@ Output: {}
 CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
     }
 
-    private handleError(error: unknown) {
+    private handleError(error: unknown): void {
         if (error instanceof Error) {
             // Handle specific OpenAI errors
             if (
@@ -462,14 +464,11 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
         }
     }
 
-    private shouldMaskPayeeLogs() {
-        return (
-            this.config.maskPayeeNamesInLogs &&
-            this.logger.getLevel() < LogLevel.DEBUG
-        );
+    private shouldMaskPayeeLogs(): boolean {
+        return this.config.maskPayeeNamesInLogs;
     }
 
-    private formatPayeeListForLog(payees: Array<string>) {
+    private formatPayeeListForLog(payees: Array<string>): Array<string> {
         if (!this.shouldMaskPayeeLogs()) {
             return payees;
         }
@@ -494,7 +493,7 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
         });
     }
 
-    private obfuscatePayeeName(payee: string) {
+    private obfuscatePayeeName(payee: string): string {
         if (payee.length <= 2) {
             return '•'.repeat(Math.max(payee.length, 1));
         }
@@ -506,7 +505,7 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
         return `${firstChar}${middle}${lastChar}`;
     }
 
-    private buildResponse(payees: Array<string>) {
+    private buildResponse(payees: Array<string>): Record<string, string> {
         return payees.reduce(
             (acc, payee) => {
                 acc[payee] = this.transformationCache.get(payee) ?? payee;
