@@ -4,10 +4,8 @@ import { format } from 'date-fns';
 import fs from 'fs/promises';
 import util from 'node:util';
 
-import {
-    ActualServerConfig,
-    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
-} from './config.js';
+import type { ActualServerConfig } from './config.js';
+import { DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS } from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -39,6 +37,19 @@ const suppressIfNoisy =
         original(...args);
     };
 
+const createErrorWithCause = (message: string, cause: Error): Error => {
+    const ErrorCtor = Error as ErrorConstructor & {
+        new (message?: string, options?: { cause?: unknown }): Error;
+    };
+    try {
+        return new ErrorCtor(message, { cause });
+    } catch {
+        const fallback = new Error(message);
+        (fallback as Error & { cause?: Error }).cause = cause;
+        return fallback;
+    }
+};
+
 class ActualApiTimeoutError extends Error {
     constructor(operation: string, timeoutMs: number) {
         super(
@@ -57,10 +68,11 @@ class ActualApi {
     ) {}
 
     private getRequestTimeoutMs(): number {
-        return (
-            this.serverConfig.requestTimeoutMs ??
-            DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS
-        );
+        const ms = this.serverConfig.requestTimeoutMs;
+        if (typeof ms === 'number') {
+            return ms > 0 ? ms : DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
+        }
+        return DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS;
     }
 
     private createContextHints(additional?: string | string[]): string[] {
@@ -89,9 +101,18 @@ class ActualApi {
             }, timeoutMs);
         });
 
+        const rawCallback = callback();
+        const racingCallback = rawCallback.then(
+            (value) => value,
+            (error) => {
+                throw error;
+            }
+        );
+        rawCallback.catch(() => {});
+
         try {
             const result = (await Promise.race([
-                callback(),
+                racingCallback,
                 timeoutPromise,
             ])) as T;
             return result;
@@ -104,13 +125,15 @@ class ActualApi {
             const message =
                 error instanceof Error ? error.message : 'Unknown error';
 
-            const wrappedError = new Error(
-                `Actual API operation '${operation}' failed: ${message}`
-            );
-
-            if (error instanceof Error) {
-                (wrappedError as Error & { cause?: Error }).cause = error;
-            }
+            const wrappedError =
+                error instanceof Error
+                    ? createErrorWithCause(
+                          `Actual API operation '${operation}' failed: ${message}`,
+                          error
+                      )
+                    : new Error(
+                          `Actual API operation '${operation}' failed: ${message}`
+                      );
             this.logger.error(wrappedError.message, hints);
             throw wrappedError;
         } finally {
