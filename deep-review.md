@@ -7,18 +7,18 @@ The importer has solid foundations, and the Actual adapter now completes the dow
 ### 5-Point Action Plan
 
 1. ✅ Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter (completed in this PR's Actual adapter changes).
-2. Harden the CLI configuration path (recursive directory creation, actionable error messages).
-3. ✅ Identify the root cause for the Vitest hang and ship a hotfix (console patch + tests); follow-up to gate CI on these runs.
-4. Strengthen OpenAI/secret handling (timeouts, response validation, log redaction, cache TTL documentation).
-5. Align the toolchain (npm vs. bun), add a typecheck script, and secure the release flow with tests/audit gates.
+1. Harden the CLI configuration path (recursive directory creation, actionable error messages).
+1. ✅ Identify the root cause for the Vitest hang and ship a hotfix (console patch + tests); follow-up to gate CI on these runs.
+1. Strengthen OpenAI/secret handling (timeouts, response validation, log redaction, cache TTL documentation).
+1. Align the toolchain (npm vs. bun), add a typecheck script, and secure the release flow with tests/audit gates.
 
 ## 2. Bug List
 
-| ID  | Status      | Category | File:Line                                | Short Description                                                                                                                            | Repro Steps                                                                                                                 | Expected vs. Current Behaviour                                                                                                                                     | Fix Proposal                                                                                                                                                                                         |
+| ID | Status | Category | File:Line | Short Description | Repro Steps | Expected vs. Current Behaviour | Fix Proposal |
 | --- | ----------- | -------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B1  | ✅ Resolved | Bug      | `src/utils/ActualApi.ts:176-219`         | Budget lifecycle previously stopped at `downloadBudget`, leaving the session without an active budget.【F:src/utils/ActualApi.ts†L176-L219】 | Covered by the `ActualApi` unit suite (loadBudget test).【F:tests/ActualApi.test.ts†L103-L141】                             | Budget download, load, and sync now complete before returning, so account/transaction calls see fresh data.【F:src/utils/ActualApi.ts†L176-L219】                  | Fix landed: `loadBudget` chains download → load → sync and logs failures, with regression coverage in Vitest.【F:src/utils/ActualApi.ts†L176-L219】【F:tests/ActualApi.test.ts†L103-L141】           |
-| B2  | 🚧 Open     | Bug      | `src/commands/validate.command.ts:22-29` | `validate` writes config files but does not create parent directories.【F:src/commands/validate.command.ts†L22-L29】                         | 1. Run `actual-monmon validate --config ./tmp/custom/config.toml` in an empty project. 2. Command fails with `ENOENT`.      | Expected: path is created recursively and example config written (README promise). Actual: write attempt aborts.                                                   | Call `fs.mkdir(path.dirname(configPath), { recursive: true })` before `writeFile` and log errors clearly.【F:README.md†L40-L44】                                                                     |
-| B3  | ✅ Resolved | Bug      | `tests/ActualApi.test.ts`                | Vitest run used to hang because console patching never unwound after timeouts.【F:tests/ActualApi.test.ts†L143-L195】                        | Regression covered by `npm test` and targeted Actual API specs.【chunk:6f7772†L1-L6】【F:tests/ActualApi.test.ts†L53-L195】 | Test suite now exits cleanly; console patching restores globals and clears fake timers.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】 | Fixed by wrapping each Actual API request in a scoped `patchConsole` guard and adding timer cleanup in the timeout test.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】 |
+| B1 | ✅ Resolved | Bug | `src/utils/ActualApi.ts:176-219` | Budget lifecycle previously stopped at `downloadBudget`, leaving the session without an active budget.【F:src/utils/ActualApi.ts†L176-L219】 | Covered by the `ActualApi` unit suite (loadBudget test).【F:tests/ActualApi.test.ts†L103-L141】 | Budget download, load, and sync now complete before returning, so account/transaction calls see fresh data.【F:src/utils/ActualApi.ts†L176-L219】 | Fix landed: `loadBudget` chains download → load → sync and logs failures, with regression coverage in Vitest.【F:src/utils/ActualApi.ts†L176-L219】【F:tests/ActualApi.test.ts†L103-L141】 |
+| B2 | 🚧 Open | Bug | `src/commands/validate.command.ts:22-29` | `validate` writes config files but does not create parent directories.【F:src/commands/validate.command.ts†L22-L29】 | 1. Run `actual-monmon validate --config ./tmp/custom/config.toml` in an empty project. 2. Command fails with `ENOENT`. | Expected: path is created recursively and example config written (README promise). Actual: write attempt aborts. | Call `fs.mkdir(path.dirname(configPath), { recursive: true })` before `writeFile` and log errors clearly.【F:README.md†L40-L44】 |
+| B3 | ✅ Resolved | Bug | `tests/ActualApi.test.ts` | Vitest run used to hang because console patching never unwound after timeouts.【F:tests/ActualApi.test.ts†L143-L195】 | Regression covered by `npm test` and targeted Actual API specs.【chunk:6f7772†L1-L6】【F:tests/ActualApi.test.ts†L53-L195】 | Test suite now exits cleanly; console patching restores globals and clears fake timers.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】 | Fixed by wrapping each Actual API request in a scoped `patchConsole` guard and adding timer cleanup in the timeout test.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】 |
 
 ## 3. Design / Architecture Findings
 
@@ -30,6 +30,7 @@ The importer has solid foundations, and the Actual adapter now completes the dow
 ## 4. Refactor Backlog
 
 ### Epic A – Harden Actual adapter
+
 _Target state:_ Stable import across multiple budgets/servers and transient server failures.
 _Acceptance criteria:_ Budget loads post-download, sync/retry on 5xx/timeout, console patching removed.
 _Risks:_ Changes to global logging, tests/mocks need updates.
@@ -39,6 +40,7 @@ _Risks:_ Changes to global logging, tests/mocks need updates.
 - Story A3 (S): wrap HTTP fetches with `AbortController`, status checks, and sensitive log redaction.【F:src/utils/ActualApi.ts†L174-L217】
 
 ### Epic B – CLI & Config DX
+
 _Target state:_ Users can create/validate configs anywhere.
 _Acceptance criteria:_ `validate` creates paths, error text offers guidance, README stays in sync.
 _Risks:_ Path handling on Windows/macOS.
@@ -47,6 +49,7 @@ _Risks:_ Path handling on Windows/macOS.
 - Story B2 (S): document CLI option normalisation (`--server`, `--budget`) and add tests for filter logic.【F:src/commands/import.command.ts†L84-L200】
 
 ### Epic C – Test/CI hardening
+
 _Target state:_ Deterministic tests locally and in CI (Node 20/22).
 _Acceptance criteria:_ `npm test` exits, coverage ≥80 % for importer pipeline.
 _Risks:_ MoneyMoney/Actual mocks more complex.
@@ -55,7 +58,7 @@ _Risks:_ MoneyMoney/Actual mocks more complex.
 - Story C2 (M): add integration tests for importer pipeline (mock MoneyMoney + Actual) covering dedupe/start balance.【F:src/utils/Importer.ts†L27-L210】
 - Story C3 (S): extend GitHub Actions with test/typecheck/audit, consolidate bun→npm usage.【F:.github/workflows/ci.yml†L1-L23】【F:package.json†L6-L13】
 
-### Quick Wins (<1 day)
+### Quick Wins (\<1 day)
 
 - ✅ Add missing `npm run typecheck` script and update README (completed).【F:package.json†L6-L13】
 - Allow masking toggle for `PayeeTransformer` debug logs.【F:src/utils/PayeeTransformer.ts†L110-L188】
@@ -81,10 +84,10 @@ _Risks:_ MoneyMoney/Actual mocks more complex.
 ## 7. Zod / OpenAI Migration Plan
 
 1. **Analyse dependency landscape**: once `openai` ≥6 ships with zod v4 peer dependency, test upgrade in a feature branch.【F:README.md†L31-L136】
-2. **Prepare dual build**: introduce adapter around `z.safeParse` to isolate breaking changes.【F:src/utils/config.ts†L8-L104】
-3. **Integration tests**: run config parsing & PayeeTransformer against zod v4 schema, including negative cases.
-4. **Release steps**: publish a minor release with migration notes (config validation error texts). Keep previous version tagged for zod 3 consumers.
-5. **Rollback**: if openai/zod combo regresses, restore lockfile + npm dist-tag; update README notice accordingly.【F:README.md†L31-L136】
+1. **Prepare dual build**: introduce adapter around `z.safeParse` to isolate breaking changes.【F:src/utils/config.ts†L8-L104】
+1. **Integration tests**: run config parsing & PayeeTransformer against zod v4 schema, including negative cases.
+1. **Release steps**: publish a minor release with migration notes (config validation error texts). Keep previous version tagged for zod 3 consumers.
+1. **Rollback**: if openai/zod combo regresses, restore lockfile + npm dist-tag; update README notice accordingly.【F:README.md†L31-L136】
 
 ## 8. Appendix (Logs & Artefacts)
 

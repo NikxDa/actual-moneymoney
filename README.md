@@ -102,9 +102,9 @@ For advanced configuration options including custom AI prompts, model-specific s
 The payee transformation feature automatically converts payee names to human-readable formats (e.g., "AMAZN S.A.R.L" to "Amazon"). To use this feature:
 
 1. Set `enabled = true` in the `[payeeTransformation]` section
-2. Provide a valid OpenAI API key (generate one at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys))
-3. Optionally customize the AI model and settings
-4. (Optional) Set `skipModelValidation = true` if you want to trust the configured model identifier without contacting the OpenAI model listing endpoint
+1. Provide a valid OpenAI API key (generate one at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys))
+1. Optionally customize the AI model and settings
+1. (Optional) Set `skipModelValidation = true` if you want to trust the configured model identifier without contacting the OpenAI model listing endpoint
 
 By default, payee transformation debug logs mask payee names unless you opt out with `maskPayeeNamesInLogs = false`. This keeps sensitive payee data hidden even when running with verbose logging levels.
 
@@ -204,13 +204,13 @@ Account mapping connects MoneyMoney accounts to Actual Budget accounts:
 **MoneyMoney accounts** can be identified by:
 
 1. UUID (via AppleScript API)
-2. Account number (IBAN, credit card number, etc.)
-3. Account name
+1. Account number (IBAN, credit card number, etc.)
+1. Account name
 
 **Actual accounts** can be identified by:
 
 1. UUID (from browser URL)
-2. Account name
+1. Account name
 
 If multiple accounts have the same name, the first match will be used. Invalid mappings or additional accounts are ignored.
 
@@ -219,9 +219,9 @@ If multiple accounts have the same name, the first match will be used. Invalid m
 ### Common Issues
 
 1. **Configuration validation errors**: Run `actual-monmon validate` to see detailed error messages
-2. **Import failures**: Check your server URLs, passwords, and sync IDs
-3. **Payee transformation not working**: Verify your OpenAI API key and model settings
-4. **Account mapping issues**: Ensure account names/IDs match exactly
+1. **Import failures**: Check your server URLs, passwords, and sync IDs
+1. **Payee transformation not working**: Verify your OpenAI API key and model settings
+1. **Account mapping issues**: Ensure account names/IDs match exactly
 
 ### Getting Help
 

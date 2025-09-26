@@ -23,10 +23,10 @@
 Run the following commands before committing changes so local development matches CI:
 
 1. `npm run lint:eslint`
-2. `npm run lint:prettier`
-3. `npm run typecheck`
-4. `npm run build`
-5. `npm test`
+1. `npm run lint:prettier`
+1. `npm run typecheck`
+1. `npm run build`
+1. `npm test`
 
 These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
 
