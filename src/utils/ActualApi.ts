@@ -136,15 +136,17 @@ class ActualApi {
 
     getTransactions(accountId: string, options?: { from?: Date; to?: Date }) {
         let from = options?.from ?? new Date(2000, 0, 1);
-        let to = options?.to ?? new Date();
-        if (from > to) {
+        let to = options?.to ?? null;
+        if (to && from > to) {
             [from, to] = [to, from];
         }
         const startDate = format(from, 'yyyy-MM-dd');
-        const endDate = format(to, 'yyyy-MM-dd');
+        const endDate = to ? format(to, 'yyyy-MM-dd') : null;
 
         return this.suppressConsoleLog(() =>
-            actual.getTransactions(accountId, startDate, endDate)
+            endDate
+                ? actual.getTransactions(accountId, startDate, endDate)
+                : actual.getTransactions(accountId, startDate, undefined)
         );
     }
 
