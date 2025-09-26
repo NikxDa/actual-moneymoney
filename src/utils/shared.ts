@@ -37,6 +37,7 @@ importUncheckedTransactions = true
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
+# requestTimeoutMs = 45000 # Optional: Override the Actual server request timeout (ms)
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]

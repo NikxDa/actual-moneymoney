@@ -4,18 +4,26 @@ import type { ActualServerConfig } from '../src/utils/config.js';
 import type Logger from '../src/utils/Logger.js';
 import { LogLevel } from '../src/utils/Logger.js';
 
+const initMock = vi.fn();
+const getAccountsMock = vi.fn();
+const downloadBudgetMock = vi.fn();
+const loadBudgetMock = vi.fn();
+const importTransactionsMock = vi.fn();
+const syncMock = vi.fn();
 const getTransactionsMock = vi.fn();
 const shutdownMock = vi.fn();
 
 vi.mock('@actual-app/api', () => ({
     default: {
-        init: vi.fn(),
+        init: initMock,
         internal: {
             send: vi.fn(),
         },
-        getAccounts: vi.fn(),
-        downloadBudget: vi.fn(),
-        importTransactions: vi.fn(),
+        getAccounts: getAccountsMock,
+        downloadBudget: downloadBudgetMock,
+        loadBudget: loadBudgetMock,
+        importTransactions: importTransactionsMock,
+        sync: syncMock,
         getTransactions: getTransactionsMock,
         shutdown: shutdownMock,
     },
@@ -32,6 +40,12 @@ const createLogger = () =>
 
 describe('ActualApi', () => {
     beforeEach(() => {
+        initMock.mockReset();
+        getAccountsMock.mockReset();
+        downloadBudgetMock.mockReset();
+        loadBudgetMock.mockReset();
+        importTransactionsMock.mockReset();
+        syncMock.mockReset();
         getTransactionsMock.mockReset();
         shutdownMock.mockReset();
     });
@@ -42,6 +56,7 @@ describe('ActualApi', () => {
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
             serverPassword: 'secret',
+            requestTimeoutMs: 45000,
             budgets: [
                 {
                     syncId: 'budget',
@@ -85,12 +100,101 @@ describe('ActualApi', () => {
         logSpy.mockRestore();
     });
 
+    it('downloads, loads, and synchronises the requested budget', async () => {
+        const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+
+        const serverConfig: ActualServerConfig = {
+            serverUrl: 'http://localhost:5006',
+            serverPassword: 'secret',
+            requestTimeoutMs: 45000,
+            budgets: [
+                {
+                    syncId: 'budget',
+                    e2eEncryption: {
+                        enabled: false,
+                        password: undefined,
+                    },
+                    accountMapping: {},
+                },
+            ],
+        };
+
+        const api = new ActualApi(serverConfig, createLogger());
+        // @ts-expect-error accessing protected test hook
+        api.isInitialized = true;
+
+        downloadBudgetMock.mockResolvedValue(undefined);
+        loadBudgetMock.mockResolvedValue(undefined);
+        syncMock.mockResolvedValue(undefined);
+
+        await api.loadBudget('budget');
+
+        expect(downloadBudgetMock).toHaveBeenCalledWith('budget', undefined);
+        expect(loadBudgetMock).toHaveBeenCalledWith('budget');
+        expect(syncMock).toHaveBeenCalled();
+        expect(
+            downloadBudgetMock.mock.invocationCallOrder[0]
+        ).toBeLessThan(loadBudgetMock.mock.invocationCallOrder[0]);
+        expect(
+            loadBudgetMock.mock.invocationCallOrder[0]
+        ).toBeLessThan(syncMock.mock.invocationCallOrder[0]);
+    });
+
+    it('surfaces timeout errors from Actual API calls', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const { default: ActualApi } = await import(
+                '../src/utils/ActualApi.js'
+            );
+
+            const serverConfig: ActualServerConfig = {
+                serverUrl: 'http://localhost:5006',
+                serverPassword: 'secret',
+                requestTimeoutMs: 5,
+                budgets: [
+                    {
+                        syncId: 'budget',
+                        e2eEncryption: {
+                            enabled: false,
+                            password: undefined,
+                        },
+                        accountMapping: {},
+                    },
+                ],
+            };
+
+            const logger = createLogger();
+            const api = new ActualApi(serverConfig, logger);
+            // @ts-expect-error accessing protected test hook
+            api.isInitialized = true;
+
+            downloadBudgetMock.mockImplementation(
+                () => new Promise(() => undefined)
+            );
+
+            const loadPromise = api.loadBudget('budget');
+            const rejection = expect(loadPromise).rejects.toThrow(/timed out/);
+
+            await vi.advanceTimersByTimeAsync(10);
+            await rejection;
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('timed out'),
+                expect.arrayContaining(['Server URL: http://localhost:5006'])
+            );
+            expect(loadBudgetMock).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('ignores shutdown when the API was never initialised', async () => {
         const { default: ActualApi } = await import('../src/utils/ActualApi.js');
 
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
             serverPassword: 'secret',
+            requestTimeoutMs: 45000,
             budgets: [
                 {
                     syncId: 'budget',

@@ -66,6 +66,7 @@ maskPayeeNamesInLogs = true  # Optional: keep payee names obfuscated in non-debu
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
+# requestTimeoutMs = 45000  # Optional: Override the Actual server request timeout (milliseconds)
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]

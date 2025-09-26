@@ -34,6 +34,8 @@ const isoDateSchema = z
         }
     });
 
+export const DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS = 45000;
+
 const budgetSchema = z
     .object({
         syncId: trimmedNonEmptyString('Sync ID must not be empty'),
@@ -59,6 +61,15 @@ const budgetSchema = z
 const actualServerSchema = z.object({
     serverUrl: z.string().trim().url(),
     serverPassword: trimmedNonEmptyString('Server password must not be empty'),
+    requestTimeoutMs: z
+        .number()
+        .int()
+        .positive()
+        .max(
+            5 * 60 * 1000,
+            'Actual server timeout must be 5 minutes or less'
+        )
+        .default(DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS),
     budgets: z.array(budgetSchema).min(1),
 });
 

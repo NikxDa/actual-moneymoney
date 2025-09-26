@@ -4,7 +4,10 @@ import { format } from 'date-fns';
 import fs from 'fs/promises';
 import util from 'node:util';
 
-import { ActualServerConfig } from './config.js';
+import {
+    ActualServerConfig,
+    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
+} from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -36,6 +39,15 @@ const suppressIfNoisy =
         original(...args);
     };
 
+class ActualApiTimeoutError extends Error {
+    constructor(operation: string, timeoutMs: number) {
+        super(
+            `Actual API operation '${operation}' timed out after ${timeoutMs}ms`
+        );
+        this.name = 'ActualApiTimeoutError';
+    }
+}
+
 class ActualApi {
     protected isInitialized = false;
 
@@ -43,6 +55,69 @@ class ActualApi {
         private serverConfig: ActualServerConfig,
         private logger: Logger
     ) {}
+
+    private getRequestTimeoutMs(): number {
+        return (
+            this.serverConfig.requestTimeoutMs ??
+            DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS
+        );
+    }
+
+    private createContextHints(additional?: string | string[]): string[] {
+        const extras = Array.isArray(additional)
+            ? additional
+            : additional
+            ? [additional]
+            : [];
+
+        return [
+            `Server URL: ${this.serverConfig.serverUrl}`,
+            ...extras,
+        ];
+    }
+
+    private async runActualRequest<T>(
+        operation: string,
+        callback: () => Promise<T>,
+        additionalHints?: string | string[]
+    ): Promise<T> {
+        const timeoutMs = this.getRequestTimeoutMs();
+        let timeoutHandle: NodeJS.Timeout | null = null;
+        const hints = this.createContextHints(additionalHints);
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+                reject(new ActualApiTimeoutError(operation, timeoutMs));
+            }, timeoutMs);
+        });
+
+        try {
+            const result = (await Promise.race([
+                this.suppressConsoleLog(callback),
+                timeoutPromise,
+            ])) as T;
+            return result;
+        } catch (error) {
+            if (error instanceof ActualApiTimeoutError) {
+                this.logger.error(error.message, hints);
+                throw error;
+            }
+
+            const message =
+                error instanceof Error ? error.message : 'Unknown error';
+
+            const wrappedError = new Error(
+                `Actual API operation '${operation}' failed: ${message}`,
+                error instanceof Error ? { cause: error } : undefined
+            );
+            this.logger.error(wrappedError.message, hints);
+            throw wrappedError;
+        } finally {
+            if (timeoutHandle) {
+                clearTimeout(timeoutHandle);
+            }
+        }
+    }
 
     async init() {
         const actualDataDir = DEFAULT_DATA_DIR;
@@ -63,13 +138,13 @@ class ActualApi {
             `Initializing Actual instance for server ${this.serverConfig.serverUrl} with data directory ${actualDataDir}`
         );
 
-        await this.suppressConsoleLog(async () => {
-            await actual.init({
+        await this.runActualRequest('initialize session', () =>
+            actual.init({
                 dataDir: actualDataDir,
                 serverURL: this.serverConfig.serverUrl,
                 password: this.serverConfig.serverPassword,
-            });
-        });
+            })
+        );
 
         this.isInitialized = true;
     }
@@ -80,23 +155,24 @@ class ActualApi {
         }
     }
 
-    async sync() {
+    async sync(additionalHints?: string | string[]) {
         await this.ensureInitialization();
-        await this.suppressConsoleLog(async () => {
-            await actual.internal.send('sync', undefined);
-        });
+        await this.runActualRequest(
+            'sync budget',
+            () => actual.sync(),
+            additionalHints
+        );
     }
 
     async getAccounts() {
         await this.ensureInitialization();
-        const accounts = await this.suppressConsoleLog(async () => {
-            return await actual.getAccounts(undefined, undefined);
-        });
-        return accounts;
+        return await this.runActualRequest('fetch accounts', () =>
+            actual.getAccounts(undefined, undefined)
+        );
     }
 
     async loadBudget(budgetId: string) {
-        this.logger.debug(`Loading budget with syncId '${budgetId}'...`);
+        await this.ensureInitialization();
 
         const budgetConfig = this.serverConfig.budgets.find(
             (b) => b.syncId === budgetId
@@ -106,29 +182,59 @@ class ActualApi {
             throw new Error(`No budget with syncId '${budgetId}' found.`);
         }
 
-        this.logger.debug(`Re-loading budget with syncId ${budgetId}...`);
+        const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
 
-        await this.suppressConsoleLog(async () => {
-            await actual.downloadBudget(
-                budgetConfig.syncId,
-                budgetConfig.e2eEncryption.enabled
-                    ? {
-                          password: budgetConfig.e2eEncryption.password,
-                      }
-                    : undefined
-            );
-        });
+        this.logger.debug(
+            `Downloading budget with syncId '${budgetConfig.syncId}'...`
+        );
+        await this.runActualRequest(
+            `download budget '${budgetConfig.syncId}'`,
+            () =>
+                actual.downloadBudget(
+                    budgetConfig.syncId,
+                    budgetConfig.e2eEncryption.enabled
+                        ? {
+                              password: budgetConfig.e2eEncryption.password,
+                          }
+                        : undefined
+                ),
+            budgetHints
+        );
+
+        this.logger.debug(
+            `Loading budget with syncId '${budgetConfig.syncId}'...`
+        );
+        await this.runActualRequest(
+            `load budget '${budgetConfig.syncId}'`,
+            () => actual.loadBudget(budgetConfig.syncId),
+            budgetHints
+        );
+
+        this.logger.debug(
+            `Synchronizing budget with syncId '${budgetConfig.syncId}'...`
+        );
+        await this.sync(budgetHints);
     }
 
-    importTransactions(accountId: string, transactions: CreateTransaction[]) {
-        return this.suppressConsoleLog(() =>
-            actual.importTransactions(accountId, transactions, {
-                defaultCleared: false,
-            })
+    async importTransactions(
+        accountId: string,
+        transactions: CreateTransaction[]
+    ) {
+        await this.ensureInitialization();
+        return await this.runActualRequest(
+            `import transactions for account '${accountId}'`,
+            () =>
+                actual.importTransactions(accountId, transactions, {
+                    defaultCleared: false,
+                }),
+            [`Account ID: ${accountId}`]
         );
     }
 
-    getTransactions(accountId: string, options?: { from?: Date; to?: Date }) {
+    async getTransactions(
+        accountId: string,
+        options?: { from?: Date; to?: Date }
+    ) {
         let from = options?.from ?? new Date(2000, 0, 1);
         let to = options?.to ?? null;
         if (to && from > to) {
@@ -137,10 +243,18 @@ class ActualApi {
         const startDate = format(from, 'yyyy-MM-dd');
         const endDate = to ? format(to, 'yyyy-MM-dd') : null;
 
-        return this.suppressConsoleLog(() =>
-            endDate
-                ? actual.getTransactions(accountId, startDate, endDate)
-                : actual.getTransactions(accountId, startDate)
+        await this.ensureInitialization();
+        const rangeHint = endDate
+            ? `Date range: ${startDate} – ${endDate}`
+            : `Date range: ${startDate} onwards`;
+
+        return await this.runActualRequest(
+            `fetch transactions for account '${accountId}'`,
+            () =>
+                endDate
+                    ? actual.getTransactions(accountId, startDate, endDate)
+                    : actual.getTransactions(accountId, startDate),
+            [`Account ID: ${accountId}`, rangeHint]
         );
     }
 
@@ -150,7 +264,9 @@ class ActualApi {
         }
 
         try {
-            await this.suppressConsoleLog(() => actual.shutdown());
+            await this.runActualRequest('shutdown session', () =>
+                actual.shutdown()
+            );
         } finally {
             this.isInitialized = false;
         }
