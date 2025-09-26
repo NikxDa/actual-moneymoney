@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 
+import type { CreateTransaction } from '@actual-app/api';
+
 import type { ActualServerConfig } from '../src/utils/config.js';
 import type Logger from '../src/utils/Logger.js';
 import { LogLevel } from '../src/utils/Logger.js';
@@ -36,7 +38,7 @@ const createLogger = () =>
         warn: vi.fn(),
         error: vi.fn(),
         getLevel: () => LogLevel.INFO,
-    } as unknown as Logger);
+    }) as unknown as Logger;
 
 describe('ActualApi', () => {
     beforeEach(() => {
@@ -51,7 +53,9 @@ describe('ActualApi', () => {
     });
 
     it('passes bounded date ranges to the Actual API and restores console state', async () => {
-        const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
 
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
@@ -101,7 +105,9 @@ describe('ActualApi', () => {
     });
 
     it('downloads, loads, and synchronises the requested budget', async () => {
-        const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
 
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',
@@ -132,12 +138,12 @@ describe('ActualApi', () => {
         expect(downloadBudgetMock).toHaveBeenCalledWith('budget', undefined);
         expect(loadBudgetMock).toHaveBeenCalledWith('budget');
         expect(syncMock).toHaveBeenCalled();
-        expect(
-            downloadBudgetMock.mock.invocationCallOrder[0]
-        ).toBeLessThan(loadBudgetMock.mock.invocationCallOrder[0]);
-        expect(
+        expect(downloadBudgetMock.mock.invocationCallOrder[0]).toBeLessThan(
             loadBudgetMock.mock.invocationCallOrder[0]
-        ).toBeLessThan(syncMock.mock.invocationCallOrder[0]);
+        );
+        expect(loadBudgetMock.mock.invocationCallOrder[0]).toBeLessThan(
+            syncMock.mock.invocationCallOrder[0]
+        );
     });
 
     it('surfaces timeout errors from Actual API calls', async () => {
@@ -180,7 +186,10 @@ describe('ActualApi', () => {
             await rejection;
             expect(logger.error).toHaveBeenCalledWith(
                 expect.stringContaining('timed out'),
-                expect.arrayContaining(['Server URL: http://localhost:5006'])
+                expect.arrayContaining([
+                    'Server URL: http://localhost:5006',
+                    'Budget sync ID: budget',
+                ])
             );
             expect(loadBudgetMock).not.toHaveBeenCalled();
         } finally {
@@ -194,8 +203,82 @@ describe('ActualApi', () => {
         }
     });
 
+    it('populates imported ids and deduplicates transactions before import', async () => {
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const serverConfig: ActualServerConfig = {
+            serverUrl: 'http://localhost:5006',
+            serverPassword: 'secret',
+            requestTimeoutMs: 45000,
+            budgets: [
+                {
+                    syncId: 'budget',
+                    e2eEncryption: {
+                        enabled: false,
+                        password: undefined,
+                    },
+                    accountMapping: {},
+                },
+            ],
+        };
+
+        const api = new ActualApi(serverConfig, createLogger());
+        // @ts-expect-error accessing protected test hook
+        api.isInitialized = true;
+
+        const transactions: CreateTransaction[] = [
+            {
+                date: '2024-02-01',
+                amount: 100,
+                imported_id: 'existing',
+                imported_payee: 'Alpha',
+                notes: 'first',
+            },
+            {
+                date: '2024-02-02',
+                amount: 200,
+                imported_id: 'existing',
+                imported_payee: 'Beta',
+                notes: 'second duplicate should be dropped',
+            },
+            {
+                date: '2024-02-03',
+                amount: 300,
+                imported_payee: 'Gamma',
+                notes: 'needs id',
+            },
+            {
+                date: '2024-02-03',
+                amount: 300,
+                imported_payee: 'Gamma',
+                notes: 'needs id',
+            },
+        ];
+
+        importTransactionsMock.mockResolvedValue({
+            added: [],
+            updated: [],
+        });
+
+        await api.importTransactions('account-1', transactions);
+
+        expect(importTransactionsMock).toHaveBeenCalledTimes(1);
+        const [, sentTransactions] = importTransactionsMock.mock.calls[0];
+
+        expect(sentTransactions).toHaveLength(2);
+        expect(sentTransactions[0].imported_id).toBe('existing');
+        expect(sentTransactions[1].imported_id).toMatch(/^mm-sync-/);
+        expect(new Set(sentTransactions.map((tx) => tx.imported_id)).size).toBe(
+            sentTransactions.length
+        );
+    });
+
     it('ignores shutdown when the API was never initialised', async () => {
-        const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
 
         const serverConfig: ActualServerConfig = {
             serverUrl: 'http://localhost:5006',

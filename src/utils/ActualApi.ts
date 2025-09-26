@@ -2,6 +2,7 @@ import actual from '@actual-app/api';
 import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
+import { createHash } from 'node:crypto';
 import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
@@ -246,10 +247,30 @@ class ActualApi {
         transactions: CreateTransaction[]
     ): ReturnType<typeof actual.importTransactions> {
         await this.ensureInitialization();
+        const normalizedTransactions = transactions.map((transaction) =>
+            this.ensureImportedId(accountId, transaction)
+        );
+        const dedupedTransactions: CreateTransaction[] = [];
+        const seenImportedIds = new Set<string>();
+
+        for (const transaction of normalizedTransactions) {
+            const importedId = transaction.imported_id;
+
+            if (importedId && seenImportedIds.has(importedId)) {
+                continue;
+            }
+
+            if (importedId) {
+                seenImportedIds.add(importedId);
+            }
+
+            dedupedTransactions.push(transaction);
+        }
+
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
             () =>
-                actual.importTransactions(accountId, transactions, {
+                actual.importTransactions(accountId, dedupedTransactions, {
                     defaultCleared: false,
                 }),
             [`Account ID: ${accountId}`]
@@ -305,7 +326,58 @@ class ActualApi {
         warn: typeof console.warn;
     } | null = null;
 
+    private ensureImportedId(
+        accountId: string,
+        transaction: CreateTransaction
+    ): CreateTransaction {
+        const importedId = transaction.imported_id?.trim();
+
+        if (importedId) {
+            return transaction;
+        }
+
+        return {
+            ...transaction,
+            imported_id: this.createFallbackImportedId(accountId, transaction),
+        };
+    }
+
+    private createFallbackImportedId(
+        accountId: string,
+        transaction: CreateTransaction
+    ): string {
+        const normalized = {
+            accountId,
+            date: transaction.date,
+            amount: transaction.amount,
+            payee: (transaction as { payee?: string }).payee ?? '',
+            payee_name:
+                (transaction as { payee_name?: string }).payee_name ?? '',
+            imported_payee:
+                (transaction as { imported_payee?: string }).imported_payee ??
+                '',
+            category: (transaction as { category?: string }).category ?? '',
+            notes: transaction.notes ?? '',
+            transfer_id:
+                (transaction as { transfer_id?: string }).transfer_id ?? '',
+            cleared:
+                typeof transaction.cleared === 'boolean'
+                    ? String(transaction.cleared)
+                    : '',
+        };
+
+        const hash = createHash('sha1')
+            .update(JSON.stringify(normalized))
+            .digest('hex');
+
+        return `mm-sync-${hash}`;
+    }
+
     private patchConsole(): () => void {
+        // Note: This temporarily monkey-patches the global console methods for the
+        // entire process while an Actual request is in flight. Concurrent requests
+        // share the suppression window, so unrelated log output may be filtered
+        // until all pending Actual calls finish.
         if (ActualApi.suppressDepth === 0) {
             ActualApi.originals = {
                 log: console.log,
