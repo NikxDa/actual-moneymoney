@@ -17,12 +17,14 @@
 - When adding new configuration options or command-line flags, update the TOML schema/validation in `src/utils/config.ts`, the generated default config in `src/utils/shared.ts`, and relevant documentation (e.g., `README.md`, `example-config-advanced.toml`).
 
 ## Testing & Tooling
-Run the following commands before committing changes:
+Run the following commands before committing changes so local development matches CI:
 1. `npm run lint:eslint`
 2. `npm run lint:prettier`
-3. `npm run build`
+3. `npm run typecheck`
+4. `npm run build`
+5. `npm test`
 
-These checks ensure linting, formatting, and TypeScript compilation succeed.
+These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
 
 ## Commit Messages
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification so that commitlint accepts new commits.
