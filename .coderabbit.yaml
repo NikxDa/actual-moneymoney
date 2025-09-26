@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=https://coderabbit.ai/integrations/coderabbit-overrides.v2.json
+# yaml-language-server: $schema=https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
 language: "en-GB"
 early_access: true
 reviews:
   request_changes_workflow: true
   high_level_summary: true
   poem: false
-  review_status: true
+  review_status: false
   sequence_diagrams: false
   collapse_walkthrough: false
   auto_review:
