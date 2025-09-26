@@ -30,11 +30,16 @@ The application will be accessible as a CLI tool with the name `actual-monmon`.
 
 ## Dependencies
 
+- Node.js **v20.9.0 or newer** (see `package.json` `engines` field)
+- A licensed copy of MoneyMoney on macOS to access the transaction database
+
 **Note on zod version**: This project is currently pinned to zod v3.25.76 due to a peer dependency conflict with the openai package. The openai library requires zod v3.x (`^3.23.8`), but zod v4.x introduces breaking changes that are incompatible. This prevents dependabot from automatically updating to zod v4, which would break the application. We'll update zod when openai releases a version that supports zod v4.
 
 ## Configuration
 
-The application needs to be configured with a TOML document to function. You can validate your configuration by running `actual-monmon validate`. Running this for the first time will create an example configuration file. You can also pass a custom configuration path with the `--config` parameter.
+The application needs to be configured with a TOML document to function. By default, Actual-MoneyMoney stores and reads configuration files from `~/.actually/config.toml`.
+
+You can validate (and automatically create) your configuration by running `actual-monmon validate`. If the configuration file does not exist yet, the command will create a starter file at the resolved path (default: `~/.actually/config.toml`). You can point to a different location with the `--config <path>` option when running any command.
 
 For detailed command-line options, run `actual-monmon --help`.
 
@@ -53,6 +58,7 @@ openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
+maskPayeeNamesInLogs = true  # Optional: keep payee names obfuscated in non-debug logs
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
@@ -140,6 +146,12 @@ Before importing, validate your configuration:
 actual-monmon validate
 ```
 
+You can increase or decrease CLI verbosity with `--logLevel` (`0 = ERROR`, `1 = WARN`, `2 = INFO`, `3 = DEBUG`). Combine it with `--config` to validate a different configuration file:
+
+```bash
+actual-monmon validate --config ./config.toml --logLevel 3
+```
+
 ### Import Transactions
 
 To import transactions:
@@ -155,6 +167,8 @@ You can limit the scope of an import with additional flags:
 - `--account <ref>` – import transactions from a specific MoneyMoney account reference.
 - `--from YYYY-MM-DD` / `--to YYYY-MM-DD` – bound the transaction date range.
 - `--dry-run` – simulate the import without persisting any changes.
+- `--logLevel <0-3>` – control CLI verbosity (defaults to `2`, INFO).
+- `--config <path>` – load a configuration file from a custom path.
 
 ### Command Options
 

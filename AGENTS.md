@@ -13,8 +13,8 @@
 - Indent using **4 spaces** (match existing code style).
 - Prefer explicit types for function parameters/returns when not inferred from obvious context.
 - Keep logging consistent by using the `Logger` utility instead of `console.log` directly.
-- Follow existing naming patterns (`*.command.ts` for CLI commands, PascalCase for classes, camelCase for variables/functions).
-- When adding new configuration options or command-line flags, update relevant TOML schema/validation and documentation (e.g., `README.md`).
+- Follow existing naming patterns (`*.command.ts` for CLI commands, PascalCase for classes, camelCase for variables/functions`).
+- When adding new configuration options or command-line flags, update the TOML schema/validation in `src/utils/config.ts`, the generated default config in `src/utils/shared.ts`, and relevant documentation (e.g., `README.md`, `example-config-advanced.toml`).
 
 ## Testing & Tooling
 Run the following commands before committing changes:
@@ -31,6 +31,7 @@ These checks ensure linting, formatting, and TypeScript compilation succeed.
 - Keep the subject under 72 characters and avoid ending it with a period.
 
 ## Additional Notes
-- Node.js version 18 or newer is required.
-- Example configurations live at `example-config-advanced.toml` and should stay in sync with config schema changes.
+- Node.js v20.9.0 or newer is required (see `package.json` `engines` field).
+- Default configuration files live in `~/.actually/config.toml`. Keep the example config defined in `src/utils/shared.ts` aligned with the validation schema.
+- Example configurations such as `example-config-advanced.toml` should stay in sync with config schema changes and README documentation.
 - Assets (logos, etc.) reside in `/assets`; update paths carefully if moving files referenced in the README.

@@ -54,9 +54,9 @@ importUncheckedTransactions = true
 synchronizeClearedStatus = true
 maskPayeeNamesInLogs = true  # Mask payee names unless log level is DEBUG
 
-# Optional: Ignore patterns for filtering transactions
+# Optional: Ignore patterns for filtering transactions (supports case-insensitive * wildcards)
 [import.ignorePatterns]
-commentPatterns = ["test", "ignore"]  # Uses simple case-insensitive substring matching (no wildcards)
+commentPatterns = ["test", "ignore*"]
 payeePatterns = ["spam", "unwanted"]
 purposePatterns = ["internal", "transfer"]
 
