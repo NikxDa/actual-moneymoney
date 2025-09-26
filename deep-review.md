@@ -1,25 +1,25 @@
 # Deep Review – actual-moneymoney (develop)
 
 ## 1. Executive Summary
-The importer has solid foundations but fails at critical integration points: budgets are downloaded yet never loaded, the `validate` command cannot create new configuration paths, and the Vitest suite hangs because open handles remain. Robust error paths against the Actual server and OpenAI are missing. Documentation promises quality-of-life features (e.g., automatic config generation) that the code only partially delivers. Priority is to stabilise the API layer, followed by DX improvements and CI coverage of the real-world workflow.
+The importer has solid foundations, and the Actual adapter now completes the download → load → sync lifecycle while restoring console state after each request so Vitest no longer hangs.【F:src/utils/ActualApi.ts†L85-L219】【F:tests/ActualApi.test.ts†L53-L195】【chunk:25b872†L1-L8】 Remaining gaps include the `validate` command failing to create parent directories, thin network/error handling against the Actual server and OpenAI, and documentation promises (e.g., automatic config generation) that the code still only partially delivers.【F:src/commands/validate.command.ts†L22-L73】【F:src/utils/ActualApi.ts†L174-L217】【F:src/utils/PayeeTransformer.ts†L92-L188】 Priority shifts to hardening configuration DX and upstream API resilience, then aligning CI with the end-to-end workflow.
 
 **5-Point Action Plan**
 1. ✅ Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter (completed in this PR's Actual adapter changes).
 2. Harden the CLI configuration path (recursive directory creation, actionable error messages).
-3. Identify the root cause for the Vitest hang, ship a hotfix, then enforce tests in CI.
+3. ✅ Identify the root cause for the Vitest hang and ship a hotfix (console patch + tests); follow-up to gate CI on these runs.
 4. Strengthen OpenAI/secret handling (timeouts, response validation, log redaction, cache TTL documentation).
 5. Align the toolchain (npm vs. bun), add a typecheck script, and secure the release flow with tests/audit gates.
 
 ## 2. Bug List
-| ID | Category | File:Line | Short Description | Repro Steps | Expected vs. Current Behaviour | Fix Proposal |
-| --- | --- | --- | --- | --- | --- | --- |
-| B1 | Bug | `src/utils/ActualApi.ts:113-135` | Budget is downloaded but never loaded; subsequent calls read stale/empty data.【F:src/utils/ActualApi.ts†L113-L158】 | 1. Start with empty data directory (`~/.actually/actual-data`). 2. Run `actual-monmon import --budget <id>`. 3. `getAccounts` returns empty/stale data because no budget is active.【F:src/utils/ActualApi.ts†L105-L158】 | Expected: after `downloadBudget`, the budget is loaded into the session (`loadBudget`) and synced. Actual: session has no active budget, so mappings/transactions fail. | Call `actual.loadBudget` and optionally `actual.sync()` after download; wrap failure paths with logger.【F:node_modules/@actual-app/api/dist/methods.js†L72-L104】 |
-| B2 | Bug | `src/commands/validate.command.ts:22-29` | `validate` writes config files but does not create parent directories.【F:src/commands/validate.command.ts†L22-L29】 | 1. Run `actual-monmon validate --config ./tmp/custom/config.toml` in an empty project. 2. Command fails with `ENOENT`. | Expected: path is created recursively and example config written (README promise). Actual: write attempt aborts. | Call `fs.mkdir(path.dirname(configPath), { recursive: true })` before `writeFile` and log errors clearly.【F:README.md†L40-L44】 |
-| B3 | Bug | Test suite (`vitest`) | Test run never exits, process hangs (open handles). | 1. Run `npm test` or `npx vitest run`. 2. Run stops after `PayeeTransformer` output, hangs on `ActualApi` tests, requires manual `Ctrl+C`.【chunk:41e2c1†L1-L8】【chunk:995742†L1-L10】【chunk:4d4768†L1-L1】 | Expected: Vitest exits automatically. Actual: at least one handle remains open (likely console patching), so CI blocks. | Debug with `vitest --run --reporter verbose --logHeapUsage`, inspect console patching (`suppressConsoleLog`), add `afterAll` cleanup/`actual.shutdown` mocks. Gate CI on deterministic runs. |
+| ID | Status | Category | File:Line | Short Description | Repro Steps | Expected vs. Current Behaviour | Fix Proposal |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| B1 | ✅ Resolved | Bug | `src/utils/ActualApi.ts:176-219` | Budget lifecycle previously stopped at `downloadBudget`, leaving the session without an active budget.【F:src/utils/ActualApi.ts†L176-L219】 | Covered by the `ActualApi` unit suite (loadBudget test).【F:tests/ActualApi.test.ts†L103-L141】 | Budget download, load, and sync now complete before returning, so account/transaction calls see fresh data.【F:src/utils/ActualApi.ts†L176-L219】 | Fix landed: `loadBudget` chains download → load → sync and logs failures, with regression coverage in Vitest.【F:src/utils/ActualApi.ts†L176-L219】【F:tests/ActualApi.test.ts†L103-L141】 |
+| B2 | 🚧 Open | Bug | `src/commands/validate.command.ts:22-29` | `validate` writes config files but does not create parent directories.【F:src/commands/validate.command.ts†L22-L29】 | 1. Run `actual-monmon validate --config ./tmp/custom/config.toml` in an empty project. 2. Command fails with `ENOENT`. | Expected: path is created recursively and example config written (README promise). Actual: write attempt aborts. | Call `fs.mkdir(path.dirname(configPath), { recursive: true })` before `writeFile` and log errors clearly.【F:README.md†L40-L44】 |
+| B3 | ✅ Resolved | Bug | `tests/ActualApi.test.ts` | Vitest run used to hang because console patching never unwound after timeouts.【F:tests/ActualApi.test.ts†L143-L195】 | Regression covered by `npm test` and targeted Actual API specs.【chunk:6f7772†L1-L6】【F:tests/ActualApi.test.ts†L53-L195】 | Test suite now exits cleanly; console patching restores globals and clears fake timers.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】 | Fixed by wrapping each Actual API request in a scoped `patchConsole` guard and adding timer cleanup in the timeout test.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】 |
 
 ## 3. Design / Architecture Findings
 - **Actual API robustness**: `getUserToken`/`getUserFiles` never check `response.ok`, so network failures throw vague JSON errors.【F:src/utils/ActualApi.ts†L174-L217】 Add timeouts, status checks, and redact sensitive payloads in logs.
-- **Global console manipulation**: `suppressConsoleLog` overrides global loggers; concurrent calls risk lost logs and likely explain the Vitest hang.【F:src/utils/ActualApi.ts†L228-L239】 Prefer scoped loggers or `actual.setLogListener`.
+- ✅ **Scoped console patching**: `ActualApi` now wraps each request in a reference-counted `patchConsole`, restoring original loggers after the timeout race and keeping Vitest runs deterministic.【F:src/utils/ActualApi.ts†L85-L121】【F:src/utils/ActualApi.ts†L277-L325】 Continue to monitor concurrent calls, but the open-handle hang is resolved.
 - **Dead code**: `ActualApi.api` field and `getUserFiles` are unused—signalling unfinished file-browsing features and potential maintenance burden.【F:src/utils/ActualApi.ts†L53-L217】
 - **OpenAI coupling**: `PayeeTransformer` stores the model cache in plain text and logs payees at debug level (privacy leak).【F:src/utils/PayeeTransformer.ts†L92-L188】 Add masking/redaction even for debug logs.
 - **Starting balance heuristic**: For empty MoneyMoney slices the importer still creates a starting transaction from the current balance, causing jumps on partial imports.【F:src/utils/Importer.ts†L175-L199】 Add a guard or user-facing warning.
@@ -29,8 +29,8 @@ The importer has solid foundations but fails at critical integration points: bud
 *Target state:* Stable import across multiple budgets/servers and transient server failures.
 *Acceptance criteria:* Budget loads post-download, sync/retry on 5xx/timeout, console patching removed.
 *Risks:* Changes to global logging, tests/mocks need updates.
-- Story A1 (M): integrate `loadBudget` + `sync`, secure shutdown in `finally`.【F:src/utils/ActualApi.ts†L113-L170】
-- Story A2 (M): refactor `suppressConsoleLog` into scoped logger or `actual.setLogListener`, add tests guarding against open handles.【F:src/utils/ActualApi.ts†L228-L239】
+- ✅ Story A1 (M): integrate `loadBudget` + `sync`, secure shutdown in `finally` (now implemented and covered by tests).【F:src/utils/ActualApi.ts†L176-L275】【F:tests/ActualApi.test.ts†L103-L195】
+- ✅ Story A2 (M): refactor console suppression into a scoped helper with regression tests guarding against open handles.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】
 - Story A3 (S): wrap HTTP fetches with `AbortController`, status checks, and sensitive log redaction.【F:src/utils/ActualApi.ts†L174-L217】
 
 **Epic B – CLI & Config DX**
@@ -44,7 +44,7 @@ The importer has solid foundations but fails at critical integration points: bud
 *Target state:* Deterministic tests locally and in CI (Node 20/22).
 *Acceptance criteria:* `npm test` exits, coverage ≥80 % for importer pipeline.
 *Risks:* MoneyMoney/Actual mocks more complex.
-- Story C1 (M): analyse open handles (console patch, fs handles), add Vitest cleanup.【chunk:995742†L1-L10】
+- ✅ Story C1 (M): analysed console patch handles and added Vitest cleanup so the suite exits cleanly.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】【chunk:25b872†L1-L8】
 - Story C2 (M): add integration tests for importer pipeline (mock MoneyMoney + Actual) covering dedupe/start balance.【F:src/utils/Importer.ts†L27-L210】
 - Story C3 (S): extend GitHub Actions with test/typecheck/audit, consolidate bun→npm usage.【F:.github/workflows/ci.yml†L1-L23】【F:package.json†L6-L13】
 
@@ -76,12 +76,12 @@ The importer has solid foundations but fails at critical integration points: bud
 5. **Rollback**: if openai/zod combo regresses, restore lockfile + npm dist-tag; update README notice accordingly.【F:README.md†L31-L136】
 
 ## 8. Appendix (Logs & Artefacts)
-- `npm ci` succeeded (warning: 5 moderate vulnerabilities).【chunk:48865d†L1-L12】
-- `npm run lint` missing script (error).【chunk:ee78ff†L1-L10】
-- `npm run lint:eslint` succeeded.【chunk:f1777f†L1-L6】
-- `npm run lint:prettier` succeeded.【chunk:3ee0ab†L1-L8】
-- `npm run typecheck` missing; manual `npx tsc --noEmit` succeeded.【chunk:5702ff†L1-L7】【chunk:7f8aa1†L1-L2】
-- `npm test` / `npx vitest run` hang on `ActualApi` tests (manual abort).【chunk:41e2c1†L1-L8】【chunk:995742†L1-L10】【chunk:4d4768†L1-L1】
-- Single test `npx vitest run tests/ActualApi.test.ts` succeeds, confirming hotspot.【chunk:451870†L1-L5】【chunk:c60f57†L1-L5】【chunk:4f8db5†L1-L6】
-- `npm run build` succeeded.【chunk:d75743†L1-L5】
-- `npm audit --audit-level=high` reports known `esbuild` issue (moderate).【chunk:76f53b†L1-L23】
+- `npm install` refreshed dependencies (5 moderate advisories remain upstream).【chunk:cfc5fa†L1-L11】
+- `npm run lint` still missing (helpful to add wrapper script).【chunk:3025dc†L1-L10】
+- `npm run lint:eslint` succeeded.【chunk:926f53†L1-L5】
+- `npm run lint:prettier` succeeded.【chunk:49ce84†L1-L8】
+- `npm run typecheck` succeeded via the dedicated script.【chunk:9f4dd1†L1-L5】
+- `npm run build` succeeded.【chunk:4f496d†L1-L5】
+- `npm test -- --reporter verbose` now finishes without open handles.【chunk:25b872†L1-L8】
+- Targeted `npx vitest run tests/ActualApi.test.ts --reporter verbose` confirms the console patch fix.【chunk:6f7772†L1-L6】
+- `npm audit --audit-level=high` highlights the existing esbuild advisory (no non-breaking fix yet).【chunk:4ff116†L1-L25】
