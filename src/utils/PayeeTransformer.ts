@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
-import type Logger from './Logger.js';
+import Logger, { LogLevel } from './Logger.js';
 import { PayeeTransformationConfig } from './config.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -112,7 +112,10 @@ class PayeeTransformer {
             (payee) => !this.transformationCache.has(payee)
         );
 
-        this.logger.debug('Original payee names:', uniquePayees);
+        this.logger.debug(
+            'Original payee names:',
+            this.formatPayeeListForLog(uniquePayees)
+        );
 
         if (uncachedPayees.length === 0) {
             this.logger.debug(
@@ -169,12 +172,11 @@ class PayeeTransformer {
 
                 const finalResult = this.buildResponse(uniquePayees);
 
+                const mappingForLog =
+                    this.formatPayeeMappingForLog(finalResult);
                 this.logger.debug('Payee transformation completed:', [
                     'Original → Transformed:',
-                    ...Object.entries(finalResult).map(
-                        ([original, transformed]) =>
-                            `  "${original}" → "${transformed}"`
-                    ),
+                    ...mappingForLog,
                 ]);
 
                 return finalResult;
@@ -182,7 +184,13 @@ class PayeeTransformer {
                 this.logger.error(
                     `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
                 );
-                this.logger.debug(`Raw response: ${output}`);
+                if (this.shouldMaskPayeeLogs()) {
+                    this.logger.debug(
+                        'Raw response omitted to respect payee masking configuration.'
+                    );
+                } else {
+                    this.logger.debug(`Raw response: ${output}`);
+                }
                 return null;
             }
         } catch (error) {
@@ -452,6 +460,50 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
         } else {
             this.logger.error('Unknown error in payee transformation');
         }
+    }
+
+    private shouldMaskPayeeLogs() {
+        return (
+            this.config.maskPayeeNamesInLogs &&
+            this.logger.getLevel() < LogLevel.DEBUG
+        );
+    }
+
+    private formatPayeeListForLog(payees: Array<string>) {
+        if (!this.shouldMaskPayeeLogs()) {
+            return payees;
+        }
+
+        return payees.map((payee) => this.obfuscatePayeeName(payee));
+    }
+
+    private formatPayeeMappingForLog(
+        mappings: Record<string, string>
+    ): Array<string> {
+        const shouldMask = this.shouldMaskPayeeLogs();
+
+        return Object.entries(mappings).map(([original, transformed]) => {
+            const displayOriginal = shouldMask
+                ? this.obfuscatePayeeName(original)
+                : original;
+            const displayTransformed = shouldMask
+                ? this.obfuscatePayeeName(transformed)
+                : transformed;
+
+            return `  "${displayOriginal}" → "${displayTransformed}"`;
+        });
+    }
+
+    private obfuscatePayeeName(payee: string) {
+        if (payee.length <= 2) {
+            return '•'.repeat(Math.max(payee.length, 1));
+        }
+
+        const firstChar = payee[0];
+        const lastChar = payee[payee.length - 1];
+        const middle = '•'.repeat(payee.length - 2);
+
+        return `${firstChar}${middle}${lastChar}`;
     }
 
     private buildResponse(payees: Array<string>) {

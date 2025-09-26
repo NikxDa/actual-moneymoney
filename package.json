@@ -5,6 +5,7 @@
     "exports": "./index.js",
     "scripts": {
         "build": "npx tsc",
+        "typecheck": "tsc --noEmit",
         "start": "node dist/index.js",
         "lint:eslint": "eslint src",
         "lint:prettier": "prettier --check 'src/**/*.ts'",
@@ -34,7 +35,6 @@
         "chalk": "^5.6.2",
         "date-fns": "^4.1.0",
         "moneymoney": "^1.2.1",
-        "node-fetch": "^3.3.2",
         "openai": "^5.23.0",
         "toml": "^3.0.0",
         "yargs": "^18.0.0",

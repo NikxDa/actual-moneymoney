@@ -2,25 +2,11 @@ import actual from '@actual-app/api';
 import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
-import fetch from 'node-fetch';
 import util from 'node:util';
 
 import { ActualServerConfig } from './config.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
-
-type UserFile = {
-    deleted: number;
-    encryptKeyId: null;
-    fileId: string;
-    groupId: string;
-    name: string;
-};
-
-type GetUserFilesResponse = {
-    status: string;
-    data: Array<UserFile>;
-};
 
 const isActualNoise = (args: unknown[]) => {
     if (args.length === 0) {
@@ -52,7 +38,6 @@ const suppressIfNoisy =
 
 class ActualApi {
     protected isInitialized = false;
-    private api: typeof actual | null = null;
 
     constructor(
         private serverConfig: ActualServerConfig,
@@ -169,52 +154,6 @@ class ActualApi {
         } finally {
             this.isInitialized = false;
         }
-    }
-
-    private async getUserToken() {
-        const response = await fetch(
-            `${this.serverConfig.serverUrl}/account/login`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    password: this.serverConfig.serverPassword,
-                }),
-            }
-        );
-
-        const responseData = (await response.json()) as {
-            data: { token: string | null };
-        };
-
-        const userToken = responseData.data?.token;
-
-        if (!userToken) {
-            throw new Error(
-                'Could not get user token: Invalid server password.'
-            );
-        }
-
-        return userToken;
-    }
-
-    async getUserFiles() {
-        const userToken = await this.getUserToken();
-
-        const response = await fetch(
-            `${this.serverConfig.serverUrl}/sync/list-user-files`,
-            {
-                headers: {
-                    'X-Actual-Token': userToken,
-                },
-            }
-        );
-
-        const responseData = (await response.json()) as GetUserFilesResponse;
-
-        return responseData.data.filter((f) => f.deleted === 0);
     }
 
     private static suppressDepth = 0;

@@ -15,6 +15,7 @@ A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actu
   - [Advanced Configuration](#advanced-configuration)
   - [Payee Transformation](#payee-transformation)
 - [Usage](#usage)
+- [Development](#development)
 - [Account Mapping](#account-mapping)
 - [Troubleshooting](#troubleshooting)
 
@@ -53,6 +54,7 @@ A basic configuration document looks like this:
 enabled = false
 openAiApiKey = "<openAiKey>"  # Your OpenAI API key
 openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
+# maskPayeeNamesInLogs = true     # Optional: keep payee names obfuscated in payee transformation debug logs
 
 # Import settings
 [import]
@@ -101,6 +103,8 @@ The payee transformation feature automatically converts payee names to human-rea
 2. Provide a valid OpenAI API key (generate one at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys))
 3. Optionally customize the AI model and settings
 4. (Optional) Set `skipModelValidation = true` if you want to trust the configured model identifier without contacting the OpenAI model listing endpoint
+
+By default, payee transformation debug logs mask payee names unless you opt out with `maskPayeeNamesInLogs = false`. This keeps sensitive payee data hidden even when running with verbose logging levels.
 
 #### Custom Prompts
 
@@ -180,6 +184,16 @@ For all available commands and options:
 ```bash
 actual-monmon --help
 ```
+
+## Development
+
+Helpful npm scripts when working on the project:
+
+- `npm run lint:eslint` – run ESLint against the TypeScript sources.
+- `npm run lint:prettier` – check formatting with Prettier.
+- `npm run typecheck` – perform a strict TypeScript type check without emitting files.
+- `npm run build` – compile the CLI for distribution.
+- `npm test` – execute the Vitest suite.
 
 ## Account Mapping
 

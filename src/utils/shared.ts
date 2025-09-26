@@ -21,6 +21,7 @@ export const EXAMPLE_CONFIG = `
 enabled = false
 openAiApiKey = "<openAiKey>"
 openAiModel = "gpt-3.5-turbo"
+# maskPayeeNamesInLogs = true
 # skipModelValidation = false # Optional: Skip contacting OpenAI to verify the model name
 # customPrompt = "Your custom prompt here..." # Optional: Override default prompt
 # [payeeTransformation.modelConfig] # Optional: Model-specific settings
