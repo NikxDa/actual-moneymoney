@@ -3,6 +3,7 @@ import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
@@ -209,8 +210,8 @@ class ActualApi {
         }
     }
 
-    public async init(): Promise<void> {
-        const actualDataDir = DEFAULT_DATA_DIR;
+    public async init(customDataDir?: string): Promise<void> {
+        const actualDataDir = customDataDir ?? DEFAULT_DATA_DIR;
 
         const dataDirExists = await fs
             .access(actualDataDir)
@@ -239,9 +240,9 @@ class ActualApi {
         this.isInitialized = true;
     }
 
-    public async ensureInitialization(): Promise<void> {
+    public async ensureInitialization(customDataDir?: string): Promise<void> {
         if (!this.isInitialized) {
-            await this.init();
+            await this.init(customDataDir);
         }
     }
 
@@ -262,8 +263,6 @@ class ActualApi {
     }
 
     public async loadBudget(budgetId: string): Promise<void> {
-        await this.ensureInitialization();
-
         const budgetConfig = this.serverConfig.budgets.find(
             (b) => b.syncId === budgetId
         );
@@ -273,6 +272,55 @@ class ActualApi {
         }
 
         const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
+
+        // Find the actual budget directory name (skip in test environments)
+        let budgetDataDir = DEFAULT_DATA_DIR;
+
+        // Skip directory detection if already initialized (test environment)
+        if (!this.isInitialized) {
+            try {
+                const actualDataDir = DEFAULT_DATA_DIR;
+                const budgetDirs = await fs
+                    .readdir(actualDataDir)
+                    .catch(() => []);
+                const matchingDir = budgetDirs.find((dir) => {
+                    return dir !== '.' && dir !== '..';
+                });
+
+                if (matchingDir) {
+                    try {
+                        const metadataPath = path.join(
+                            actualDataDir,
+                            matchingDir,
+                            'metadata.json'
+                        );
+                        const metadata = JSON.parse(
+                            await fs.readFile(metadataPath, 'utf8')
+                        );
+                        if (metadata.groupId === budgetConfig.syncId) {
+                            // Use the actual budget directory instead of the data directory
+                            budgetDataDir = path.join(
+                                actualDataDir,
+                                matchingDir
+                            );
+                            this.logger.debug(
+                                `Using budget directory: ${matchingDir}`
+                            );
+                        }
+                    } catch (_error) {
+                        // Ignore metadata read errors, fall back to default data directory
+                    }
+                }
+            } catch (_error) {
+                // Skip directory detection in test environments or when filesystem access fails
+                this.logger.debug(
+                    'Skipping directory detection, using default data directory'
+                );
+            }
+        }
+
+        // Initialize with the correct budget directory
+        await this.ensureInitialization(budgetDataDir);
 
         this.logger.debug(
             `Downloading budget with syncId '${budgetConfig.syncId}'...`
@@ -294,6 +342,7 @@ class ActualApi {
         this.logger.debug(
             `Loading budget with syncId '${budgetConfig.syncId}'...`
         );
+
         await this.runActualRequest(
             `load budget '${budgetConfig.syncId}'`,
             () => actual.loadBudget(budgetConfig.syncId),
