@@ -60,7 +60,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                     `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
                 );
             } else {
-                logger.error(`An unexpected error occured: ${e}`);
+                logger.error(`An unexpected error occurred: ${e}`);
             }
 
             if (e instanceof Error) {
