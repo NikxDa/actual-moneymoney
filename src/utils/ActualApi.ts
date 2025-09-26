@@ -1,4 +1,5 @@
 import actual from '@actual-app/api';
+import type { CreateTransaction } from '@actual-app/api';
 import { format } from 'date-fns';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
@@ -21,8 +22,6 @@ type GetUserFilesResponse = {
     data: Array<UserFile>;
 };
 
-let hasInstalledActualNoiseFilter = false;
-
 const isActualNoise = (args: unknown[]) => {
     if (args.length === 0) {
         return false;
@@ -39,32 +38,17 @@ const isActualNoise = (args: unknown[]) => {
 
     return noisyPrefixes.some((prefix) => message.startsWith(prefix));
 };
+const suppressIfNoisy =
+    <TArgs extends unknown[]>(
+        original: (...args: TArgs) => void
+    ): ((...args: TArgs) => void) =>
+    (...args: TArgs): void => {
+        if (isActualNoise(args)) {
+            return;
+        }
 
-const installActualNoiseFilter = () => {
-    if (hasInstalledActualNoiseFilter) {
-        return;
-    }
-
-    const suppressIfNoisy =
-        <TArgs extends unknown[]>(original: (...args: TArgs) => void) =>
-        (...args: TArgs) => {
-            if (isActualNoise(args)) {
-                return;
-            }
-
-            original(...args);
-        };
-
-    const originalConsoleLog = console.log.bind(console);
-    const originalConsoleInfo = console.info.bind(console);
-    const originalConsoleDebug = console.debug.bind(console);
-
-    console.log = suppressIfNoisy(originalConsoleLog);
-    console.info = suppressIfNoisy(originalConsoleInfo);
-    console.debug = suppressIfNoisy(originalConsoleDebug);
-
-    hasInstalledActualNoiseFilter = true;
-};
+        original(...args);
+    };
 
 class ActualApi {
     protected isInitialized = false;
@@ -114,14 +98,14 @@ class ActualApi {
     async sync() {
         await this.ensureInitialization();
         await this.suppressConsoleLog(async () => {
-            await actual.internal.send('sync');
+            await actual.internal.send('sync', undefined);
         });
     }
 
     async getAccounts() {
         await this.ensureInitialization();
         const accounts = await this.suppressConsoleLog(async () => {
-            return await actual.getAccounts();
+            return await actual.getAccounts(undefined, undefined);
         });
         return accounts;
     }
@@ -159,18 +143,32 @@ class ActualApi {
         );
     }
 
-    getTransactions(accountId: string) {
-        const startDate = format(new Date(2000, 1, 1), 'yyyy-MM-dd');
-        const endDate = format(new Date(), 'yyyy-MM-dd');
+    getTransactions(accountId: string, options?: { from?: Date; to?: Date }) {
+        let from = options?.from ?? new Date(2000, 0, 1);
+        let to = options?.to ?? null;
+        if (to && from > to) {
+            [from, to] = [to, from];
+        }
+        const startDate = format(from, 'yyyy-MM-dd');
+        const endDate = to ? format(to, 'yyyy-MM-dd') : null;
 
         return this.suppressConsoleLog(() =>
-            actual.getTransactions(accountId, startDate, endDate)
+            endDate
+                ? actual.getTransactions(accountId, startDate, endDate)
+                : actual.getTransactions(accountId, startDate)
         );
     }
 
     async shutdown() {
-        await this.ensureInitialization();
-        await this.suppressConsoleLog(() => actual.shutdown());
+        if (!this.isInitialized) {
+            return;
+        }
+
+        try {
+            await this.suppressConsoleLog(() => actual.shutdown());
+        } finally {
+            this.isInitialized = false;
+        }
     }
 
     private async getUserToken() {
@@ -219,9 +217,62 @@ class ActualApi {
         return responseData.data.filter((f) => f.deleted === 0);
     }
 
-    private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
-        installActualNoiseFilter();
-        return await callback();
+    private static suppressDepth = 0;
+    private static originals: {
+        log: typeof console.log;
+        info: typeof console.info;
+        debug: typeof console.debug;
+        warn: typeof console.warn;
+    } | null = null;
+
+    private async suppressConsoleLog<T>(
+        callback: () => T | Promise<T>
+    ): Promise<Awaited<T>> {
+        if (ActualApi.suppressDepth === 0) {
+            ActualApi.originals = {
+                log: console.log,
+                info: console.info,
+                debug: console.debug,
+                warn: console.warn,
+            };
+
+            const originals = ActualApi.originals;
+
+            console.log = suppressIfNoisy(
+                (...args: Parameters<typeof console.log>) => {
+                    originals.log.apply(console, args);
+                }
+            );
+            console.info = suppressIfNoisy(
+                (...args: Parameters<typeof console.info>) => {
+                    originals.info.apply(console, args);
+                }
+            );
+            console.debug = suppressIfNoisy(
+                (...args: Parameters<typeof console.debug>) => {
+                    originals.debug.apply(console, args);
+                }
+            );
+            console.warn = suppressIfNoisy(
+                (...args: Parameters<typeof console.warn>) => {
+                    originals.warn.apply(console, args);
+                }
+            );
+        }
+
+        ActualApi.suppressDepth++;
+        try {
+            return await callback();
+        } finally {
+            ActualApi.suppressDepth--;
+            if (ActualApi.suppressDepth === 0 && ActualApi.originals) {
+                console.log = ActualApi.originals.log;
+                console.info = ActualApi.originals.info;
+                console.debug = ActualApi.originals.debug;
+                console.warn = ActualApi.originals.warn;
+                ActualApi.originals = null;
+            }
+        }
     }
 }
 

@@ -1,17 +1,48 @@
 import fs from 'fs/promises';
 import path from 'path';
 import toml from 'toml';
-import { ArgumentsCamelCase } from 'yargs';
-import { ZodIssueCode, z } from 'zod';
+import type { ArgumentsCamelCase } from 'yargs';
+import { formatISO, isValid as isValidDate, parseISO } from 'date-fns';
+import { ZodError, ZodIssueCode, z } from 'zod';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
+
+const trimmedNonEmptyString = (message: string) =>
+    z.string().trim().min(1, message);
+
+const isoDateSchema = z
+    .string()
+    .trim()
+    .superRefine((value, ctx) => {
+        const parsed = parseISO(value);
+
+        if (!isValidDate(parsed)) {
+            ctx.addIssue({
+                code: ZodIssueCode.custom,
+                message:
+                    'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
+            });
+            return;
+        }
+
+        const canonical = formatISO(parsed, { representation: 'date' });
+        if (canonical !== value) {
+            ctx.addIssue({
+                code: ZodIssueCode.custom,
+                message:
+                    'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
+            });
+        }
+    });
 
 const budgetSchema = z
     .object({
-        syncId: z.string(),
-        earliestImportDate: z.string().optional(),
+        syncId: trimmedNonEmptyString('Sync ID must not be empty'),
+        earliestImportDate: isoDateSchema.optional(),
         e2eEncryption: z.object({
             enabled: z.boolean(),
-            password: z.string().optional(),
+            password: trimmedNonEmptyString(
+                'Encryption password must not be empty'
+            ).optional(),
         }),
         accountMapping: z.record(z.string(), z.string()),
     })
@@ -23,29 +54,21 @@ const budgetSchema = z
                     'Password must not be empty if end-to-end encryption is enabled',
             });
         }
-
-        if (val.earliestImportDate) {
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(val.earliestImportDate)) {
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message:
-                        'Invalid earliest import date format (required format is YYYY-MM-DD)',
-                });
-            }
-        }
     });
 
 const actualServerSchema = z.object({
-    serverUrl: z.string(),
-    serverPassword: z.string(),
+    serverUrl: z.string().trim().url(),
+    serverPassword: trimmedNonEmptyString('Server password must not be empty'),
     budgets: z.array(budgetSchema).min(1),
 });
 
 const payeeTransformationSchema = z.object({
     enabled: z.boolean(),
-    openAiApiKey: z.string().optional(),
-    openAiModel: z.string().optional().default('gpt-3.5-turbo'),
+    openAiApiKey: trimmedNonEmptyString(
+        'OpenAI API key must not be empty'
+    ).optional(),
+    openAiModel: z.string().trim().optional().default('gpt-3.5-turbo'),
+    skipModelValidation: z.boolean().default(false),
     customPrompt: z.string().optional(),
     modelConfig: z
         .object({
@@ -131,6 +154,17 @@ export const getConfig = async (argv: ArgumentsCamelCase) => {
             throw new Error(
                 `Failed to parse configuration file: ${parseError.message} (line ${line}, column ${column})`
             );
+        }
+
+        if (e instanceof ZodError) {
+            const formattedIssues = e.issues
+                .map((issue) => {
+                    const path = issue.path.join('.') || '<root>';
+                    return `${path}: ${issue.message}`;
+                })
+                .join('; ');
+
+            throw new Error(`Invalid configuration: ${formattedIssues}`);
         }
 
         throw new Error(

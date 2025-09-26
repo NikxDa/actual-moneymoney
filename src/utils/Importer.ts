@@ -1,4 +1,5 @@
 import { format, subMonths } from 'date-fns';
+import type { CreateTransaction } from '@actual-app/api';
 import {
     Account as MonMonAccount,
     Transaction as MonMonTransaction,
@@ -162,7 +163,10 @@ class Importer {
             }
 
             const existingActualTransactions =
-                await this.actualApi.getTransactions(actualAccount.id);
+                await this.actualApi.getTransactions(actualAccount.id, {
+                    from: importDate,
+                    to: toDate ?? undefined,
+                });
 
             this.logger.debug(
                 `Found ${existingActualTransactions.length} existing transactions for Actual account '${actualAccount.name}'`

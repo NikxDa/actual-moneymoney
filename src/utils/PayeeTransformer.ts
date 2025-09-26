@@ -1,12 +1,23 @@
+import fs from 'fs/promises';
+import path from 'path';
 import OpenAI from 'openai';
-import Logger from './Logger.js';
+import type Logger from './Logger.js';
 import { PayeeTransformationConfig } from './config.js';
+import { DEFAULT_DATA_DIR } from './shared.js';
 
 interface ModelCapabilities {
     supportsTemperature: boolean;
     supportsMaxTokens: boolean;
     defaultTemperature: number;
 }
+
+interface ModelCache {
+    models: Array<string>;
+    expiresAt: number;
+}
+
+const MODEL_CACHE_FILENAME = 'openai-model-cache.json';
+const MODEL_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
 type ExtendedChatCompletionCreateParams =
     OpenAI.Chat.Completions.ChatCompletionCreateParams & {
@@ -18,6 +29,55 @@ class PayeeTransformer {
     private availableModels: Array<string> | null = null;
     private modelListInitialized = false;
     private modelCapabilities: Map<string, ModelCapabilities> = new Map();
+    private transformationCache = new Map<string, string>();
+
+    private static modelCache: ModelCache | null = null;
+
+    private static getCacheFilePath() {
+        return path.join(DEFAULT_DATA_DIR, MODEL_CACHE_FILENAME);
+    }
+
+    private static async ensureCacheDirExists() {
+        await fs.mkdir(DEFAULT_DATA_DIR, { recursive: true });
+    }
+
+    private static async readModelCacheFromDisk() {
+        try {
+            const cacheFile = PayeeTransformer.getCacheFilePath();
+            const cacheContent = await fs.readFile(cacheFile, 'utf-8');
+            const parsed = JSON.parse(cacheContent) as ModelCache;
+            if (
+                !Array.isArray(parsed.models) ||
+                typeof parsed.expiresAt !== 'number'
+            ) {
+                return null;
+            }
+
+            return parsed;
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+                return null;
+            }
+
+            return null;
+        }
+    }
+
+    private static async writeModelCacheToDisk(cache: ModelCache) {
+        try {
+            await PayeeTransformer.ensureCacheDirExists();
+            const cacheFile = PayeeTransformer.getCacheFilePath();
+            const tmpFile = `${cacheFile}.tmp`;
+            await fs.writeFile(
+                tmpFile,
+                JSON.stringify(cache, null, 2),
+                'utf-8'
+            );
+            await fs.rename(tmpFile, cacheFile);
+        } catch (_error) {
+            // Ignore cache write errors but log in debug environments if needed
+        }
+    }
 
     constructor(
         private config: PayeeTransformationConfig,
@@ -35,7 +95,9 @@ class PayeeTransformer {
         });
     }
 
-    public async transformPayees(payeeList: string[]) {
+    public async transformPayees(
+        payeeList: string[]
+    ): Promise<Record<string, string> | null> {
         const prompt = this.generatePrompt();
 
         if (payeeList.length === 0) {
@@ -45,21 +107,32 @@ class PayeeTransformer {
             return {};
         }
 
-        // Log original payee names at DEBUG level
-        this.logger.debug('Original payee names:', payeeList);
+        const uniquePayees = Array.from(new Set(payeeList));
+        const uncachedPayees = uniquePayees.filter(
+            (payee) => !this.transformationCache.has(payee)
+        );
+
+        this.logger.debug('Original payee names:', uniquePayees);
+
+        if (uncachedPayees.length === 0) {
+            this.logger.debug(
+                'All payees resolved from cache. Skipping OpenAI request.'
+            );
+            return this.buildResponse(uniquePayees);
+        }
+
+        this.logger.debug(`Starting payee transformation...`, [
+            `Payees requested: ${uniquePayees.length}`,
+            `Using cache for: ${uniquePayees.length - uncachedPayees.length}`,
+            `Model: ${this.config.openAiModel}`,
+        ]);
 
         try {
-            this.logger.debug(`Starting payee transformation...`, [
-                `Payees: ${payeeList.length}`,
-                `Model: ${this.config.openAiModel}`,
-            ]);
-
-            // Validate model before proceeding
             const model = await this.getConfiguredModel();
 
             const response = await this.makeOpenAIRequest(
                 prompt,
-                payeeList,
+                uncachedPayees,
                 model
             );
 
@@ -86,16 +159,25 @@ class PayeeTransformer {
                     [key: string]: string;
                 };
 
-                // Log transformed payee names at DEBUG level
+                for (const [original, transformed] of Object.entries(
+                    transformedPayees
+                )) {
+                    if (typeof transformed === 'string') {
+                        this.transformationCache.set(original, transformed);
+                    }
+                }
+
+                const finalResult = this.buildResponse(uniquePayees);
+
                 this.logger.debug('Payee transformation completed:', [
                     'Original → Transformed:',
-                    ...Object.entries(transformedPayees).map(
+                    ...Object.entries(finalResult).map(
                         ([original, transformed]) =>
                             `  "${original}" → "${transformed}"`
                     ),
                 ]);
 
-                return transformedPayees;
+                return finalResult;
             } catch (parseError) {
                 this.logger.error(
                     `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
@@ -212,28 +294,71 @@ class PayeeTransformer {
     }
 
     private async getConfiguredModel() {
-        // Only fetch models once per instance
-        if (!this.modelListInitialized) {
-            this.logger.debug('Initializing model list...');
-            const response = await this.openai.models.list();
-            this.availableModels = response.data.map((m) => m.id);
-            this.modelListInitialized = true;
-            this.logger.debug(
-                `Found ${this.availableModels.length} available models.`
-            );
-        } else {
-            this.logger.debug('Using cached model list.');
+        if (this.config.skipModelValidation) {
+            this.logger.debug('Skipping OpenAI model validation.');
+            return this.config.openAiModel;
         }
 
-        if (!this.availableModels!.includes(this.config.openAiModel)) {
+        const availableModels = await this.getAvailableModels();
+
+        if (!availableModels.includes(this.config.openAiModel)) {
             this.logger.error(
                 `The specified model '${this.config.openAiModel}' is invalid. The following models are available:`,
-                this.availableModels!
+                availableModels
             );
             throw new Error('Invalid OpenAI model specified.');
         }
 
         return this.config.openAiModel;
+    }
+
+    private async getAvailableModels() {
+        if (this.modelListInitialized && this.availableModels) {
+            return this.availableModels;
+        }
+
+        const now = Date.now();
+
+        const inMemoryCache = PayeeTransformer.modelCache;
+        if (inMemoryCache && inMemoryCache.expiresAt > now) {
+            this.logger.debug('Using in-memory OpenAI model cache.');
+            this.availableModels = inMemoryCache.models;
+            this.modelListInitialized = true;
+            return this.availableModels;
+        }
+
+        const diskCache = await PayeeTransformer.readModelCacheFromDisk();
+        if (diskCache && diskCache.expiresAt > now) {
+            this.logger.debug('Loaded OpenAI model list from disk cache.');
+            PayeeTransformer.modelCache = diskCache;
+            this.availableModels = diskCache.models;
+            this.modelListInitialized = true;
+            return this.availableModels;
+        }
+
+        this.logger.debug('Fetching OpenAI model list from OpenAI API...');
+        let models: string[] = [];
+        try {
+            const response = await this.openai.models.list();
+            models = response.data.map((m) => m.id);
+        } catch (err) {
+            this.logger.error('Failed to fetch OpenAI model list');
+            throw err;
+        }
+        const cache: ModelCache = {
+            models,
+            expiresAt: now + MODEL_CACHE_TTL_MS,
+        };
+
+        PayeeTransformer.modelCache = cache;
+        this.availableModels = models;
+        this.modelListInitialized = true;
+
+        await PayeeTransformer.writeModelCacheToDisk(cache);
+
+        this.logger.debug(`Found ${models.length} available models.`);
+
+        return models;
     }
 
     private generatePrompt() {
@@ -327,6 +452,16 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
         } else {
             this.logger.error('Unknown error in payee transformation');
         }
+    }
+
+    private buildResponse(payees: Array<string>) {
+        return payees.reduce(
+            (acc, payee) => {
+                acc[payee] = this.transformationCache.get(payee) ?? payee;
+                return acc;
+            },
+            {} as Record<string, string>
+        );
     }
 }
 

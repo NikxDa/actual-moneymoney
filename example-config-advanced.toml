@@ -6,6 +6,7 @@
 enabled = true
 openAiApiKey = "${OPENAI_API_KEY}"  # Recommended: load secrets from environment variables
 openAiModel = "gpt-4o-mini"  # Can be: gpt-3.5-turbo, gpt-4, gpt-4o, gpt-4o-mini, gpt-5, etc.
+skipModelValidation = false  # Set to true to skip fetching the model list from the OpenAI API
 
 # Optional: Custom prompt for payee transformation
 # If not provided, a default prompt optimized for financial classification will be used

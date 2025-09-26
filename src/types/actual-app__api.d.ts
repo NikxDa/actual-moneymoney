@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Actual object
  * {
@@ -175,19 +176,21 @@ declare module '@actual-app/api' {
         defaultCleared?: boolean;
     }
 
+    export type CreateTransaction = CreateTransactionPayload;
+
     const addTransactions: (
         accountId: ID,
-        transactions: CreateTransaction[]
+        transactions: CreateTransactionPayload[]
     ) => Promise<ID[]>;
     const importTransactions: (
         accountId: ID,
-        transactions: CreateTransaction[],
+        transactions: CreateTransactionPayload[],
         opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
     const getTransactions: (
         accountId: ID,
         startDate: DateString,
-        endDate: DateString
+        endDate?: DateString
     ) => Promise<ReadTransaction[]>;
     const updateTransaction: (
         transactionId: ID,
@@ -196,7 +199,10 @@ declare module '@actual-app/api' {
     const deleteTransaction: (transactionId: ID) => Promise<void>;
 
     // Accounts
-    const getAccounts: () => Promise<Account[]>;
+    const getAccounts: (
+        includeOffBudget?: boolean,
+        includeClosed?: boolean
+    ) => Promise<Account[]>;
     const createAccount: (
         account: CreateAccount,
         initialBalance?: number
@@ -263,7 +269,7 @@ type ReadTransaction = Omit<BaseTransaction, 'payee_name'> & {
     subtransactions: ReadSubTransaction[];
 };
 
-type CreateTransaction = Modify<
+type CreateTransactionPayload = Modify<
     BaseTransaction,
     | 'amount'
     | 'payee'
@@ -336,11 +342,6 @@ deleteAccount(idid) → Promise<null>
 Delete an account.
 */
 
-type CreateTransaction = Pick<BaseTransaction, 'account' | 'date'> &
-    Partial<Omit<BaseTransaction, 'id' | 'account' | 'date'>> & {
-        subtransactions: CreateSubTransaction[];
-    };
-
 type UpdateTransaction = Omit<BaseTransaction, 'id' | 'subtransactions'>;
 
 type Category = {
@@ -369,3 +370,5 @@ type ID = string;
 type MonthString = string;
 type DateString = string;
 type Amount = number;
+
+export type { CreateTransactionPayload as CreateTransaction };
