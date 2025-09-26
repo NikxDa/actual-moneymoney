@@ -4,7 +4,7 @@
 The importer has solid foundations but fails at critical integration points: budgets are downloaded yet never loaded, the `validate` command cannot create new configuration paths, and the Vitest suite hangs because open handles remain. Robust error paths against the Actual server and OpenAI are missing. Documentation promises quality-of-life features (e.g., automatic config generation) that the code only partially delivers. Priority is to stabilise the API layer, followed by DX improvements and CI coverage of the real-world workflow.
 
 **5-Point Action Plan**
-1. Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter.
+1. ✅ Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter (completed in the latest Actual API update).
 2. Harden the CLI configuration path (recursive directory creation, actionable error messages).
 3. Identify the root cause for the Vitest hang, ship a hotfix, then enforce tests in CI.
 4. Strengthen OpenAI/secret handling (timeouts, response validation, log redaction, cache TTL documentation).
@@ -49,7 +49,7 @@ The importer has solid foundations but fails at critical integration points: bud
 - Story C3 (S): extend GitHub Actions with test/typecheck/audit, consolidate bun→npm usage.【F:.github/workflows/ci.yml†L1-L23】【F:package.json†L6-L13】
 
 **Quick Wins (<1 day)**
-- Add missing `npm run typecheck` script and update README.【F:package.json†L6-L13】
+- ✅ Add missing `npm run typecheck` script and update README (completed).【F:package.json†L6-L13】
 - Allow masking toggle for `PayeeTransformer` debug logs.【F:src/utils/PayeeTransformer.ts†L110-L188】
 - Remove `getUserFiles` or document feature flag to reduce dead code.【F:src/utils/ActualApi.ts†L174-L217】
 

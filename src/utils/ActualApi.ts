@@ -67,13 +67,10 @@ class ActualApi {
         const extras = Array.isArray(additional)
             ? additional
             : additional
-            ? [additional]
-            : [];
+              ? [additional]
+              : [];
 
-        return [
-            `Server URL: ${this.serverConfig.serverUrl}`,
-            ...extras,
-        ];
+        return [`Server URL: ${this.serverConfig.serverUrl}`, ...extras];
     }
 
     private async runActualRequest<T>(
@@ -107,9 +104,12 @@ class ActualApi {
                 error instanceof Error ? error.message : 'Unknown error';
 
             const wrappedError = new Error(
-                `Actual API operation '${operation}' failed: ${message}`,
-                error instanceof Error ? { cause: error } : undefined
+                `Actual API operation '${operation}' failed: ${message}`
             );
+
+            if (error instanceof Error) {
+                (wrappedError as Error & { cause?: Error }).cause = error;
+            }
             this.logger.error(wrappedError.message, hints);
             throw wrappedError;
         } finally {

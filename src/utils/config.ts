@@ -65,10 +65,7 @@ const actualServerSchema = z.object({
         .number()
         .int()
         .positive()
-        .max(
-            5 * 60 * 1000,
-            'Actual server timeout must be 5 minutes or less'
-        )
+        .max(5 * 60 * 1000, 'Actual server timeout must be 5 minutes or less')
         .default(DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS),
     budgets: z.array(budgetSchema).min(1),
 });
