@@ -9,28 +9,44 @@
   - `src/utils/`: shared helpers for API access, logging, importing, configuration, etc.
   - `src/types/`: shared TypeScript type declarations.
 
-## Coding Conventions
+## Documentation Structure
 
-- Use modern TypeScript with ECMAScript modules (`import ... from './module.js'`).
-- Indent using **4 spaces** (match existing code style).
-- Prefer explicit types for function parameters/returns when not inferred from obvious context.
-- Keep logging consistent by using the `Logger` utility instead of `console.log` directly.
-- Follow existing naming patterns (`*.command.ts` for CLI commands, `PascalCase` for classes, `camelCase` for variables and functions).
-- When adding new configuration options or command-line flags, update the TOML schema/validation in `src/utils/config.ts`, the generated default config in `src/utils/shared.ts`, and relevant documentation (e.g., `README.md`, `example-config-advanced.toml`).
+This project uses a distributed documentation approach with specific guidelines for different areas:
 
-## Testing & Tooling
+### 📁 [src/AGENTS.md](src/AGENTS.md) - Source Code Guidelines
 
-Run the following commands before committing changes so local development matches CI:
+- **Command Module Patterns**: CLI command implementation with yargs integration
+- **Configuration Patterns**: TOML configuration management with Zod validation
+- **Utility Class Patterns**: Logger, API clients, data transformation utilities
+- **API Integration Patterns**: Actual Budget, MoneyMoney, and OpenAI integration
+- **Source Code Standards**: TypeScript conventions, import/export patterns, error handling
 
-1. `npm run lint:eslint`
-1. `npm run lint:prettier`
-1. `npm run typecheck`
-1. `npm run build`
-1. `npm test`
+### 🧪 [tests/AGENTS.md](tests/AGENTS.md) - Testing Guidelines
 
-These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
+- **Testing Patterns**: Vitest framework usage, test organization, mocking
+- **Test Structure**: File naming, organization, and coverage requirements
+- **Pre-commit Checks**: Quality assurance workflow
+- **Test Maintenance**: Keeping tests in sync with source changes
 
-Whenever a source file is modified, review and update the relevant automated tests to cover the change. If a bug is fixed, add a regression test when feasible to prevent the issue from reoccurring.
+## Quick Start
+
+### For Source Code Development
+
+See [src/AGENTS.md](src/AGENTS.md) for:
+
+- Command implementation patterns
+- Configuration management
+- API integration guidelines
+- TypeScript coding standards
+
+### For Testing
+
+See [tests/AGENTS.md](tests/AGENTS.md) for:
+
+- Test organization and structure
+- Mocking patterns
+- Coverage requirements
+- Test maintenance practices
 
 ## Commit Messages
 
