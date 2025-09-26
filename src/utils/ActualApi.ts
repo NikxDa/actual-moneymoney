@@ -121,7 +121,7 @@ class ActualApi {
         }
     }
 
-    async init() {
+    public async init(): Promise<void> {
         const actualDataDir = DEFAULT_DATA_DIR;
 
         const dataDirExists = await fs
@@ -151,13 +151,13 @@ class ActualApi {
         this.isInitialized = true;
     }
 
-    async ensureInitialization() {
+    public async ensureInitialization(): Promise<void> {
         if (!this.isInitialized) {
             await this.init();
         }
     }
 
-    async sync(additionalHints?: string | string[]) {
+    public async sync(additionalHints?: string | string[]): Promise<void> {
         await this.ensureInitialization();
         await this.runActualRequest(
             'sync budget',
@@ -166,14 +166,14 @@ class ActualApi {
         );
     }
 
-    async getAccounts() {
+    public async getAccounts(): ReturnType<typeof actual.getAccounts> {
         await this.ensureInitialization();
         return await this.runActualRequest('fetch accounts', () =>
-            actual.getAccounts(undefined, undefined)
+            actual.getAccounts()
         );
     }
 
-    async loadBudget(budgetId: string) {
+    public async loadBudget(budgetId: string): Promise<void> {
         await this.ensureInitialization();
 
         const budgetConfig = this.serverConfig.budgets.find(
@@ -218,10 +218,10 @@ class ActualApi {
         await this.sync(budgetHints);
     }
 
-    async importTransactions(
+    public async importTransactions(
         accountId: string,
         transactions: CreateTransaction[]
-    ) {
+    ): ReturnType<typeof actual.importTransactions> {
         await this.ensureInitialization();
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
@@ -233,10 +233,10 @@ class ActualApi {
         );
     }
 
-    async getTransactions(
+    public async getTransactions(
         accountId: string,
         options?: { from?: Date; to?: Date }
-    ) {
+    ): ReturnType<typeof actual.getTransactions> {
         let from = options?.from ?? new Date(2000, 0, 1);
         let to = options?.to ?? null;
         if (to && from > to) {
@@ -260,7 +260,7 @@ class ActualApi {
         );
     }
 
-    async shutdown() {
+    public async shutdown(): Promise<void> {
         if (!this.isInitialized) {
             return;
         }

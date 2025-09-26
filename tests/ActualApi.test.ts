@@ -184,7 +184,13 @@ describe('ActualApi', () => {
             );
             expect(loadBudgetMock).not.toHaveBeenCalled();
         } finally {
-            vi.useRealTimers();
+            // Ensure no timers remain and restore timers
+            try {
+                await vi.runOnlyPendingTimersAsync();
+                vi.clearAllTimers();
+            } finally {
+                vi.useRealTimers();
+            }
         }
     });
 
