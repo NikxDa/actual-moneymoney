@@ -271,26 +271,11 @@ class ActualApi {
         transactions: CreateTransaction[]
     ): ReturnType<typeof actual.importTransactions> {
         await this.ensureInitialization();
-        const normalizedTransactions = transactions.map((transaction) =>
-            this.ensureImportedId(accountId, transaction)
+        const dedupedTransactions = this.normalizeAndDeduplicateTransactions(
+            accountId,
+            transactions
         );
-        const dedupedTransactions: CreateTransaction[] = [];
-        const seenImportedIds = new Set<string>();
         const importOptions = { defaultCleared: false };
-
-        for (const transaction of normalizedTransactions) {
-            const importedId = transaction.imported_id;
-
-            if (importedId && seenImportedIds.has(importedId)) {
-                continue;
-            }
-
-            if (importedId) {
-                seenImportedIds.add(importedId);
-            }
-
-            dedupedTransactions.push(transaction);
-        }
 
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
@@ -302,6 +287,31 @@ class ActualApi {
                 ),
             [`Account ID: ${accountId}`]
         );
+    }
+
+    private normalizeAndDeduplicateTransactions(
+        accountId: string,
+        transactions: CreateTransaction[]
+    ): CreateTransaction[] {
+        const dedupedTransactions: CreateTransaction[] = [];
+        const seenImportedIds = new Set<string>();
+
+        for (const transaction of transactions) {
+            const normalized = this.ensureImportedId(accountId, transaction);
+            const importedId = normalized.imported_id;
+
+            if (importedId && seenImportedIds.has(importedId)) {
+                continue;
+            }
+
+            if (importedId) {
+                seenImportedIds.add(importedId);
+            }
+
+            dedupedTransactions.push(normalized);
+        }
+
+        return dedupedTransactions;
     }
 
     public async getTransactions(
