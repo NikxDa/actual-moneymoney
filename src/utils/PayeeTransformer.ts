@@ -93,6 +93,7 @@ class PayeeTransformer {
         this.openai = new OpenAI({
             apiKey: config.openAiApiKey,
             timeout: config.modelConfig?.timeout || 30000, // 30 seconds default
+            maxRetries: 0,
         });
     }
 
@@ -142,6 +143,19 @@ class PayeeTransformer {
 
             if (!response || !response.choices[0]?.message?.content) {
                 this.logger.error('Invalid response from OpenAI API');
+                return null;
+            }
+
+            const finishReason = response.choices[0]?.finish_reason;
+            if (finishReason && finishReason !== 'stop') {
+                this.logger.error(
+                    `OpenAI response ended prematurely (finish_reason: ${finishReason}).`
+                );
+                if (!this.shouldMaskPayeeLogs()) {
+                    this.logger.debug(
+                        `Raw response content may be truncated: ${response.choices[0].message.content}`
+                    );
+                }
                 return null;
             }
 
@@ -226,16 +240,24 @@ class PayeeTransformer {
                     capabilities.supportsTemperature &&
                     this.config.modelConfig?.temperature !== undefined
                 ) {
-                    requestConfig.temperature =
+                    const requestedTemperature =
                         this.config.modelConfig.temperature;
+                    requestConfig.temperature = Math.min(
+                        2,
+                        Math.max(0, requestedTemperature)
+                    );
                 }
 
                 if (
                     capabilities.supportsMaxTokens &&
                     this.config.modelConfig?.maxTokens !== undefined
                 ) {
-                    requestConfig.max_tokens =
+                    const requestedMaxTokens =
                         this.config.modelConfig.maxTokens;
+                    requestConfig.max_tokens = Math.min(
+                        4096,
+                        Math.max(64, requestedMaxTokens)
+                    );
                 }
 
                 this.logger.debug(
@@ -315,7 +337,7 @@ class PayeeTransformer {
         if (!availableModels.includes(this.config.openAiModel)) {
             this.logger.error(
                 `The specified model '${this.config.openAiModel}' is invalid. The following models are available:`,
-                availableModels
+                this.summarizeLogEntries(availableModels)
             );
             throw new Error('Invalid OpenAI model specified.');
         }
@@ -353,7 +375,10 @@ class PayeeTransformer {
             const response = await this.openai.models.list();
             models = response.data.map((m) => m.id);
         } catch (err) {
-            this.logger.error('Failed to fetch OpenAI model list');
+            this.logger.error(
+                'Failed to fetch OpenAI model list',
+                err instanceof Error ? err.message : String(err)
+            );
             throw err;
         }
         const cache: ModelCache = {
