@@ -1,144 +1,29 @@
 # Testing Guidelines for `actual-moneymoney`
 
-## Testing & Tooling
+## Test runner
 
-### Pre-commit Checks
+- Vitest powers the automated tests. Run the full suite with `npm test` (configured as `vitest run`).
+- Tests live under `tests/` and mirror the structure of `src/`:
+  - `ActualApi.test.ts` covers timeout handling, console suppression, and the lifecycle of the Actual API wrapper.
+  - `Importer.test.ts` verifies MoneyMoney transaction filtering, deduplication, and dry-run behaviour.
+  - `PayeeTransformer.test.ts` exercises OpenAI integration, caching, and logging safeguards.
+  - `config.test.ts` validates the Zod schema, earliest import date parsing, and encryption requirements.
 
-Run the following commands before committing changes so local development matches CI:
+## Writing and maintaining tests
 
-1. `npm run lint:eslint`
-1. `npm run lint:prettier`
-1. `npm run typecheck`
-1. `npm run build`
-1. `npm test`
+- Use `vi.mock()` to isolate external dependencies (`@actual-app/api`, `moneymoney`, `openai`). Declare mocks at the top of the file and reset them in `beforeEach` to avoid cross-test bleed.
+- Prefer helper factories within the test file for building complex fixtures (see `Importer.test.ts` for examples). Keep fixture data minimal but representative of real MoneyMoney transactions or Actual accounts.
+- For async code, mark tests as `async` and `await` promises. Use `vi.useFakeTimers()` sparingly to control timeout scenarios (e.g., Actual API timeouts) and always restore timers in `afterEach`.
+- When asserting logging behaviour, rely on `vi.spyOn(logger, 'method')` or mock loggers that mimic the interface in `src/utils/Logger.ts`.
+- Keep expectations specific: check argument values, invocation order, and error messages so regressions are caught early.
 
-These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
+## Updating tests alongside source changes
 
-### Testing Patterns
+- Whenever you touch logic in `src/utils/` or `src/commands/`, review the related test file(s) and extend them to cover the new behaviour.
+- Configuration schema updates must extend `config.test.ts` to cover success, failure, and edge cases (e.g., missing passwords when encryption is enabled).
+- If new utilities are introduced, add matching test files under `tests/` and follow the naming convention `*.test.ts`.
 
-Tests are located in [tests/](mdc:tests/) directory using Vitest framework.
+## Tooling expectations
 
-#### Test Structure
-
-- **Test Files**: `*.test.ts` (e.g., `ActualApi.test.ts`)
-- **Organization**: Test files mirror source structure
-- **Naming**: Use descriptive test file names matching the module being tested
-
-#### Test Organization
-
-```typescript
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-
-describe('ModuleName', () => {
-    beforeEach(() => {
-        // Setup
-    });
-
-    afterEach(() => {
-        // Cleanup
-    });
-
-    it('should do something specific', () => {
-        // Test implementation
-    });
-});
-```
-
-#### Mocking Patterns
-
-- Use `vi.mock()` for module mocking
-- Create mock implementations for external dependencies
-- Reset mocks in `beforeEach` hooks
-- Use `vi.fn()` for function mocks
-
-#### Test Utilities
-
-- Create helper functions for common test setup
-- Use factory functions for creating test data
-- Mock the `Logger` class for consistent testing
-- Use `vi.fn()` for mock implementations
-
-#### Assertion Patterns
-
-- Use `expect()` for assertions
-- Test both success and error cases
-- Verify mock calls with `toHaveBeenCalledWith()`
-- Test async operations with proper await handling
-
-#### Coverage Requirements
-
-- Aim for high test coverage on critical business logic
-- Test error handling paths
-- Include integration tests for API interactions
-- Test configuration validation thoroughly
-
-### Test Maintenance
-
-Whenever a source file is modified, review and update the relevant automated tests to cover the change. If a bug is fixed, add a regression test when feasible to prevent the issue from reoccurring.
-
-## Test-Specific Coding Standards
-
-### Test File Organization
-
-- Mirror the source directory structure in the tests directory
-- Use descriptive test file names that match the module being tested
-- Group related tests using `describe` blocks
-- Use clear, descriptive test names that explain the expected behavior
-
-### Mocking Best Practices
-
-- Mock external dependencies at the module level
-- Use `vi.fn()` for function mocks with proper return values
-- Reset mocks between tests to avoid test interference
-- Create mock implementations that match the real API interface
-
-### Test Data Management
-
-- Use factory functions to create test data
-- Keep test data minimal and focused on the test case
-- Use meaningful test data that reflects real-world scenarios
-- Avoid hardcoded values where possible
-
-### Async Testing
-
-- Always use `await` when testing async operations
-- Test both success and error scenarios for async functions
-- Use proper timeout handling for long-running operations
-- Mock async dependencies appropriately
-
-## Advanced Testing Patterns
-
-### Mocking External APIs
-
-- Mock OpenAI API responses with realistic data structures
-- Use `vi.hoisted()` for shared mock data across tests
-- Implement mock classes that match real API interfaces
-- Test API error scenarios and timeout handling
-
-### File System Testing
-
-- Use temporary directories for test isolation
-- Clean up test files in `afterEach` hooks
-- Mock file system operations when testing configuration loading
-- Test both success and failure scenarios for file operations
-
-### Console Testing
-
-- Use `vi.spyOn(console, 'log')` to test logging behavior
-- Verify console output suppression during API operations
-- Test that console state is properly restored after operations
-- Mock noisy external library output
-
-### Configuration Testing
-
-- Test TOML parsing with valid and invalid configurations
-- Verify Zod validation with various error scenarios
-- Test configuration loading with missing files
-- Validate cross-field dependencies in configuration schemas
-
-### Integration Testing
-
-- Test complete workflows from command to API calls
-- Mock external dependencies while testing internal logic
-- Verify proper error handling across component boundaries
-- Test data transformation pipelines end-to-end
+- Keep the Vitest configuration (`vitest.config.ts`) untouched unless you have a compelling reason to change the runtime.
+- Tests should pass with the repo’s linting and formatting rules. Prettier and ESLint ignore the `tests/` directory today, but follow the existing style (4 spaces, single quotes) for consistency.

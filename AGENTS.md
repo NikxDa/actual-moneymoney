@@ -1,87 +1,53 @@
 # Contributing Guidelines for `actual-moneymoney`
 
-## Project Overview
+## Project overview
 
-- This repository contains a TypeScript CLI that synchronises MoneyMoney data into Actual Budget.
-- Entry point: `src/index.ts` (bundled to `dist/index.js` via `npm run build`).
-- Core subsystems:
-  - `src/commands/`: individual yargs command modules (`*.command.ts`).
-  - `src/utils/`: shared helpers for API access, logging, importing, configuration, etc.
-  - `src/types/`: shared TypeScript type declarations.
+- TypeScript CLI that synchronises MoneyMoney accounts and transactions into Actual Budget.
+- Entry point: [`src/index.ts`](src/index.ts) wires CLI options and registers command modules.
+- Distribution build: `npm run build` emits ESM output into `dist/` and is used by the published binary (`bin.actual-monmon`).
 
-## Documentation Structure
+## Repository layout
 
-This project uses a distributed documentation approach with specific guidelines for different areas:
+| Path | Purpose |
+| --- | --- |
+| `src/` | CLI commands, utilities, shared constants, and internal type augmentations. Use ESM-style imports that include the `.js` extension when referencing other source files. |
+| `tests/` | Vitest unit tests that mirror the source structure (`ActualApi`, `Importer`, `PayeeTransformer`, `config`).|
+| `docs/` | Engineering process notes (e.g. upstream sync, review checklists). Keep them up to date if workflow changes. |
+| `assets/` | Images referenced from the README. Update paths in documentation when changing assets. |
+| `example-config-advanced.toml` | Configuration example that must stay in sync with the Zod schema in `src/utils/config.ts` and the README. |
 
-### 📁 [src/AGENTS.md](src/AGENTS.md) - Source Code Guidelines
+## Development workflow
 
-- **Command Module Patterns**: CLI command implementation with yargs integration
-- **Configuration Patterns**: TOML configuration management with Zod validation
-- **Utility Class Patterns**: Logger, API clients, data transformation utilities
-- **API Integration Patterns**: Actual Budget, MoneyMoney, and OpenAI integration
-- **Source Code Standards**: TypeScript conventions, import/export patterns, error handling
+1. Ensure Node.js **v20.9.0** or newer (see the `engines` field in `package.json`).
+2. Install dependencies with `npm install`.
+3. Run the quality gates from the repository root:
+   - `npm run lint:eslint`
+   - `npm run lint:prettier`
+   - `npm run typecheck`
+   - `npm run build`
+   - `npm test`
 
-### 🧪 [tests/AGENTS.md](tests/AGENTS.md) - Testing Guidelines
+These commands are the same ones used in CI; keeping them green locally avoids surprises.
 
-- **Testing Patterns**: Vitest framework usage, test organization, mocking
-- **Test Structure**: File naming, organization, and coverage requirements
-- **Pre-commit Checks**: Quality assurance workflow
-- **Test Maintenance**: Keeping tests in sync with source changes
+### Source updates
 
-## Development Workflow
+- Configuration changes require updates to:
+  - `src/utils/config.ts`
+  - `src/utils/shared.ts`
+  - `example-config-advanced.toml`
+  - `README.md`
+  - Relevant tests in `tests/config.test.ts`
+- When adding new CLI functionality, mirror the existing command pattern under `src/commands/` and provide coverage in the corresponding `tests/` file.
+- Internal API augmentations live in `src/types/`. Update them if the Actual SDK surface area changes.
 
-### Pre-commit Checks
+### Documentation
 
-Run the following commands before committing changes so local development matches CI:
+- The README documents installation, configuration, and command usage. Update it whenever behaviour changes.
+- Process documentation in `docs/` should continue to describe the actual workflow (upstream sync process, review expectations, etc.).
 
-1. `npm run lint:eslint`
-1. `npm run lint:prettier`
-1. `npm run typecheck`
-1. `npm run build`
-1. `npm test`
-
-These checks ensure code quality, formatting, type safety, build output, and automated tests remain healthy.
-
-### Available Scripts
-
-- **Build**: `npm run build` - Compile TypeScript to JavaScript
-- **Type Check**: `npm run typecheck` - Check types without emitting files
-- **Lint**: `npm run lint:eslint` - ESLint code quality checks
-- **Format**: `npm run lint:prettier` - Check code formatting
-- **Format Fix**: `npm run lint:prettier:fix` - Auto-fix formatting issues
-- **Test**: `npm test` - Run test suite
-- **Start**: `npm start` - Run the compiled application
-
-## Quick Start
-
-### For Source Code Development
-
-See [src/AGENTS.md](src/AGENTS.md) for:
-
-- Command implementation patterns
-- Configuration management
-- API integration guidelines
-- TypeScript coding standards
-
-### For Testing
-
-See [tests/AGENTS.md](tests/AGENTS.md) for:
-
-- Test organization and structure
-- Mocking patterns
-- Coverage requirements
-- Test maintenance practices
-
-## Commit Messages
+## Commit messages
 
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification so that commitlint accepts new commits.
-- Start messages with a valid **type** (e.g., `feat`, `fix`, `docs`, `chore`) followed by a colon and a short, imperative **subject** (e.g., `fix: add budget syncing retries`).
-- For changes that include multiple scopes, you may include an optional scope in parentheses (e.g., `feat(sync): improve account mapping`).
+- Start messages with a valid **type** (e.g., `feat`, `fix`, `docs`, `chore`) followed by an imperative subject (e.g., `fix: add budget syncing retries`).
 - Keep the subject under 72 characters and avoid ending it with a period.
 
-## Additional Notes
-
-- Node.js v20.9.0 or newer is required (see `package.json` `engines` field).
-- Default configuration files live in `~/.actually/config.toml`. Keep the example config defined in `src/utils/shared.ts` aligned with the validation schema.
-- Example configurations such as `example-config-advanced.toml` should stay in sync with config schema changes and README documentation.
-- Assets (logos, etc.) reside in `/assets`; update paths carefully if moving files referenced in the README.
