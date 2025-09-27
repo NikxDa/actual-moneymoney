@@ -42,7 +42,7 @@ _Risks:_ Changes to global logging, tests/mocks need updates.
 - ✅ Story A2 (M): refactor console suppression into a scoped helper with regression tests guarding against open handles.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】
 - ✅ Story A3 (S): wrap HTTP fetches with `AbortController`, status checks, and sensitive log redaction.【F:src/utils/ActualApi.ts†L129-L210】
 
-### Epic B – CLI & Config DX 🚧 **IN PROGRESS**
+### Epic B – CLI & Config DX ✅ **COMPLETED**
 
 _Target state:_ Users can create/validate configs anywhere.
 _Acceptance criteria:_ `validate` creates paths, error text offers guidance, README stays in sync.
@@ -50,26 +50,27 @@ _Risks:_ Path handling on Windows/macOS.
 
 - ✅ Story B1 (S): recursive `mkdir` before `writeFile`, add tests for success/error paths.【F:src/commands/validate.command.ts†L18-L77】【F:tests/commands/validate.command.test.ts†L1-L199】
 - ✅ Story B2 (S): document CLI option normalisation (`--server`, `--budget`) and add tests for filter logic.【F:src/commands/import.command.ts†L84-L200】
+- ✅ Outcomes: CLI docs and config workflow now satisfy the acceptance criteria and no further backlog remains for this epic.
 
-### Epic C – Test/CI hardening
+### Epic C – Test/CI hardening 🚧 **IN PROGRESS**
 
 _Target state:_ Deterministic tests locally and in CI (Node 20/22).
 _Acceptance criteria:_ `npm test` exits, coverage ≥80 % for importer pipeline.
 _Risks:_ MoneyMoney/Actual mocks more complex.
 
 - ✅ Story C1 (M): analysed console patch handles and added Vitest cleanup so the suite exits cleanly.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】【chunk:25b872†L1-L8】
-- Story C2 (M): add integration tests for importer pipeline (mock MoneyMoney + Actual) covering dedupe/start balance.【F:src/utils/Importer.ts†L27-L210】
-- Story C3 (S): extend GitHub Actions with test/typecheck/audit, consolidate bun→npm usage.【F:.github/workflows/ci.yml†L1-L23】【F:package.json†L6-L13】
+- 🚧 Story C2 (M): importer integration suite now drives multi-account pipelines with deterministic MoneyMoney/Actual stubs, verifying duplicate suppression, unchecked filtering, starting balance injection, and payee transformation/obfuscation behaviour ahead of broader coverage.【F:src/utils/Importer.ts†L27-L420】【F:tests/Importer.test.ts†L27-L851】
+- ✅ Story C3 (S): consolidated the CI jobs into a single matrix that runs lint, typecheck, build, and test on Node 20 and Node 22 with npm caching, tightening coverage while keeping commitlint isolated for history validation.【F:.github/workflows/ci.yml†L1-L88】
 
-### Epic D – Security & Dependencies 🚧 **NEW**
+### Epic D – Security & Dependencies ✅ **COMPLETED**
 
 _Target state:_ No high-severity vulnerabilities, up-to-date dependencies.
 _Acceptance criteria:_ `npm audit` passes, dependencies are current.
 _Risks:_ Breaking changes in major version updates.
 
-- 🚧 **HIGH** Story D1 (M): Address esbuild/vitest security vulnerabilities.【F:package.json†L58】
-- Story D2 (S): Add automated dependency updates with Dependabot.【F:.github/dependabot.yml】
-- Story D3 (S): Implement security scanning in CI pipeline.【F:.github/workflows/security.yml】
+- ✅ **HIGH** Story D1 (M): Bumped Vitest to 3.2.4, pulling Vite 7.1.7 and esbuild 0.25.x, clearing the prior advisories from the toolchain.【F:package.json†L46-L63】【F:package-lock.json†L10366-L10378】【F:package-lock.json†L10502-L10527】
+- ✅ Story D2 (S): Weekly Dependabot runs now cover npm and GitHub Actions with grouped minor/patch updates targeting `main`.【F:.github/dependabot.yml†L1-L43】
+- ✅ Story D3 (S): CodeQL analysis executes on every push/PR to `main` plus a nightly cron, adding automated security scanning to CI.【F:.github/workflows/codeql.yml†L1-L36】
 
 ### Quick Wins (\<1 day)
 
@@ -79,7 +80,7 @@ _Risks:_ Breaking changes in major version updates.
 
 ## 5. Test Strategy & Coverage
 
-- **Importer E2E**: Scenarios for dedupe (`imported_id`), starting balance, `ignorePatterns`, dry-run against mocked Actual.【F:src/utils/Importer.ts†L175-L209】
+- **Importer E2E**: Scenarios for dedupe (`imported_id`), starting balance, `ignorePatterns`, dry-run, and payee transformation/masked logging against mocked Actual.【F:src/utils/Importer.ts†L175-L334】【F:tests/Importer.test.ts†L632-L851】
 - **Config validation**: Tests for custom paths, schema failures, skip-model-validation flag, and TOML syntax errors.【F:src/utils/config.ts†L8-L104】【F:src/commands/validate.command.ts†L18-L105】
 - **ActualApi**: Unit tests for budget lifecycle (init/download/load/shutdown), error handling (401/500), console patch behaviour.
 - **CLI smoke**: `--help`, `import --dry-run`, `validate` (new/broken config). Use snapshots with masked payees (respect `maskPayeeNamesInLogs`).【F:src/utils/Importer.ts†L200-L236】
@@ -91,7 +92,7 @@ _Risks:_ Breaking changes in major version updates.
 - ✅ Close script gap: add `npm run typecheck` → `tsc --noEmit`; optionally create `npm run lint` wrapper combining ESLint + Prettier.【F:package.json†L6-L13】
 - ✅ Align CI: remove bun or run npm in parallel; add Node matrix (20, 22) with caching.【F:.github/workflows/ci.yml†L1-L106】
 - ✅ Enforce tests & audit in CI/release jobs (`vitest run`, `npm audit --audit-level=high`).【F:.github/workflows/release.yml†L9-L50】
-- ⚠️ Revisit `tsconfig`: disable `skipLibCheck` if feasible, enable `noUncheckedIndexedAccess` to catch mapping bugs early.【F:tsconfig.json†L1-L113】
+- ✅ Revisit `tsconfig`: documented why `skipLibCheck` must remain while enabling `noUncheckedIndexedAccess` to surface unsafe mapping earlier.【F:tsconfig.json†L1-L114】
 - ✅ Keep commitlint job, but document pre-push hook for lint/typecheck/test.【F:.github/workflows/ci.yml†L77-L106】
 
 ## 7. Zod / OpenAI Migration Plan
@@ -111,7 +112,7 @@ _Risks:_ Breaking changes in major version updates.
 - ✅ `npm run build` succeeded.
 - ✅ `npm test -- --reporter verbose` now finishes without open handles.
 - ✅ Targeted `npx vitest run tests/ActualApi.test.ts --reporter verbose` confirms the console patch fix.
-- 🚧 `npm audit --audit-level=high` highlights the existing esbuild advisory (5 moderate vulnerabilities in dev dependencies).
+- ✅ `npm audit --audit-level=high` reports a clean audit following the Vitest/esbuild upgrades.
 - ✅ All CI/CD workflows are properly configured with comprehensive checks.
 - ✅ Test suite runs cleanly with 11 passing tests across 3 test files.
 - ✅ `validate` command now creates parent directories and writes the default config when missing (B2).

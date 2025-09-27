@@ -6,6 +6,7 @@ import type ActualApi from '../src/utils/ActualApi.js';
 import type { AccountMap } from '../src/utils/AccountMap.js';
 import type Logger from '../src/utils/Logger.js';
 import { LogLevel } from '../src/utils/Logger.js';
+import type PayeeTransformer from '../src/utils/PayeeTransformer.js';
 
 const { moneyMoneyTransactionsMock } = vi.hoisted(() => ({
     moneyMoneyTransactionsMock: vi.fn(),
@@ -15,14 +16,17 @@ vi.mock('moneymoney', () => ({
     getTransactions: moneyMoneyTransactionsMock,
 }));
 
-const createLogger = () =>
-    ({
+const createLogger = (level: LogLevel = LogLevel.INFO) => {
+    const logger = {
         debug: vi.fn(),
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        getLevel: () => LogLevel.INFO,
-    } as unknown as Logger);
+        getLevel: () => level,
+    };
+
+    return logger as unknown as Logger & typeof logger;
+};
 
 describe('Importer', () => {
     beforeEach(() => {
@@ -424,5 +428,424 @@ describe('Importer', () => {
         const importedIds = createTransactions.map((transaction: { imported_id?: string }) => transaction.imported_id);
         expect(importedIds).toContain('primary-account-start');
         expect(importedIds).toContain('primary-account-txn-1');
+    });
+
+    it('imports new transactions for mapped accounts while skipping duplicates and unchecked entries', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: false,
+                skipModelValidation: false,
+                openAiModel: 'gpt-3.5-turbo',
+            },
+            import: {
+                importUncheckedTransactions: false,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: undefined,
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const primaryAccount = {
+            uuid: 'primary-account',
+            name: 'Checking',
+            balance: [[1200]],
+        };
+
+        const savingsAccount = {
+            uuid: 'savings-account',
+            name: 'Savings',
+            balance: [[1000]],
+        };
+
+        const primaryActualAccount = {
+            id: 'actual-1',
+            name: 'Checking',
+        };
+
+        const savingsActualAccount = {
+            id: 'actual-2',
+            name: 'Savings',
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'txn-1',
+                accountUuid: 'primary-account',
+                name: 'Groceries',
+                purpose: 'Weekly groceries',
+                comment: '',
+                valueDate: new Date('2024-03-05T00:00:00Z'),
+                bookingDate: new Date('2024-03-06T00:00:00Z'),
+                amount: 80.25,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+            {
+                id: 'txn-2',
+                accountUuid: 'primary-account',
+                name: 'Pending payment',
+                purpose: 'Pending',
+                comment: '',
+                valueDate: new Date('2024-03-08T00:00:00Z'),
+                bookingDate: new Date('2024-03-09T00:00:00Z'),
+                amount: 15,
+                booked: false,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+            {
+                id: 'txn-3',
+                accountUuid: 'savings-account',
+                name: 'Interest',
+                purpose: 'Monthly interest',
+                comment: '',
+                valueDate: new Date('2024-03-10T00:00:00Z'),
+                bookingDate: new Date('2024-03-11T00:00:00Z'),
+                amount: 75.5,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockImplementation(async (accountId: string) => {
+                if (accountId === 'actual-1') {
+                    return [
+                        {
+                            imported_id: 'primary-account-txn-1',
+                        },
+                    ];
+                }
+
+                if (accountId === 'actual-2') {
+                    return [];
+                }
+
+                throw new Error(`Unexpected account id ${accountId}`);
+            }),
+            importTransactions: vi.fn().mockResolvedValue({
+                added: [],
+                updated: [],
+                errors: [],
+            }),
+        };
+
+        const accountMap = {
+            getMap: () =>
+                new Map([
+                    [
+                        primaryAccount,
+                        primaryActualAccount,
+                    ],
+                    [
+                        savingsAccount,
+                        savingsActualAccount,
+                    ],
+                ]),
+        };
+
+        const from = new Date('2024-03-01T00:00:00Z');
+        const to = new Date('2024-03-31T00:00:00Z');
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            createLogger() as unknown as Logger,
+            accountMap as unknown as AccountMap,
+            undefined
+        );
+
+        await importer.importTransactions({ from, to });
+
+        expect(moneyMoneyTransactionsMock).toHaveBeenCalledWith({
+            from,
+            to,
+        });
+
+        expect(actualApi.getTransactions).toHaveBeenCalledTimes(2);
+        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(1, 'actual-1', {
+            from,
+            to,
+        });
+        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(2, 'actual-2', {
+            from,
+            to,
+        });
+
+        expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
+
+        const [actualAccountId, createTransactions] = actualApi.importTransactions.mock.calls[0];
+        expect(actualAccountId).toBe('actual-2');
+        expect(createTransactions).toHaveLength(2);
+
+        const transactionIds = createTransactions.map((transaction: { imported_id?: string }) => transaction.imported_id);
+        expect(transactionIds).toEqual([
+            'savings-account-txn-3',
+            'savings-account-start',
+        ]);
+
+        expect(createTransactions[0]).toMatchObject({
+            amount: 7550,
+            imported_payee: 'Interest',
+            payee_name: 'Interest',
+            cleared: true,
+        });
+        expect(createTransactions[1]).toMatchObject({
+            imported_id: 'savings-account-start',
+            cleared: true,
+            notes: 'Starting balance',
+            imported_payee: 'Starting balance',
+        });
+    });
+
+    it('applies payee transformation results to new transactions', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: true,
+                skipModelValidation: false,
+                openAiModel: 'gpt-4o-mini',
+            },
+            import: {
+                importUncheckedTransactions: true,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: undefined,
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const moneyMoneyTransaction = {
+            id: 'txn-10',
+            accountUuid: 'primary-account',
+            name: 'Coffee Shop',
+            purpose: 'Morning coffee',
+            comment: '',
+            valueDate: new Date('2024-04-01T00:00:00Z'),
+            bookingDate: new Date('2024-04-02T00:00:00Z'),
+            amount: 8.75,
+            booked: true,
+            bankCode: '',
+            accountNumber: '',
+            partner: '',
+            partnerAccount: '',
+            category: '',
+            purposeCode: '',
+            currencyCode: 'EUR',
+            balance: 0,
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([moneyMoneyTransaction]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockResolvedValue([]),
+            importTransactions: vi.fn().mockResolvedValue({
+                added: [],
+                updated: [],
+                errors: [],
+            }),
+        };
+
+        const accountMap = {
+            getMap: () =>
+                new Map([
+                    [
+                        {
+                            uuid: 'primary-account',
+                            name: 'Checking',
+                            balance: [[1200]],
+                        },
+                        {
+                            id: 'actual-1',
+                            name: 'Checking',
+                        },
+                    ],
+                ]),
+        };
+
+        const payeeTransformer = {
+            transformPayees: vi.fn().mockResolvedValue({
+                'Coffee Shop': 'Coffee Shop (AI cleaned)',
+                'Starting balance': 'Starting balance',
+            }),
+        };
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            createLogger() as unknown as Logger,
+            accountMap as unknown as AccountMap,
+            payeeTransformer as unknown as PayeeTransformer
+        );
+
+        await importer.importTransactions({});
+
+        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith([
+            'Coffee Shop',
+            'Starting balance',
+        ]);
+
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
+        const transaction = createTransactions.find(
+            (entry: { imported_id?: string }) =>
+                entry.imported_id === 'primary-account-txn-10'
+        );
+
+        expect(transaction?.payee_name).toBe('Coffee Shop (AI cleaned)');
+        expect(transaction?.imported_payee).toBe('Coffee Shop');
+    });
+
+    it('masks payee names in logs when transformation fails', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: true,
+                skipModelValidation: false,
+                openAiModel: 'gpt-4o-mini',
+            },
+            import: {
+                importUncheckedTransactions: true,
+                synchronizeClearedStatus: false,
+                maskPayeeNamesInLogs: true,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: undefined,
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'txn-5',
+                accountUuid: 'primary-account',
+                name: 'Coffee',
+                purpose: 'Flat white',
+                comment: '',
+                valueDate: new Date('2024-04-10T00:00:00Z'),
+                bookingDate: new Date('2024-04-11T00:00:00Z'),
+                amount: 4.5,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockResolvedValue([]),
+            importTransactions: vi.fn().mockResolvedValue({
+                added: [],
+                updated: [],
+                errors: [],
+            }),
+        };
+
+        const accountMap = {
+            getMap: () =>
+                new Map([
+                    [
+                        {
+                            uuid: 'primary-account',
+                            name: 'Checking',
+                            balance: [[50]],
+                        },
+                        {
+                            id: 'actual-1',
+                            name: 'Checking',
+                        },
+                    ],
+                ]),
+        };
+
+        const payeeTransformer = {
+            transformPayees: vi.fn().mockResolvedValue(null),
+        };
+
+        const logger = createLogger();
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            logger,
+            accountMap as unknown as AccountMap,
+            payeeTransformer as unknown as PayeeTransformer
+        );
+
+        await importer.importTransactions({});
+
+        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith([
+            'Coffee',
+            'Starting balance',
+        ]);
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            'Payee transformation failed. Using default payee names...'
+        );
+
+        const maskedCall = logger.debug.mock.calls.find(
+            ([message]) => message === 'Final payee names for import (masked):'
+        );
+
+        expect(maskedCall?.[1]).toEqual([
+            `"C${'•'.repeat('Coffee'.length - 2)}e"`,
+            `"S${'•'.repeat('Starting balance'.length - 2)}e"`,
+        ]);
+
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
+        createTransactions.forEach((transaction: { payee_name?: string; imported_payee?: string }) => {
+            expect(transaction.payee_name).toBe(transaction.imported_payee);
+        });
     });
 });

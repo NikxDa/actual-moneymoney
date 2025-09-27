@@ -127,11 +127,7 @@ class Importer {
 
         const monMonTransactionMap = monMonTransactions.reduce(
             (acc, transaction) => {
-                if (!acc[transaction.accountUuid]) {
-                    acc[transaction.accountUuid] = [];
-                }
-
-                acc[transaction.accountUuid].push(transaction);
+                (acc[transaction.accountUuid] ??= []).push(transaction);
 
                 return acc;
             },
@@ -185,13 +181,15 @@ class Importer {
                         ]
                     );
                 } else {
+                    const lastTransaction =
+                        accountTransactions.length > 0
+                            ? accountTransactions[
+                                  accountTransactions.length - 1
+                              ]
+                            : undefined;
                     const startTransaction: CreateTransaction = {
                         date: format(
-                            accountTransactions.length > 0
-                                ? accountTransactions[
-                                      accountTransactions.length - 1
-                                  ].valueDate
-                                : new Date(),
+                            lastTransaction?.valueDate ?? new Date(),
                             DATE_FORMAT
                         ),
                         amount: this.getStartingBalanceForAccount(
@@ -350,13 +348,16 @@ class Importer {
                     createTransactions
                 );
 
-                if (result.errors && result.errors.length > 0) {
+                const errors = result.errors ?? [];
+                if (errors.length > 0) {
                     this.logger.error('Some errors occurred during import:');
-                    for (let i = 0; i < result.errors.length; i++) {
-                        this.logger.error(
-                            `Error ${i + 1}: ${result.errors[i].message}`
-                        );
-                    }
+                    errors.forEach((error, index) => {
+                        if (error) {
+                            this.logger.error(
+                                `Error ${index + 1}: ${error.message}`
+                            );
+                        }
+                    });
                 }
 
                 const addedCount = result.added.length;
@@ -411,7 +412,18 @@ class Importer {
         account: MonMonAccount,
         transactions: MonMonTransaction[]
     ) {
-        const monMonAccountBalance = account.balance[0][0];
+        const firstBalanceRow = account.balance[0];
+        const monMonAccountBalance = firstBalanceRow?.[0];
+
+        if (monMonAccountBalance === undefined) {
+            this.logger.warn(
+                `MoneyMoney account '${account.uuid}' is missing a balance entry. Assuming a starting balance of 0.`,
+                [
+                    'Check the account configuration or refresh balances in MoneyMoney before re-running the import.',
+                ]
+            );
+            return 0;
+        }
         const totalExpenses = transactions.reduce(
             (acc, transaction) =>
                 acc + (transaction.booked ? transaction.amount : 0),

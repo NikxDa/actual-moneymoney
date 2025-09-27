@@ -5,73 +5,43 @@ on:
             - main
     pull_request:
 jobs:
-    lint:
-        name: lint
+    quality:
+        name: Node ${{ matrix.node-version }} - ${{ matrix.task }}
         runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version:
+                    - 20
+                    - 22
+                task:
+                    - lint
+                    - typecheck
+                    - build
+                    - test
         steps:
             - uses: actions/checkout@v5
             - name: Setup Node.js
               uses: actions/setup-node@v5
               with:
-                  node-version: 20
+                  node-version: ${{ matrix.node-version }}
                   cache: npm
             - name: Install dependencies
               run: npm ci
             - name: ESLint
+              if: matrix.task == 'lint'
               run: npm run lint:eslint
             - name: Prettier
+              if: matrix.task == 'lint'
               run: npm run lint:prettier
-
-    typecheck:
-        name: typecheck
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v5
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: 20
-                  cache: npm
-            - name: Install dependencies
-              run: npm ci
             - name: Type check
+              if: matrix.task == 'typecheck'
               run: npm run typecheck
-
-    build:
-        name: build
-        needs:
-            - lint
-            - typecheck
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v5
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: 20
-                  cache: npm
-            - name: Install dependencies
-              run: npm ci
             - name: Build
+              if: matrix.task == 'build'
               run: npm run build
-
-    test:
-        name: test
-        needs:
-            - lint
-            - typecheck
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v5
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: 20
-                  cache: npm
-            - name: Install dependencies
-              run: npm ci
             - name: Run tests
+              if: matrix.task == 'test'
               run: npm test
 
     commitlint:
