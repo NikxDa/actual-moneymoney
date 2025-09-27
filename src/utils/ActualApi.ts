@@ -96,6 +96,18 @@ const createErrorWithCause = (message: string, cause: Error): Error => {
     }
 };
 
+type BudgetMetadata = {
+    id: string;
+    groupId?: string;
+    [key: string]: unknown;
+};
+
+type BudgetDirectoryResolution = {
+    directory: string;
+    metadata: BudgetMetadata;
+    metadataPath: string;
+};
+
 export class ActualApiTimeoutError extends Error {
     constructor(operation: string, timeoutMs: number) {
         super(
@@ -184,7 +196,8 @@ class ActualApi {
     private async runActualRequest<T>(
         operation: string,
         callback: () => Promise<T>,
-        additionalHints?: string | string[]
+        additionalHints?: string | string[],
+        options?: { skipTimeoutShutdown?: boolean }
     ): Promise<T> {
         const timeoutMs = this.getRequestTimeoutMs();
         let timeoutHandle: NodeJS.Timeout | null = null;
@@ -197,27 +210,49 @@ class ActualApi {
                     operation,
                     timeoutMs
                 );
+                const finalizeTimeout = () => {
+                    this.isInitialized = false;
+                    this.currentDataDir = null;
+                    reject(timeoutError);
+                };
+
+                if (options?.skipTimeoutShutdown) {
+                    finalizeTimeout();
+                    return;
+                }
+
+                const extraHints = Array.isArray(additionalHints)
+                    ? additionalHints
+                    : additionalHints
+                      ? [additionalHints]
+                      : [];
+                const fallbackHints = [
+                    ...extraHints,
+                    `Timeout triggered by operation '${operation}'`,
+                ];
+                const warnHints = this.createContextHints(fallbackHints);
+                const shutdownAttempt = this.runActualRequest(
+                    'shutdown session',
+                    () => actual.shutdown(),
+                    fallbackHints,
+                    { skipTimeoutShutdown: true }
+                ).catch((shutdownError) => {
+                    const reason =
+                        shutdownError instanceof Error
+                            ? shutdownError.message
+                            : String(shutdownError);
+                    this.logger.warn(
+                        `Actual client shutdown after timeout failed: ${reason}`,
+                        warnHints
+                    );
+                });
+
                 Promise.race([
-                    Promise.resolve(actual.shutdown()),
+                    shutdownAttempt,
                     new Promise((resolve) =>
                         setTimeout(resolve, Math.min(5_000, timeoutMs / 3))
                     ),
-                ])
-                    .catch((shutdownError) => {
-                        const reason =
-                            shutdownError instanceof Error
-                                ? shutdownError.message
-                                : String(shutdownError);
-                        this.logger.warn(
-                            `Actual client shutdown after timeout failed: ${reason}`,
-                            hints
-                        );
-                    })
-                    .finally(() => {
-                        this.isInitialized = false;
-                        this.currentDataDir = null;
-                        reject(timeoutError);
-                    });
+                ]).finally(finalizeTimeout);
             }, timeoutMs);
         });
 
@@ -356,68 +391,139 @@ class ActualApi {
 
         const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
         const rootDataDir = this.currentDataDir ?? DEFAULT_DATA_DIR;
-
-        await this.ensureInitialization(rootDataDir);
-
-        const downloadRootDir = this.currentDataDir ?? rootDataDir;
-        const initialBudgetDir = await this.tryResolveBudgetDirectory(
-            budgetConfig.syncId,
-            downloadRootDir
-        );
-
-        if (initialBudgetDir) {
-            const resolvedRootDir = path.dirname(initialBudgetDir);
-            await this.ensureInitialization(resolvedRootDir);
-        }
-
-        this.logger.debug(
-            `Downloading budget with syncId '${budgetConfig.syncId}'...`
-        );
         const encryptionPassword =
             budgetConfig.e2eEncryption.enabled &&
             budgetConfig.e2eEncryption.password
                 ? { password: budgetConfig.e2eEncryption.password }
                 : undefined;
-        const downloadHints = [...budgetHints, `Data root: ${downloadRootDir}`];
 
-        await this.runActualRequest(
-            `download budget '${budgetConfig.syncId}'`,
-            () =>
-                actual.downloadBudget(budgetConfig.syncId, encryptionPassword),
-            downloadHints
-        );
+        const maxAttempts = 2;
+        let lastError: unknown;
 
-        const finalBudgetDir = await this.resolveBudgetDataDir(
-            budgetConfig.syncId,
-            downloadRootDir
-        );
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const attemptHint = `Attempt ${attempt}/${maxAttempts}`;
+            try {
+                await this.ensureInitialization(rootDataDir);
 
-        const finalRootDir = path.dirname(finalBudgetDir);
-        await this.ensureInitialization(finalRootDir);
+                let downloadRootDir = this.currentDataDir ?? rootDataDir;
 
-        this.logger.debug(
-            `Loading budget with syncId '${budgetConfig.syncId}'...`
-        );
+                const initialResolution = await this.tryResolveBudgetDirectory(
+                    budgetConfig.syncId,
+                    downloadRootDir
+                );
 
-        await this.runActualRequest(
-            `load budget '${budgetConfig.syncId}'`,
-            () => actual.loadBudget(budgetConfig.syncId),
-            budgetHints
-        );
+                if (initialResolution) {
+                    const resolvedRootDir = path.dirname(
+                        initialResolution.directory
+                    );
+                    await this.ensureInitialization(resolvedRootDir);
+                    downloadRootDir = this.currentDataDir ?? resolvedRootDir;
+                }
 
-        this.logger.debug(
-            `Synchronizing budget with syncId '${budgetConfig.syncId}'...`
-        );
-        await this.sync(budgetHints);
+                const downloadHints = [
+                    ...budgetHints,
+                    `Data root: ${downloadRootDir}`,
+                    attemptHint,
+                ];
+
+                this.logger.debug(
+                    `Downloading budget with syncId '${budgetConfig.syncId}' (attempt ${attempt}/${maxAttempts})...`
+                );
+
+                await this.runActualRequest(
+                    `download budget '${budgetConfig.syncId}'`,
+                    () =>
+                        actual.downloadBudget(
+                            budgetConfig.syncId,
+                            encryptionPassword
+                        ),
+                    downloadHints
+                );
+
+                const resolvedBudget = await this.resolveBudgetDataDir(
+                    budgetConfig.syncId,
+                    downloadRootDir
+                );
+
+                const finalRootDir = path.dirname(resolvedBudget.directory);
+
+                await this.ensureBudgetDirectoryAccessible(
+                    resolvedBudget.directory,
+                    resolvedBudget.metadata,
+                    budgetConfig.syncId
+                );
+
+                await this.ensureInitialization(finalRootDir);
+
+                const localBudgetId = resolvedBudget.metadata.id;
+                const loadHints = [
+                    ...budgetHints,
+                    `Local budget ID: ${localBudgetId}`,
+                    `Data root: ${finalRootDir}`,
+                    attemptHint,
+                ];
+
+                this.logger.debug(
+                    `Loading budget with syncId '${budgetConfig.syncId}' from local id '${localBudgetId}'...`
+                );
+
+                await this.runActualRequest(
+                    `load budget '${budgetConfig.syncId}'`,
+                    () => actual.loadBudget(localBudgetId),
+                    loadHints
+                );
+
+                this.logger.debug(
+                    `Synchronizing budget with syncId '${budgetConfig.syncId}'...`
+                );
+                await this.sync([...budgetHints, attemptHint]);
+                return;
+            } catch (error) {
+                lastError = error;
+
+                if (
+                    attempt >= maxAttempts ||
+                    !this.shouldRetryBudgetLoad(error)
+                ) {
+                    throw error;
+                }
+
+                const retryHints: Array<string | Error> = [
+                    ...this.createContextHints([...budgetHints, attemptHint]),
+                ];
+                if (error instanceof Error) {
+                    retryHints.push(error);
+                } else {
+                    retryHints.push(String(error));
+                }
+
+                this.logger.warn(
+                    `Budget load attempt ${attempt} failed (${this.getErrorSummary(
+                        error
+                    )}). Retrying...`,
+                    retryHints
+                );
+
+                await this.shutdownSilently([...budgetHints, attemptHint]);
+            }
+        }
+
+        if (lastError) {
+            throw lastError;
+        }
     }
 
     private async tryResolveBudgetDirectory(
         syncId: string,
         rootDir: string
-    ): Promise<string | null> {
+    ): Promise<BudgetDirectoryResolution | null> {
         try {
             return await this.resolveBudgetDataDir(syncId, rootDir);
         } catch (error) {
+            if (this.shouldRetryBudgetLoad(error)) {
+                return null;
+            }
+
             if (
                 error instanceof Error &&
                 error.message.includes('No Actual budget directory found')
@@ -427,6 +533,96 @@ class ActualApi {
 
             throw error;
         }
+    }
+
+    private async ensureBudgetDirectoryAccessible(
+        directory: string,
+        metadata: BudgetMetadata,
+        syncId: string
+    ): Promise<void> {
+        try {
+            await fs.access(directory);
+        } catch (error) {
+            throw createErrorWithCause(
+                `Budget directory '${directory}' for syncId '${syncId}' is not accessible`,
+                error instanceof Error ? error : new Error(String(error))
+            );
+        }
+
+        if (!metadata.id || metadata.groupId !== syncId) {
+            throw new Error(
+                `Budget metadata for syncId '${syncId}' is invalid or mismatched`
+            );
+        }
+    }
+
+    private shouldRetryBudgetLoad(error: unknown): boolean {
+        const lower = (
+            error instanceof Error ? error.message : String(error ?? '')
+        ).toLowerCase();
+        if (!lower) {
+            return false;
+        }
+        const retryPatterns = [
+            'budget directory does not exist',
+            'budget-not-found',
+            'no actual budget directory found',
+            'not accessible',
+            'enoent',
+            'eisdir',
+        ];
+
+        return retryPatterns.some((pattern) => lower.includes(pattern));
+    }
+
+    private getErrorSummary(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'string') {
+            return error;
+        }
+
+        try {
+            return JSON.stringify(error);
+        } catch {
+            return String(error);
+        }
+    }
+
+    private async shutdownSilently(contextHints: string[]): Promise<void> {
+        try {
+            await this.shutdown();
+        } catch (error) {
+            const hints: Array<string | Error> = [
+                ...this.createContextHints(contextHints),
+            ];
+            if (error instanceof Error) {
+                hints.push(error);
+            } else {
+                hints.push(String(error));
+            }
+
+            this.logger.warn(
+                'Failed to shutdown Actual client cleanly after budget load failure',
+                hints
+            );
+        }
+    }
+
+    private isIgnorableShutdownError(error: unknown): boolean {
+        if (!(error instanceof Error)) {
+            return false;
+        }
+
+        const message = error.message;
+        return (
+            error instanceof TypeError &&
+            message.includes(
+                "Cannot read properties of null (reading 'prepare')"
+            )
+        );
     }
 
     public async importTransactions(
@@ -517,9 +713,32 @@ class ActualApi {
         }
 
         try {
-            await this.runActualRequest('shutdown session', () =>
-                actual.shutdown()
-            );
+            await this.runActualRequest('shutdown session', async () => {
+                try {
+                    await actual.shutdown();
+                } catch (error) {
+                    if (this.isIgnorableShutdownError(error)) {
+                        const hints: Array<string | Error> = [
+                            ...this.createContextHints(
+                                'Operation: shutdown session'
+                            ),
+                        ];
+                        if (error instanceof Error) {
+                            hints.push(error);
+                        } else {
+                            hints.push(String(error));
+                        }
+
+                        this.logger.warn(
+                            'Actual client shutdown completed despite a missing database connection',
+                            hints
+                        );
+                        return;
+                    }
+
+                    throw error;
+                }
+            });
         } finally {
             this.isInitialized = false;
             this.currentDataDir = null;
@@ -564,7 +783,7 @@ class ActualApi {
     private async resolveBudgetDataDir(
         syncId: string,
         rootDir?: string
-    ): Promise<string> {
+    ): Promise<BudgetDirectoryResolution> {
         const actualDataDir =
             rootDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
 
@@ -581,6 +800,7 @@ class ActualApi {
         }
 
         const inspectedDirs: string[] = [];
+        const metadataDiagnostics: string[] = [];
         const MAX_DIRS_TO_SCAN = 100;
 
         const sortedEntries = entries
@@ -606,28 +826,73 @@ class ActualApi {
             try {
                 const metadataRaw = await fs.readFile(metadataPath, 'utf8');
                 const parsed = JSON.parse(metadataRaw);
-                const metadata =
-                    parsed && typeof parsed === 'object' && 'groupId' in parsed
-                        ? (parsed as { groupId?: string })
-                        : {};
-
-                if (metadata.groupId === syncId) {
-                    const resolvedDir = path.join(actualDataDir, entry.name);
-                    this.logger.debug(
-                        `Using budget directory: ${entry.name} for syncId ${syncId}`
+                if (!parsed || typeof parsed !== 'object') {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata is not an object`
                     );
-                    return resolvedDir;
+                    continue;
                 }
+
+                const record = parsed as Record<string, unknown>;
+                const groupIdRaw = record.groupId;
+                const groupId =
+                    typeof groupIdRaw === 'string' ? groupIdRaw.trim() : '';
+                if (!groupId) {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata missing groupId`
+                    );
+                    continue;
+                }
+
+                if (groupId !== syncId) {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata groupId '${groupId}' does not match requested syncId '${syncId}'`
+                    );
+                    continue;
+                }
+
+                const idRaw = record.id;
+                const id =
+                    typeof idRaw === 'string' ? idRaw.trim() : entry.name;
+
+                if (!id) {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata missing id`
+                    );
+                    continue;
+                }
+
+                const resolvedDir = path.join(actualDataDir, entry.name);
+                const metadata: BudgetMetadata = {
+                    ...(record as BudgetMetadata),
+                    id,
+                    groupId,
+                };
+                this.logger.debug(
+                    `Using budget directory: ${entry.name} for syncId ${syncId}`,
+                    [`Metadata path: ${metadataPath}`, `Local budget ID: ${id}`]
+                );
+                return {
+                    directory: resolvedDir,
+                    metadata,
+                    metadataPath,
+                };
             } catch (error) {
                 const maybeErrno = error as NodeJS.ErrnoException | undefined;
                 if (
                     maybeErrno?.code === 'ENOENT' ||
                     maybeErrno?.code === 'EISDIR'
                 ) {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata.json not found`
+                    );
                     continue;
                 }
 
                 if (error instanceof SyntaxError) {
+                    metadataDiagnostics.push(
+                        `${entry.name}: metadata.json could not be parsed`
+                    );
                     continue;
                 }
 
@@ -637,11 +902,16 @@ class ActualApi {
 
         const inspectedSummary =
             inspectedDirs.length > 0 ? inspectedDirs.join(', ') : '(none)';
+        const metadataSummary =
+            metadataDiagnostics.length > 0
+                ? ` Metadata issues: ${metadataDiagnostics.join('; ')}.`
+                : '';
 
         throw new Error(
             `No Actual budget directory found for syncId '${syncId}'. ` +
-                `Checked directories under '${actualDataDir}': ${inspectedSummary}. ` +
-                'Open the budget in Actual Desktop and sync it before retrying.'
+                `Checked directories under '${actualDataDir}': ${inspectedSummary}.` +
+                metadataSummary +
+                ' Open the budget in Actual Desktop and sync it before retrying.'
         );
     }
 
