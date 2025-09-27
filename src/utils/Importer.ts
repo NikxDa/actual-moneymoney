@@ -138,11 +138,11 @@ class Importer {
             {} as Record<string, MonMonTransaction[]>
         );
 
-        for (const [monMonAccountUuid, monMonTransactions] of Object.entries(
+        for (const [monMonAccountUuid, accountTransactions] of Object.entries(
             monMonTransactionMap
         )) {
             this.logger.debug(
-                `Found ${monMonTransactions.length} transactions for account ${monMonAccountUuid}`
+                `Found ${accountTransactions.length} transactions for account ${monMonAccountUuid}`
             );
         }
 
@@ -152,15 +152,18 @@ class Importer {
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
             const accountStartTime = Date.now();
-            const monMonTransactions =
+            const accountTransactions =
                 monMonTransactionMap[monMonAccount.uuid] ?? [];
 
             let createTransactions: CreateTransaction[] = [];
-            for (const monMonTransaction of monMonTransactions) {
+            for (const monMonTransaction of accountTransactions) {
                 createTransactions.push(
                     await this.convertToActualTransaction(monMonTransaction)
                 );
             }
+
+            const hasMoneyMoneyTransactionsForAccount =
+                createTransactions.length > 0;
 
             const existingActualTransactions =
                 await this.actualApi.getTransactions(actualAccount.id, {
@@ -174,29 +177,39 @@ class Importer {
 
             // Push start transaction if no transactions exist
             if (existingActualTransactions.length === 0) {
-                const startTransaction: CreateTransaction = {
-                    date: format(
-                        monMonTransactions.length > 0
-                            ? monMonTransactions[monMonTransactions.length - 1]
-                                  .valueDate
-                            : new Date(),
-                        DATE_FORMAT
-                    ),
-                    amount: this.getStartingBalanceForAccount(
-                        monMonAccount,
-                        monMonTransactions
-                    ),
-                    imported_id: `${monMonAccount.uuid}-start`,
-                    cleared: true,
-                    notes: 'Starting balance',
-                    imported_payee: 'Starting balance',
-                };
+                if (!hasMoneyMoneyTransactionsForAccount) {
+                    this.logger.warn(
+                        `Skipping starting balance for Actual account '${actualAccount.name}' because no MoneyMoney transactions were found for account ${monMonAccount.uuid} in this import window.`,
+                        [
+                            'Extend the date range or review ignore patterns if a starting balance is expected.',
+                        ]
+                    );
+                } else {
+                    const startTransaction: CreateTransaction = {
+                        date: format(
+                            accountTransactions.length > 0
+                                ? accountTransactions[
+                                      accountTransactions.length - 1
+                                  ].valueDate
+                                : new Date(),
+                            DATE_FORMAT
+                        ),
+                        amount: this.getStartingBalanceForAccount(
+                            monMonAccount,
+                            accountTransactions
+                        ),
+                        imported_id: `${monMonAccount.uuid}-start`,
+                        cleared: true,
+                        notes: 'Starting balance',
+                        imported_payee: 'Starting balance',
+                    };
 
-                this.logger.debug(
-                    `No existing transactions found for Actual account '${actualAccount.name}'. Adding start transaction with amount ${startTransaction.amount}...`
-                );
+                    this.logger.debug(
+                        `No existing transactions found for Actual account '${actualAccount.name}'. Adding start transaction with amount ${startTransaction.amount}...`
+                    );
 
-                createTransactions.push(startTransaction);
+                    createTransactions.push(startTransaction);
+                }
             }
 
             // Filter out transactions that already exist in Actual
