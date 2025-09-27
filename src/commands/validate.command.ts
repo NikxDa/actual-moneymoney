@@ -80,11 +80,11 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         if (e instanceof z.ZodError) {
             logger.error('Configuration file is invalid:');
             for (const issue of e.issues) {
-                const path = issue.path.length
+                const issuePath = issue.path.length
                     ? issue.path.join('.')
                     : '<root>';
                 logger.error(
-                    `Code ${issue.code} at path [${path}]: ${issue.message}`
+                    `Code ${issue.code} at path [${issuePath}]: ${issue.message}`
                 );
             }
         } else if (e instanceof Error && e.name === 'SyntaxError') {
@@ -95,7 +95,9 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                 `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
             );
         } else {
-            logger.error(`An unexpected error occurred: ${e}`);
+            logger.error('An unexpected error occurred.', [
+                e instanceof Error ? e.message : String(e),
+            ]);
         }
 
         if (e instanceof Error) {

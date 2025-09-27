@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArgumentsCamelCase } from 'yargs';
 
+import { ZodError } from 'zod';
+
 import { EXAMPLE_CONFIG } from '../../src/utils/shared.js';
 
 const readFileMock = vi.fn<typeof import('node:fs/promises')['readFile']>();
 const writeFileMock = vi.fn<typeof import('node:fs/promises')['writeFile']>();
 const mkdirMock = vi.fn<typeof import('node:fs/promises')['mkdir']>();
+
+const tomlParseMock = vi.fn<typeof import('toml')['parse']>();
 
 vi.mock('node:fs/promises', () => ({
     __esModule: true,
@@ -17,6 +21,13 @@ vi.mock('node:fs/promises', () => ({
     readFile: readFileMock,
     writeFile: writeFileMock,
     mkdir: mkdirMock,
+}));
+
+vi.mock('toml', () => ({
+    __esModule: true,
+    default: {
+        parse: tomlParseMock,
+    },
 }));
 
 const getConfigFileMock = vi.fn<
@@ -54,6 +65,7 @@ describe('validate command', () => {
         readFileMock.mockReset();
         writeFileMock.mockReset();
         mkdirMock.mockReset();
+        tomlParseMock.mockReset();
         getConfigFileMock.mockReset();
         configSchemaParseMock.mockReset();
         loggerConstructorMock.mockReset();
@@ -195,6 +207,83 @@ describe('validate command', () => {
         expect(loggerErrorMock).toHaveBeenCalledWith(
             'Failed to create configuration file.',
             ['Path: tmp/custom/config.toml', 'Reason: disk full']
+        );
+    });
+
+    it('logs syntax errors from the TOML parser with line and column details', async () => {
+        const configPath = 'tmp/config.toml';
+        const syntaxError = Object.assign(new Error('Unexpected token ='), {
+            name: 'SyntaxError',
+            line: 12,
+            column: 4,
+        });
+
+        getConfigFileMock.mockResolvedValue(configPath);
+        readFileMock.mockResolvedValue('invalid');
+        tomlParseMock.mockImplementation(() => {
+            throw syntaxError;
+        });
+
+        const { default: commandModule } = await import(
+            '../../src/commands/validate.command.js'
+        );
+
+        if (!commandModule.handler) {
+            throw new Error('validate command handler not registered');
+        }
+
+        await expect(
+            commandModule.handler({
+                _: [],
+                $0: 'test',
+            } as ArgumentsCamelCase)
+        ).rejects.toThrow(syntaxError);
+
+        expect(loggerErrorMock).toHaveBeenCalledWith(
+            'Failed to parse configuration file: Unexpected token = (line 12, column 4)'
+        );
+        expect(configSchemaParseMock).not.toHaveBeenCalled();
+    });
+
+    it('logs validation issues reported by the schema', async () => {
+        const configPath = 'tmp/config.toml';
+        const validationError = new ZodError([
+            {
+                code: 'invalid_type',
+                expected: 'string',
+                received: 'number',
+                path: ['servers', 0, 'url'],
+                message: 'Expected string, received number',
+            },
+        ]);
+
+        getConfigFileMock.mockResolvedValue(configPath);
+        readFileMock.mockResolvedValue('config');
+        tomlParseMock.mockReturnValue({});
+        configSchemaParseMock.mockImplementation(() => {
+            throw validationError;
+        });
+
+        const { default: commandModule } = await import(
+            '../../src/commands/validate.command.js'
+        );
+
+        if (!commandModule.handler) {
+            throw new Error('validate command handler not registered');
+        }
+
+        await expect(
+            commandModule.handler({
+                _: [],
+                $0: 'test',
+            } as ArgumentsCamelCase)
+        ).rejects.toThrow(validationError);
+
+        expect(loggerErrorMock).toHaveBeenCalledWith(
+            'Configuration file is invalid:'
+        );
+        expect(loggerErrorMock).toHaveBeenCalledWith(
+            'Code invalid_type at path [servers.0.url]: Expected string, received number'
         );
     });
 });
