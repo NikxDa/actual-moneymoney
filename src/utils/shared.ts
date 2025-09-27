@@ -32,6 +32,7 @@ openAiModel = "gpt-3.5-turbo"
 # Import settings
 [import]
 importUncheckedTransactions = true
+# maskPayeeNamesInLogs = true # Optional: replace payee names in import logs with deterministic placeholders
 
 # Actual servers, you can add multiple servers
 [[actualServers]]

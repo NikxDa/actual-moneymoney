@@ -75,7 +75,7 @@ openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
-maskPayeeNamesInLogs = true  # Optional: keep payee names obfuscated in non-debug logs
+# maskPayeeNamesInLogs = true  # Optional: replace payee names in import logs with deterministic placeholders
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
@@ -122,6 +122,9 @@ The payee transformation feature automatically converts payee names to human-rea
 1. (Optional) Set `skipModelValidation = true` if you want to trust the configured model identifier without contacting the OpenAI model listing endpoint
 
 By default, payee transformation debug logs mask payee names unless you opt out with `maskPayeeNamesInLogs = false`. This keeps sensitive payee data hidden even when running with verbose logging levels.
+
+Importer debug logs display raw payee names unless you enable `maskPayeeNamesInLogs`. When masking is enabled, payees are replaced with deterministic placeholders (e.g., `PAYEE#1234ABCD`) so you can still trace individual entries without exposing the original names.
+Note: `[payeeTransformation].maskPayeeNamesInLogs` controls PayeeTransformer debug logs, while `[import].maskPayeeNamesInLogs` controls Importer logs.
 
 #### Custom Prompts
 

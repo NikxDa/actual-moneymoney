@@ -54,7 +54,7 @@ timeout = 45000
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
-maskPayeeNamesInLogs = true  # Mask payee names unless log level is DEBUG
+maskPayeeNamesInLogs = true  # Enable to replace payee names in import logs with deterministic placeholders (default: false)
 
 # Optional: Ignore patterns for filtering transactions (supports case-insensitive * wildcards)
 [import.ignorePatterns]

@@ -1,7 +1,75 @@
 import { describe, expect, it } from 'vitest';
 import { configSchema } from '../src/utils/config.js';
 
+const buildBaseConfig = () => ({
+    payeeTransformation: {
+        enabled: false,
+    },
+    import: {
+        importUncheckedTransactions: true,
+    },
+    actualServers: [
+        {
+            serverUrl: 'http://localhost:5006',
+            serverPassword: 'test-password',
+            budgets: [
+                {
+                    syncId: 'test-sync-id',
+                    e2eEncryption: {
+                        enabled: false,
+                        password: '',
+                    },
+                    accountMapping: {
+                        'test-account': 'actual-account-id',
+                    },
+                },
+            ],
+        },
+    ],
+});
+
 describe('Config Validation', () => {
+    describe('maskPayeeNamesInLogs defaults', () => {
+        it('applies independent defaults for importer and payee transformation masking', () => {
+            const parsedConfig = configSchema.parse(buildBaseConfig());
+
+            expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
+            expect(
+                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
+            ).toBe(true);
+        });
+
+        it('allows overriding payee transformation masking without affecting importer defaults', () => {
+            const parsedConfig = configSchema.parse({
+                ...buildBaseConfig(),
+                payeeTransformation: {
+                    enabled: false,
+                    maskPayeeNamesInLogs: false,
+                },
+            });
+
+            expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
+            expect(
+                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
+            ).toBe(false);
+        });
+
+        it('allows overriding importer masking without affecting payee transformation defaults', () => {
+            const parsedConfig = configSchema.parse({
+                ...buildBaseConfig(),
+                import: {
+                    importUncheckedTransactions: true,
+                    maskPayeeNamesInLogs: true,
+                },
+            });
+
+            expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(true);
+            expect(
+                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
+            ).toBe(true);
+        });
+    });
+
     describe('E2E Encryption Validation', () => {
         it('should allow empty password when encryption is disabled', () => {
             const validConfig = {

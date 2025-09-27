@@ -5,10 +5,11 @@ import {
     Transaction as MonMonTransaction,
     getTransactions,
 } from 'moneymoney';
+import { createHash } from 'node:crypto';
 import { AccountMap } from './AccountMap.js';
 import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig, Config } from './config.js';
-import Logger, { LogLevel } from './Logger.js';
+import Logger from './Logger.js';
 import PayeeTransformer from './PayeeTransformer.js';
 import { DATE_FORMAT } from './shared.js';
 
@@ -317,8 +318,7 @@ class Importer {
 
             // Log final payee names being used for import
             const shouldMaskPayees =
-                this.config.import.maskPayeeNamesInLogs &&
-                this.logger.getLevel() < LogLevel.DEBUG;
+                this.config.import.maskPayeeNamesInLogs === true;
             const payeeNamesForLog = createTransactions.map((t) => {
                 const payeeName = String(t.payee_name ?? '');
                 const value = shouldMaskPayees
@@ -463,15 +463,13 @@ class Importer {
     }
 
     private obfuscatePayeeName(payee: string) {
-        if (payee.length <= 2) {
-            return '•'.repeat(Math.max(payee.length, 1));
-        }
+        const hash = createHash('sha256')
+            .update(payee)
+            .digest('hex')
+            .slice(0, 8)
+            .toUpperCase();
 
-        const firstChar = payee[0];
-        const lastChar = payee[payee.length - 1];
-        const middle = '•'.repeat(payee.length - 2);
-
-        return `${firstChar}${middle}${lastChar}`;
+        return `PAYEE#${hash}`;
     }
 }
 

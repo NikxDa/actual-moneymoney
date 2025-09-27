@@ -97,7 +97,7 @@ export const configSchema = z
         import: z.object({
             importUncheckedTransactions: z.boolean(),
             synchronizeClearedStatus: z.boolean().default(true),
-            maskPayeeNamesInLogs: z.boolean().default(true),
+            maskPayeeNamesInLogs: z.boolean().default(false),
             ignorePatterns: z
                 .object({
                     commentPatterns: z.array(z.string()).optional(),
