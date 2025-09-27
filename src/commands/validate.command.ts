@@ -1,8 +1,8 @@
 import toml from 'toml';
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { z } from 'zod';
+import type { ArgumentsCamelCase, CommandModule } from 'yargs';
 import path from 'node:path';
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 import Logger, { LogLevel } from '../utils/Logger.js';
 import { configSchema, getConfigFile } from '../utils/config.js';
 import { EXAMPLE_CONFIG } from '../utils/shared.js';
@@ -42,7 +42,10 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
 
             logger.debug('Writing default configuration template...');
             try {
-                await fs.writeFile(configPath, EXAMPLE_CONFIG, 'utf-8');
+                await fs.writeFile(configPath, EXAMPLE_CONFIG, {
+                    encoding: 'utf-8',
+                    mode: 0o600,
+                });
             } catch (writeError) {
                 const writeMessage =
                     writeError instanceof Error
@@ -109,4 +112,4 @@ export default {
     command: 'validate',
     describe: 'View information about and validate the current configuration',
     handler: handleValidate,
-} as CommandModule;
+} as CommandModule<ArgumentsCamelCase>;

@@ -3,11 +3,11 @@ import type { ArgumentsCamelCase } from 'yargs';
 
 import { EXAMPLE_CONFIG } from '../../src/utils/shared.js';
 
-const readFileMock = vi.fn<typeof import('fs/promises')['readFile']>();
-const writeFileMock = vi.fn<typeof import('fs/promises')['writeFile']>();
-const mkdirMock = vi.fn<typeof import('fs/promises')['mkdir']>();
+const readFileMock = vi.fn<typeof import('node:fs/promises')['readFile']>();
+const writeFileMock = vi.fn<typeof import('node:fs/promises')['writeFile']>();
+const mkdirMock = vi.fn<typeof import('node:fs/promises')['mkdir']>();
 
-vi.mock('fs/promises', () => ({
+vi.mock('node:fs/promises', () => ({
     __esModule: true,
     default: {
         readFile: readFileMock,
@@ -98,7 +98,7 @@ describe('validate command', () => {
         expect(writeFileMock).toHaveBeenCalledWith(
             configPath,
             EXAMPLE_CONFIG,
-            'utf-8'
+            { encoding: 'utf-8', mode: 0o600 }
         );
         expect(configSchemaParseMock).not.toHaveBeenCalled();
     });
@@ -130,7 +130,7 @@ describe('validate command', () => {
         expect(writeFileMock).toHaveBeenCalledWith(
             configPath,
             EXAMPLE_CONFIG,
-            'utf-8'
+            { encoding: 'utf-8', mode: 0o600 }
         );
     });
 
