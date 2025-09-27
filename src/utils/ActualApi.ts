@@ -20,6 +20,7 @@ type ImportTransaction = {
 };
 import { format } from 'date-fns';
 import fs from 'fs/promises';
+import type { Dirent } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import util from 'node:util';
@@ -29,7 +30,7 @@ import {
     DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
     FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
 } from './config.js';
-import Logger from './Logger.js';
+import type Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
 const isActualNoise = (args: unknown[]) => {
@@ -106,10 +107,11 @@ export class ActualApiTimeoutError extends Error {
 
 class ActualApi {
     protected isInitialized = false;
+    private currentDataDir: string | null = null;
 
     constructor(
-        private serverConfig: ActualServerConfig,
-        private logger: Logger
+        private readonly serverConfig: ActualServerConfig,
+        private readonly logger: Logger
     ) {}
 
     private getRequestTimeoutMs(): number {
@@ -145,6 +147,40 @@ class ActualApi {
         return [`Server URL: ${this.serverConfig.serverUrl}`, ...extras];
     }
 
+    private getFriendlyErrorMessage(
+        operation: string,
+        error: unknown
+    ): string | null {
+        if (
+            !operation.startsWith('download budget') ||
+            !error ||
+            typeof error !== 'object'
+        ) {
+            return null;
+        }
+
+        const details = error as {
+            type?: unknown;
+            reason?: unknown;
+        };
+
+        const reason = typeof details.reason === 'string' ? details.reason : '';
+
+        if (
+            details.type === 'PostError' &&
+            /(^|[-\s])file[-\s]?not[-\s]?found$|group[-\s]?not[-\s]?found/i.test(
+                reason
+            )
+        ) {
+            return (
+                'The Actual server could not find the requested budget file. ' +
+                'Open the budget in Actual Desktop so it can re-upload the file before retrying.'
+            );
+        }
+
+        return null;
+    }
+
     private async runActualRequest<T>(
         operation: string,
         callback: () => Promise<T>,
@@ -161,7 +197,12 @@ class ActualApi {
                     operation,
                     timeoutMs
                 );
-                Promise.resolve(actual.shutdown())
+                Promise.race([
+                    Promise.resolve(actual.shutdown()),
+                    new Promise((resolve) =>
+                        setTimeout(resolve, Math.min(5_000, timeoutMs / 3))
+                    ),
+                ])
                     .catch((shutdownError) => {
                         const reason =
                             shutdownError instanceof Error
@@ -174,6 +215,7 @@ class ActualApi {
                     })
                     .finally(() => {
                         this.isInitialized = false;
+                        this.currentDataDir = null;
                         reject(timeoutError);
                     });
             }, timeoutMs);
@@ -206,8 +248,16 @@ class ActualApi {
                 throw error;
             }
 
-            const message =
-                error instanceof Error ? error.message : 'Unknown error';
+            const friendlyMessage = this.getFriendlyErrorMessage(
+                operation,
+                error
+            );
+
+            const message = friendlyMessage
+                ? friendlyMessage
+                : error instanceof Error
+                  ? error.message
+                  : 'Unknown error';
 
             const wrappedError =
                 error instanceof Error
@@ -256,11 +306,26 @@ class ActualApi {
         );
 
         this.isInitialized = true;
+        this.currentDataDir = actualDataDir;
     }
 
     public async ensureInitialization(customDataDir?: string): Promise<void> {
+        const desiredDataDir =
+            customDataDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
+
         if (!this.isInitialized) {
-            await this.init(customDataDir);
+            await this.init(desiredDataDir);
+            return;
+        }
+
+        if (this.currentDataDir !== desiredDataDir) {
+            this.logger.debug(
+                `Reinitialising Actual data directory: ${
+                    this.currentDataDir ?? '(none)'
+                } -> ${desiredDataDir}`
+            );
+            await this.shutdown();
+            await this.init(desiredDataDir);
         }
     }
 
@@ -290,72 +355,45 @@ class ActualApi {
         }
 
         const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
+        const rootDataDir = this.currentDataDir ?? DEFAULT_DATA_DIR;
 
-        // Find the actual budget directory name (skip in test environments)
-        let budgetDataDir = DEFAULT_DATA_DIR;
+        await this.ensureInitialization(rootDataDir);
 
-        // Skip directory detection if already initialized (test environment)
-        if (!this.isInitialized) {
-            try {
-                const actualDataDir = DEFAULT_DATA_DIR;
-                const budgetDirs = await fs
-                    .readdir(actualDataDir)
-                    .catch(() => []);
-                const matchingDir = budgetDirs.find((dir) => {
-                    return dir !== '.' && dir !== '..';
-                });
+        const downloadRootDir = this.currentDataDir ?? rootDataDir;
+        const initialBudgetDir = await this.tryResolveBudgetDirectory(
+            budgetConfig.syncId,
+            downloadRootDir
+        );
 
-                if (matchingDir) {
-                    try {
-                        const metadataPath = path.join(
-                            actualDataDir,
-                            matchingDir,
-                            'metadata.json'
-                        );
-                        const metadata = JSON.parse(
-                            await fs.readFile(metadataPath, 'utf8')
-                        );
-                        if (metadata.groupId === budgetConfig.syncId) {
-                            // Use the actual budget directory instead of the data directory
-                            budgetDataDir = path.join(
-                                actualDataDir,
-                                matchingDir
-                            );
-                            this.logger.debug(
-                                `Using budget directory: ${matchingDir}`
-                            );
-                        }
-                    } catch (_error) {
-                        // Ignore metadata read errors, fall back to default data directory
-                    }
-                }
-            } catch (_error) {
-                // Skip directory detection in test environments or when filesystem access fails
-                this.logger.debug(
-                    'Skipping directory detection, using default data directory'
-                );
-            }
+        if (initialBudgetDir) {
+            const resolvedRootDir = path.dirname(initialBudgetDir);
+            await this.ensureInitialization(resolvedRootDir);
         }
-
-        // Initialize with the correct budget directory
-        await this.ensureInitialization(budgetDataDir);
 
         this.logger.debug(
             `Downloading budget with syncId '${budgetConfig.syncId}'...`
         );
+        const encryptionPassword =
+            budgetConfig.e2eEncryption.enabled &&
+            budgetConfig.e2eEncryption.password
+                ? { password: budgetConfig.e2eEncryption.password }
+                : undefined;
+        const downloadHints = [...budgetHints, `Data root: ${downloadRootDir}`];
+
         await this.runActualRequest(
             `download budget '${budgetConfig.syncId}'`,
             () =>
-                actual.downloadBudget(
-                    budgetConfig.syncId,
-                    budgetConfig.e2eEncryption.enabled
-                        ? {
-                              password: budgetConfig.e2eEncryption.password,
-                          }
-                        : undefined
-                ),
-            budgetHints
+                actual.downloadBudget(budgetConfig.syncId, encryptionPassword),
+            downloadHints
         );
+
+        const finalBudgetDir = await this.resolveBudgetDataDir(
+            budgetConfig.syncId,
+            downloadRootDir
+        );
+
+        const finalRootDir = path.dirname(finalBudgetDir);
+        await this.ensureInitialization(finalRootDir);
 
         this.logger.debug(
             `Loading budget with syncId '${budgetConfig.syncId}'...`
@@ -371,6 +409,24 @@ class ActualApi {
             `Synchronizing budget with syncId '${budgetConfig.syncId}'...`
         );
         await this.sync(budgetHints);
+    }
+
+    private async tryResolveBudgetDirectory(
+        syncId: string,
+        rootDir: string
+    ): Promise<string | null> {
+        try {
+            return await this.resolveBudgetDataDir(syncId, rootDir);
+        } catch (error) {
+            if (
+                error instanceof Error &&
+                error.message.includes('No Actual budget directory found')
+            ) {
+                return null;
+            }
+
+            throw error;
+        }
     }
 
     public async importTransactions(
@@ -466,6 +522,7 @@ class ActualApi {
             );
         } finally {
             this.isInitialized = false;
+            this.currentDataDir = null;
         }
     }
 
@@ -502,6 +559,90 @@ class ActualApi {
             ...transaction,
             imported_id: this.createFallbackImportedId(accountId, transaction),
         };
+    }
+
+    private async resolveBudgetDataDir(
+        syncId: string,
+        rootDir?: string
+    ): Promise<string> {
+        const actualDataDir =
+            rootDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
+
+        let entries: Dirent[];
+        try {
+            entries = await fs.readdir(actualDataDir, { withFileTypes: true });
+        } catch (error) {
+            const maybeErrno = error as NodeJS.ErrnoException | undefined;
+            if (maybeErrno?.code === 'ENOENT') {
+                entries = [];
+            } else {
+                throw error;
+            }
+        }
+
+        const inspectedDirs: string[] = [];
+        const MAX_DIRS_TO_SCAN = 100;
+
+        const sortedEntries = entries
+            .filter((entry) => entry.isDirectory())
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+        if (sortedEntries.length > MAX_DIRS_TO_SCAN) {
+            this.logger.warn(
+                `Found ${sortedEntries.length} directories, scanning first ${MAX_DIRS_TO_SCAN} (omitting ${
+                    sortedEntries.length - MAX_DIRS_TO_SCAN
+                })`
+            );
+        }
+
+        for (const entry of sortedEntries.slice(0, MAX_DIRS_TO_SCAN)) {
+            inspectedDirs.push(entry.name);
+            const metadataPath = path.join(
+                actualDataDir,
+                entry.name,
+                'metadata.json'
+            );
+
+            try {
+                const metadataRaw = await fs.readFile(metadataPath, 'utf8');
+                const parsed = JSON.parse(metadataRaw);
+                const metadata =
+                    parsed && typeof parsed === 'object' && 'groupId' in parsed
+                        ? (parsed as { groupId?: string })
+                        : {};
+
+                if (metadata.groupId === syncId) {
+                    const resolvedDir = path.join(actualDataDir, entry.name);
+                    this.logger.debug(
+                        `Using budget directory: ${entry.name} for syncId ${syncId}`
+                    );
+                    return resolvedDir;
+                }
+            } catch (error) {
+                const maybeErrno = error as NodeJS.ErrnoException | undefined;
+                if (
+                    maybeErrno?.code === 'ENOENT' ||
+                    maybeErrno?.code === 'EISDIR'
+                ) {
+                    continue;
+                }
+
+                if (error instanceof SyntaxError) {
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+
+        const inspectedSummary =
+            inspectedDirs.length > 0 ? inspectedDirs.join(', ') : '(none)';
+
+        throw new Error(
+            `No Actual budget directory found for syncId '${syncId}'. ` +
+                `Checked directories under '${actualDataDir}': ${inspectedSummary}. ` +
+                'Open the budget in Actual Desktop and sync it before retrying.'
+        );
     }
 
     private createFallbackImportedId(
@@ -551,7 +692,8 @@ class ActualApi {
         // entire process while an Actual request is in flight. Concurrent requests
         // share the suppression window, so unrelated log output may be filtered.
         // The Actual client may still emit logs outside this window (e.g. after a
-        // timeout) because the SDK lacks granular logger hooks.
+        // timeout) because the SDK lacks granular logger hooks. In the future we
+        // could scope suppression per logger if the SDK exposes suitable hooks.
         if (ActualApi.suppressDepth === 0) {
             ActualApi.originals = {
                 log: console.log,

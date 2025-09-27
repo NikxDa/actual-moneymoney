@@ -1,9 +1,10 @@
 # Deep Review
 
 ## Epic 1: Actual session lifecycle resilience
-- Story 1.1: Derive the Actual budget data directory before calling `actual.init` so `loadBudget` reinitializes sessions with the correct path; cover discovery of the `metadata.json` match in unit tests using multiple mock directories.
-- Story 1.2: Iterate every directory under the data root when resolving a budget `syncId` and surface an actionable error when none match instead of silently reusing the fallback path; add a regression test capturing the new error text.
-- Story 1.3: Add tests exercising sequential imports across different budgets to ensure `ActualApi` reinitializes between runs and does not leak session state after `shutdown`.
+- [x] Story 1.1: Derive the Actual budget data directory before calling `actual.init` so `loadBudget` reinitializes sessions with the correct path; cover discovery of the `metadata.json` match in unit tests using multiple mock directories.
+- [x] Story 1.2: Iterate every directory under the data root when resolving a budget `syncId` and surface an actionable error when none match instead of silently reusing the fallback path; add a regression test capturing the new error text.
+- [x] Story 1.3: Add tests exercising sequential imports across different budgets to ensure `ActualApi` reinitializes between runs and does not leak session state after `shutdown`.
+- [x] Story 1.4: Emit debug logging when Actual switches data directories so lifecycle transitions remain observable (e.g. `Using budget directory: <dir> for syncId <id>`).
 
 ## Epic 2: Importer determinism and guard rails
 - Story 2.1: Normalize MoneyMoney transactions by sorting on value date and identifier before conversion so deduplication and starting balances behave deterministically; update importer tests with an unsorted fixture.
