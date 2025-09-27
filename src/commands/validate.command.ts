@@ -1,9 +1,10 @@
 import toml from 'toml';
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
-import { configSchema, getConfigFile } from '../utils/config.js';
-import fs from 'fs/promises';
-import Logger, { LogLevel } from '../utils/Logger.js';
 import { z } from 'zod';
+import type { ArgumentsCamelCase, CommandModule } from 'yargs';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import Logger, { LogLevel } from '../utils/Logger.js';
+import { configSchema, getConfigFile } from '../utils/config.js';
 import { EXAMPLE_CONFIG } from '../utils/shared.js';
 
 const handleValidate = async (argv: ArgumentsCamelCase) => {
@@ -20,8 +21,42 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         configContent = await fs.readFile(configPath, 'utf-8');
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            // Create path to file and file itself if it doesn't exist
-            await fs.writeFile(configPath, EXAMPLE_CONFIG);
+            const targetDirectory = path.dirname(configPath);
+
+            logger.debug(
+                `Ensuring configuration directory exists: ${targetDirectory}`
+            );
+            try {
+                await fs.mkdir(targetDirectory, { recursive: true });
+            } catch (mkdirError) {
+                const mkdirMessage =
+                    mkdirError instanceof Error
+                        ? mkdirError.message
+                        : String(mkdirError);
+                logger.error('Failed to create configuration directory.', [
+                    `Path: ${targetDirectory}`,
+                    `Reason: ${mkdirMessage}`,
+                ]);
+                throw mkdirError;
+            }
+
+            logger.debug('Writing default configuration template...');
+            try {
+                await fs.writeFile(configPath, EXAMPLE_CONFIG, {
+                    encoding: 'utf-8',
+                    mode: 0o600,
+                });
+            } catch (writeError) {
+                const writeMessage =
+                    writeError instanceof Error
+                        ? writeError.message
+                        : String(writeError);
+                logger.error('Failed to create configuration file.', [
+                    `Path: ${configPath}`,
+                    `Reason: ${writeMessage}`,
+                ]);
+                throw writeError;
+            }
 
             logger.warn('Configuration file not found.');
             logger.info(
@@ -45,11 +80,11 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         if (e instanceof z.ZodError) {
             logger.error('Configuration file is invalid:');
             for (const issue of e.issues) {
-                const path = issue.path.length
+                const issuePath = issue.path.length
                     ? issue.path.join('.')
                     : '<root>';
                 logger.error(
-                    `Code ${issue.code} at path [${path}]: ${issue.message}`
+                    `Code ${issue.code} at path [${issuePath}]: ${issue.message}`
                 );
             }
         } else if (e instanceof Error && e.name === 'SyntaxError') {
@@ -60,7 +95,9 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                 `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
             );
         } else {
-            logger.error(`An unexpected error occurred: ${e}`);
+            logger.error('An unexpected error occurred.', [
+                e instanceof Error ? e.message : String(e),
+            ]);
         }
 
         if (e instanceof Error) {
@@ -77,4 +114,4 @@ export default {
     command: 'validate',
     describe: 'View information about and validate the current configuration',
     handler: handleValidate,
-} as CommandModule;
+} as CommandModule<ArgumentsCamelCase>;

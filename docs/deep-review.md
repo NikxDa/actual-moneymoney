@@ -2,12 +2,12 @@
 
 ## 1. Executive Summary
 
-The project has evolved significantly with robust foundations now in place. The Actual adapter successfully completes the download → load → sync lifecycle with proper console state management, and the test suite runs cleanly without hangs.【F:src/utils/ActualApi.ts†L85-L219】【F:tests/ActualApi.test.ts†L53-L195】 The CI/CD pipeline is well-structured with comprehensive checks including linting, type checking, testing, and building.【F:.github/workflows/ci.yml†L1-L106】【F:.github/workflows/release.yml†L1-L50】 However, several critical issues remain: the `validate` command still fails to create parent directories, security vulnerabilities exist in dependencies, and some architectural improvements are needed for production readiness.
+The project has evolved significantly with robust foundations now in place. The Actual adapter successfully completes the download → load → sync lifecycle with proper console state management, and the test suite runs cleanly without hangs.【F:src/utils/ActualApi.ts†L85-L219】【F:tests/ActualApi.test.ts†L53-L195】 The CI/CD pipeline is well-structured with comprehensive checks including linting, type checking, testing, and building.【F:.github/workflows/ci.yml†L1-L106】【F:.github/workflows/release.yml†L1-L50】 However, several critical issues remain: security vulnerabilities exist in dependencies, and some architectural improvements are needed for production readiness.
 
 ### 5-Point Action Plan
 
 1. ✅ Fix the budget lifecycle (download → load → sync) and add error/timeout handling in the Actual adapter (completed).
-1. 🚧 **CRITICAL**: Fix the `validate` command directory creation issue (B2) - still failing to create parent directories.
+1. ✅ Fix the `validate` command directory creation issue (B2) so parent directories are created automatically.
 1. ✅ Identify and fix the Vitest hang issue with console patching (completed with proper cleanup).
 1. 🚧 **HIGH**: Address security vulnerabilities in dependencies (5 moderate severity issues in esbuild/vitest chain).
 1. ✅ Align the toolchain with npm, add typecheck script, and secure the release flow (completed).
@@ -17,7 +17,7 @@ The project has evolved significantly with robust foundations now in place. The 
 | ID | Status | Category | File:Line | Short Description | Repro Steps | Expected vs. Current Behaviour | Fix Proposal |
 | --- | ----------- | -------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B1 | ✅ Resolved | Bug | `src/utils/ActualApi.ts:176-219` | Budget lifecycle previously stopped at `downloadBudget`, leaving the session without an active budget.【F:src/utils/ActualApi.ts†L176-L219】 | Covered by the `ActualApi` unit suite (loadBudget test).【F:tests/ActualApi.test.ts†L103-L141】 | Budget download, load, and sync now complete before returning, so account/transaction calls see fresh data.【F:src/utils/ActualApi.ts†L176-L219】 | Fix landed: `loadBudget` chains download → load → sync and logs failures, with regression coverage in Vitest.【F:src/utils/ActualApi.ts†L176-L219】【F:tests/ActualApi.test.ts†L103-L141】 |
-| B2 | 🚧 **CRITICAL** | Bug | `src/commands/validate.command.ts:22-29` | `validate` writes config files but does not create parent directories.【F:src/commands/validate.command.ts†L22-L29】 | 1. Run `actual-monmon validate --config ./tmp/custom/config.toml` in an empty project. 2. Command fails with `ENOENT`. | Expected: path is created recursively and example config written (README promise). Actual: write attempt aborts. | Call `fs.mkdir(path.dirname(configPath), { recursive: true })` before `writeFile` and log errors clearly.【F:README.md†L40-L44】 |
+| B2 | ✅ Resolved | Bug | `src/commands/validate.command.ts:18-77` | `validate` writes config files and now creates parent directories before writing the default config.【F:src/commands/validate.command.ts†L18-L77】 | Covered by new validate command tests for directory creation, current-directory configs, and write failures.【F:tests/commands/validate.command.test.ts†L1-L199】 | Path is created recursively and example config written when missing, with detailed logging for failures.【F:src/commands/validate.command.ts†L18-L77】 | Fix landed: create parent directory with recursive mkdir, write template, and log errors with context; regression coverage added in Vitest.【F:src/commands/validate.command.ts†L18-L77】【F:tests/commands/validate.command.test.ts†L1-L199】 |
 | B3 | ✅ Resolved | Bug | `tests/ActualApi.test.ts` | Vitest run used to hang because console patching never unwound after timeouts.【F:tests/ActualApi.test.ts†L143-L195】 | Regression covered by `npm test` and targeted Actual API specs.【chunk:6f7772†L1-L6】【F:tests/ActualApi.test.ts†L53-L195】 | Test suite now exits cleanly; console patching restores globals and clears fake timers.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L53-L195】 | Fixed by wrapping each Actual API request in a scoped `patchConsole` guard and adding timer cleanup in the timeout test.【F:src/utils/ActualApi.ts†L85-L121】【F:tests/ActualApi.test.ts†L143-L195】 |
 | B4 | 🚧 **HIGH** | Security | `package.json` dependencies | 5 moderate severity vulnerabilities in esbuild/vitest dependency chain.【F:package.json†L46-L60】 | Run `npm audit --audit-level=high` to see vulnerabilities. | Expected: No high-severity vulnerabilities. Actual: 5 moderate vulnerabilities in dev dependencies. | Update vitest to v3.2.4+ or consider alternative testing framework.【F:package.json†L58】 |
 
@@ -48,7 +48,7 @@ _Target state:_ Users can create/validate configs anywhere.
 _Acceptance criteria:_ `validate` creates paths, error text offers guidance, README stays in sync.
 _Risks:_ Path handling on Windows/macOS.
 
-- 🚧 **CRITICAL** Story B1 (S): recursive `mkdir` before `writeFile`, add tests for success/error paths.【F:src/commands/validate.command.ts†L22-L29】
+- ✅ Story B1 (S): recursive `mkdir` before `writeFile`, add tests for success/error paths.【F:src/commands/validate.command.ts†L18-L77】【F:tests/commands/validate.command.test.ts†L1-L199】
 - ✅ Story B2 (S): document CLI option normalisation (`--server`, `--budget`) and add tests for filter logic.【F:src/commands/import.command.ts†L84-L200】
 
 ### Epic C – Test/CI hardening
@@ -80,7 +80,7 @@ _Risks:_ Breaking changes in major version updates.
 ## 5. Test Strategy & Coverage
 
 - **Importer E2E**: Scenarios for dedupe (`imported_id`), starting balance, `ignorePatterns`, dry-run against mocked Actual.【F:src/utils/Importer.ts†L175-L209】
-- **Config validation**: Tests for custom paths, schema failures, skip-model-validation flag, and TOML syntax errors.【F:src/utils/config.ts†L8-L104】【F:src/commands/validate.command.ts†L22-L73】
+- **Config validation**: Tests for custom paths, schema failures, skip-model-validation flag, and TOML syntax errors.【F:src/utils/config.ts†L8-L104】【F:src/commands/validate.command.ts†L18-L105】
 - **ActualApi**: Unit tests for budget lifecycle (init/download/load/shutdown), error handling (401/500), console patch behaviour.
 - **CLI smoke**: `--help`, `import --dry-run`, `validate` (new/broken config). Use snapshots with masked payees (respect `maskPayeeNamesInLogs`).【F:src/utils/Importer.ts†L200-L236】
 - **Determinism**: Mock timers/date access (`Date.now`, `subMonths`) for reproducible logs.
@@ -114,4 +114,4 @@ _Risks:_ Breaking changes in major version updates.
 - 🚧 `npm audit --audit-level=high` highlights the existing esbuild advisory (5 moderate vulnerabilities in dev dependencies).
 - ✅ All CI/CD workflows are properly configured with comprehensive checks.
 - ✅ Test suite runs cleanly with 11 passing tests across 3 test files.
-- 🚧 **CRITICAL**: `validate` command still fails to create parent directories (B2).
+- ✅ `validate` command now creates parent directories and writes the default config when missing (B2).
