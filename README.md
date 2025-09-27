@@ -49,7 +49,7 @@ The application will be accessible as a CLI tool with the name `actual-monmon`.
 - Node.js **v20.9.0 or newer** (see `package.json` `engines` field)
 - A licensed copy of MoneyMoney on macOS to access the transaction database
 
-**Note on zod version**: This project is currently pinned to zod v3.25.76 due to a peer dependency conflict with the openai package. The openai library requires zod v3.x (`^3.23.8`), but zod v4.x introduces breaking changes that are incompatible. This prevents dependabot from automatically updating to zod v4, which would break the application. We'll update zod when openai releases a version that supports zod v4.
+**Note on zod version**: This project must remain on zod v3 due to a peer dependency conflict with the openai package. We currently depend on `zod@^3.25.76`, which keeps us on the 3.x line (openai requires `^3.23.8`) while still allowing Dependabot to deliver minor and patch releases. We'll move to zod v4 once openai ships a compatible update.
 
 ## Configuration
 
