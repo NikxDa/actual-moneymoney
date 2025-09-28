@@ -223,6 +223,95 @@ describe('Importer', () => {
         );
     });
 
+    it('warns when MoneyMoney only provides unchecked transactions but unchecked imports are disabled', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: false,
+                skipModelValidation: false,
+                openAiModel: 'gpt-3.5-turbo',
+            },
+            import: {
+                importUncheckedTransactions: false,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: '2024-01-01',
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const account = {
+            uuid: 'primary-account',
+            name: 'Checking',
+            balance: [[2500]],
+        };
+
+        const actualAccount = {
+            id: 'actual-1',
+            name: 'Checking',
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'pending-transaction',
+                accountUuid: 'primary-account',
+                name: 'Pending deposit',
+                purpose: 'Awaiting booking',
+                comment: '',
+                valueDate: new Date('2024-01-05T00:00:00Z'),
+                bookingDate: new Date('2024-01-06T00:00:00Z'),
+                amount: 150,
+                booked: false,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockResolvedValue([]),
+            importTransactions: vi.fn(),
+        };
+
+        const accountMap = {
+            getMap: () => new Map([[account, actualAccount]]),
+        };
+
+        const logger = createLogger(LogLevel.DEBUG);
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            logger as unknown as Logger,
+            accountMap as unknown as AccountMap,
+            undefined
+        );
+
+        await importer.importTransactions({});
+
+        expect(actualApi.importTransactions).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledWith(
+            "Skipping starting balance for Actual account 'Checking' because no MoneyMoney transactions were found for account primary-account in this import window.",
+            [
+                'Extend the date range or review ignore patterns if a starting balance is expected.',
+            ]
+        );
+    });
+
     it('does not warn when Actual already has transactions for the account', async () => {
         const config: Config = {
             payeeTransformation: {
@@ -407,6 +496,110 @@ describe('Importer', () => {
         );
         expect(importedIds).toContain('primary-account-start');
         expect(importedIds).toContain('primary-account-txn-1');
+    });
+
+    it('creates a starting balance when only unchecked MoneyMoney transactions exist for the account', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: false,
+                skipModelValidation: false,
+                openAiModel: 'gpt-3.5-turbo',
+            },
+            import: {
+                importUncheckedTransactions: true,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: '2024-01-01',
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const account = {
+            uuid: 'primary-account',
+            name: 'Checking',
+            balance: [[150]],
+        };
+
+        const actualAccount = {
+            id: 'actual-1',
+            name: 'Checking',
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'pending-transaction',
+                accountUuid: 'primary-account',
+                name: 'Pending deposit',
+                purpose: 'Awaiting booking',
+                comment: '',
+                valueDate: new Date('2024-01-05T00:00:00Z'),
+                bookingDate: new Date('2024-01-06T00:00:00Z'),
+                amount: 75,
+                booked: false,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockResolvedValue([]),
+            importTransactions: vi.fn().mockResolvedValue({
+                added: [],
+                updated: [],
+                errors: [],
+            }),
+        };
+
+        const accountMap = {
+            getMap: () => new Map([[account, actualAccount]]),
+        };
+
+        const logger = createLogger();
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            logger as unknown as Logger,
+            accountMap as unknown as AccountMap,
+            undefined
+        );
+
+        await importer.importTransactions({});
+
+        expect(logger.warn).not.toHaveBeenCalled();
+        expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
+
+        const [, createTransactions] =
+            actualApi.importTransactions.mock.calls[0];
+        expect(createTransactions).toHaveLength(2);
+
+        const startingBalanceTransaction = createTransactions.find(
+            (transaction: { imported_id?: string }) =>
+                transaction.imported_id === 'primary-account-start'
+        );
+
+        expect(startingBalanceTransaction).toMatchObject({
+            amount: 15000,
+            notes: 'Starting balance',
+            imported_payee: 'Starting balance',
+            cleared: true,
+        });
     });
 
     it('sorts MoneyMoney transactions deterministically before conversion', async () => {

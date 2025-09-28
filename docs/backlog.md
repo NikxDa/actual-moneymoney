@@ -105,17 +105,12 @@
 ### Story 2.2 – Extend starting balance coverage for missing booked transactions
 
 - **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** The importer emits warnings when an Actual account
-  lacks MoneyMoney transactions, but tests only cover presence/absence of
-  transactions—not scenarios where MoneyMoney omits booked entries.
-- **Next Steps:**
-  - Add fixtures where MoneyMoney omits booked transactions but balances still
-    imply a starting transaction.
-  - Assert warning text, synthetic transaction amount, and generated memo
-    (`Starting balance`) in `tests/Importer.test.ts`.
-  - Ensure the logger hints align with contributor guidance
-    (`Extend the date range...`).
+- **Status:** ✅ Done
+- **Context:** Coverage now exercises importer behaviour when MoneyMoney omits
+  booked transactions, ensuring unchecked entries still produce a starting
+  balance while disabled unchecked imports surface actionable warnings.
+- **Evidence:** `tests/Importer.test.ts` asserts the warning text, hint, and
+  synthetic `Starting balance` memo/amount for unchecked-transaction scenarios.
 - **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
 
 ### Story 2.3 – Fail imports when account mapping resolution breaks
