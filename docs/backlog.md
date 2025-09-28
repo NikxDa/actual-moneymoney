@@ -160,17 +160,14 @@
 ### Story 3.2 – Short-circuit on malformed OpenAI payloads
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** The transformer caches any parsed JSON object, even
-  when the payload is empty or contains duplicate keys, leading to stale names
-  being reused.
-- **Next Steps:**
-  - Detect empty payloads or duplicate keys and fall back to original payee
-    names with a warning.
-  - Extend tests with fixtures covering duplicate/empty responses to assert the
-    fallback path and logging hints.
-- **Key Files:** `src/utils/PayeeTransformer.ts`,
-  `tests/PayeeTransformer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** The transformer now detects empty payloads and duplicate keys in
+  OpenAI responses, falling back to original payee names with appropriate
+  warnings when malformed data is encountered.
+- **Evidence:** Implemented in `src/utils/PayeeTransformer.ts` with regression
+  coverage in `tests/PayeeTransformer.test.ts` to confirm fallback behavior and
+  warning messages for both empty payloads and duplicate key scenarios.
+- **Future Work:** None at this time.
 
 ### Story 3.3 – Emit structured timing metrics for payee transformation
 
