@@ -172,10 +172,36 @@ export function logDefaultedConfigDecisions(logger, decisions) {
             decision && typeof decision.path === 'string'
                 ? decision.path
                 : String(decision?.path ?? '<unknown>');
+        const valueLine = 'Value: ' + formatMockDefaultValue(decision?.value);
+        const hintLines = normaliseHints(decision?.hints).map((hint) =>
+            String(hint)
+        );
         logger.debug('Using default configuration value.', [
             'Path: ' + pathValue,
+            valueLine,
+            ...hintLines,
         ]);
     }
+}
+
+function formatMockDefaultValue(value) {
+    if (typeof value === 'string') {
+        return "'" + value + "'";
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+    if (Array.isArray(value)) {
+        return '[' + value.map(formatMockDefaultValue).join(', ') + ']';
+    }
+    if (value && typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch {
+            return '[object Object]';
+        }
+    }
+    return String(value);
 }
 
 export function getConfigFile() {
