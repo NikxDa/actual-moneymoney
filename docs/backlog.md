@@ -531,15 +531,13 @@
 
 ## Epic 11: TypeScript configuration parity
 
-- **Epic Assessment:** 🚧 Not started. A repository scan shows our first-party `.mjs` surface is limited to `eslint.config.mjs`. Converting it to TypeScript keeps tooling consistent with the rest of the project and unlocks stronger type inference for shared lint utilities.
+- **Epic Assessment:** ✅ Completed. The ESLint flat configuration now lives in `eslint.config.ts`, is executed via the TypeScript-aware loader in `package.json`, and removes the final `.mjs` entrypoint from the repository.
 
 ### Story 11.1 – Port ESLint configuration to TypeScript
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `eslint.config.mjs` exports the flat ESLint configuration via plain JavaScript, so TypeScript-aware helpers or shared types cannot be reused without manual annotations.
-- **Next Steps:**
-  - Rename the configuration to `eslint.config.ts` and update package scripts/ESLint entry points to load the TypeScript module (via `ts-node` or `tsx`).
-  - Replace CommonJS-style exports with typed `defineConfig` helpers so rule overrides and file globs benefit from IDE autocomplete.
-  - Remove the legacy `.mjs` file once the TypeScript version is wired through CI and local lint commands.
-- **Key Files:** `eslint.config.ts` (new), `eslint.config.mjs` (to remove), `package.json`, `tsconfig.json`, `.github/workflows/ci.yml`.
+- **Status:** ✅ Done
+- **Context:** The ESLint flat configuration has been rewritten in `eslint.config.ts` using `typescript-eslint`'s typed `config` helper so file globs and rule overrides benefit from editor inference.
+- **Evidence:** `package.json` runs ESLint through Node's `ts-node` loader, ensuring the TypeScript module executes during local and CI lint jobs. The obsolete `eslint.config.mjs` file has been removed.
+- **Future Work:** None. Additional lint surface can extend `eslint.config.ts` directly as new directories or rules are introduced.
+- **Key Files:** `eslint.config.ts`, `package.json`.
