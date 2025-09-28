@@ -1,10 +1,13 @@
 # Upstream Sync Process
 
-This document describes how to sync with the upstream repository [NikxDa/actual-moneymoney](https://github.com/NikxDa/actual-moneymoney).
+This document describes how to sync with the upstream repository
+[NikxDa/actual-moneymoney](https://github.com/NikxDa/actual-moneymoney).
 
 ## Overview
 
-This fork maintains compatibility with upstream while adding significant enhancements. We sync with upstream quarterly to incorporate bug fixes and improvements.
+This fork maintains compatibility with upstream while adding significant
+enhancements. We sync with upstream quarterly to incorporate bug fixes and
+improvements.
 
 ## Quick Sync
 
@@ -81,7 +84,8 @@ git push origin develop
 
 When conflicts occur:
 
-1. **Package.json conflicts**: Prefer our enhanced dependencies but update versions
+1. **Package.json conflicts**: Prefer our enhanced dependencies but update
+   versions
 1. **Configuration conflicts**: Keep our enhanced config options
 1. **API conflicts**: Maintain our enhanced API surface
 1. **Test conflicts**: Keep our comprehensive test suite

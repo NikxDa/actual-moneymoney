@@ -59,9 +59,9 @@ describe('Config Validation', () => {
             const parsedConfig = configSchema.parse(buildBaseConfig());
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
-            expect(
-                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
-            ).toBe(true);
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
+                true
+            );
         });
 
         it('allows overriding payee transformation masking without affecting importer defaults', () => {
@@ -74,9 +74,9 @@ describe('Config Validation', () => {
             });
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
-            expect(
-                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
-            ).toBe(false);
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
+                false
+            );
         });
 
         it('allows overriding importer masking without affecting payee transformation defaults', () => {
@@ -89,9 +89,9 @@ describe('Config Validation', () => {
             });
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(true);
-            expect(
-                parsedConfig.payeeTransformation.maskPayeeNamesInLogs
-            ).toBe(true);
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
+                true
+            );
         });
     });
 
@@ -204,7 +204,9 @@ describe('Config Validation', () => {
                                     enabled: true,
                                     password: '   ',
                                 },
-                                accountMapping: { 'test-account': 'actual-account-id' },
+                                accountMapping: {
+                                    'test-account': 'actual-account-id',
+                                },
                             },
                         ],
                     },

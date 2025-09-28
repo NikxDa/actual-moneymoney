@@ -201,9 +201,7 @@ describe('CLI global options', () => {
 
             expect(result.exitCode).toBe(1);
             expect(result.stdout).toBe('');
-            expect(result.stderr).toContain(
-                expectedInvalidLogLevelMessage
-            );
+            expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
 
             const events = await readEvents(eventsFile);
             const importerEvents = events.filter((event) =>

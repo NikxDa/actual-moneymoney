@@ -14,12 +14,30 @@ const complexityRules = enableComplexityRules
       }
     : {};
 
+const sharedRules = {
+    '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+            argsIgnorePattern: '^_',
+            varsIgnorePattern: '^_',
+            caughtErrorsIgnorePattern: '^_',
+        },
+    ],
+};
+
 export default defineConfig(
+    {
+        ignores: ['dist/**', 'node_modules/**', 'coverage/**', '**/*.js'],
+    },
     eslint.configs.recommended,
     tsConfigs.recommended,
     defineConfig({
-        files: ['src/**/*.ts'],
-        ignores: ['**/*.js'],
+        files: [
+            'src/**/*.ts',
+            'scripts/**/*.ts',
+            '*.config.ts',
+            'vitest.config.ts',
+        ],
         languageOptions: {
             globals: globals.node,
         },
@@ -27,15 +45,21 @@ export default defineConfig(
             sonarjs,
         },
         rules: {
-            '@typescript-eslint/no-unused-vars': [
-                'error',
-                {
-                    argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^_',
-                    caughtErrorsIgnorePattern: '^_',
-                },
-            ],
+            ...sharedRules,
             ...complexityRules,
         },
+    }),
+    defineConfig({
+        files: ['tests/**/*.ts'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+                ...globals.vitest,
+            },
+        },
+        plugins: {
+            sonarjs,
+        },
+        rules: sharedRules,
     })
 );

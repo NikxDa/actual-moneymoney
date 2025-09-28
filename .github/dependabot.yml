@@ -38,7 +38,6 @@ updates:
           - dependency-name: 'openai'
             update-types: ['version-update:semver-major']
 
-
     # GitHub Actions dependencies
     - package-ecosystem: github-actions
       directory: '/'

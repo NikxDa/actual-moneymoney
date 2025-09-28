@@ -384,12 +384,12 @@ describe('ActualApi', () => {
         expect(downloadBudgetMock).toHaveBeenCalledTimes(2);
         expect(loadBudgetMock).toHaveBeenCalledTimes(2);
         expect(loadBudgetMock).toHaveBeenLastCalledWith('local-budget-id');
-        expect(
-            downloadBudgetMock.mock.invocationCallOrder[0]
-        ).toBeLessThan(loadBudgetMock.mock.invocationCallOrder[0]);
-        expect(
-            downloadBudgetMock.mock.invocationCallOrder[1]
-        ).toBeLessThan(loadBudgetMock.mock.invocationCallOrder[1]);
+        expect(downloadBudgetMock.mock.invocationCallOrder[0]).toBeLessThan(
+            loadBudgetMock.mock.invocationCallOrder[0]
+        );
+        expect(downloadBudgetMock.mock.invocationCallOrder[1]).toBeLessThan(
+            loadBudgetMock.mock.invocationCallOrder[1]
+        );
         const warnCall = logger.warn.mock.calls.find(([message]) =>
             String(message).includes('Budget load attempt 1 failed')
         );

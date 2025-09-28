@@ -96,107 +96,107 @@ describe('import command (CLI)', () => {
     it(
         'executes a dry-run import for the filtered server and budget',
         async () => {
-        const config = {
-            ...createBaseConfig(),
-            actualServers: [
+            const config = {
+                ...createBaseConfig(),
+                actualServers: [
+                    {
+                        serverUrl: 'https://server-a.example.com',
+                        serverPassword: 'secret-a',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'budget-a1',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { 'acct-a1': 'actual-a1' },
+                            },
+                            {
+                                syncId: 'budget-a2',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { 'acct-a2': 'actual-a2' },
+                            },
+                        ],
+                    },
+                    {
+                        serverUrl: 'https://server-b.example.com',
+                        serverPassword: 'secret-b',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'budget-b1',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { 'acct-b1': 'actual-b1' },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const { contextDir, eventsFile } = await createContextDir({
+                config,
+                importer: {
+                    failOnUnknownAccounts: true,
+                    knownAccounts: ['acct-a2'],
+                },
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--server',
+                    'https://server-a.example.com',
+                    '--budget',
+                    'budget-a2',
+                    '--account',
+                    'acct-a2',
+                    '--from',
+                    '2024-01-01',
+                    '--to',
+                    '2024-01-31',
+                    '--dry-run',
+                ],
                 {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                }
+            );
+
+            expect(result.exitCode).toBe(0);
+            expect(result.stderr).toBe('');
+            expect(result.stdout).toContain(
+                'DRY RUN MODE - Importing transactions (no changes will be made)... Budget: budget-a2'
+            );
+
+            const events = await readEvents(eventsFile);
+            const importerEvents = events.filter(
+                (event) => event.type === 'Importer#importTransactions'
+            );
+            expect(importerEvents).toEqual([
+                {
+                    type: 'Importer#importTransactions',
+                    budgetSyncId: 'budget-a2',
+                    options: {
+                        accountRefs: ['acct-a2'],
+                        from: '2024-01-01T00:00:00.000Z',
+                        to: '2024-01-31T00:00:00.000Z',
+                        isDryRun: true,
+                    },
+                },
+            ]);
+
+            const loadEvents = events.filter(
+                (event) => event.type === 'ActualApi#loadBudget'
+            );
+            expect(loadEvents).toEqual([
+                {
+                    type: 'ActualApi#loadBudget',
                     serverUrl: 'https://server-a.example.com',
-                    serverPassword: 'secret-a',
-                    requestTimeoutMs: 45000,
-                    budgets: [
-                        {
-                            syncId: 'budget-a1',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { 'acct-a1': 'actual-a1' },
-                        },
-                        {
-                            syncId: 'budget-a2',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { 'acct-a2': 'actual-a2' },
-                        },
-                    ],
+                    budgetSyncId: 'budget-a2',
                 },
-                {
-                    serverUrl: 'https://server-b.example.com',
-                    serverPassword: 'secret-b',
-                    requestTimeoutMs: 45000,
-                    budgets: [
-                        {
-                            syncId: 'budget-b1',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { 'acct-b1': 'actual-b1' },
-                        },
-                    ],
-                },
-            ],
-        };
-
-        const { contextDir, eventsFile } = await createContextDir({
-            config,
-            importer: {
-                failOnUnknownAccounts: true,
-                knownAccounts: ['acct-a2'],
-            },
-        });
-
-        const result = await runCli(
-            [
-                'import',
-                '--server',
-                'https://server-a.example.com',
-                '--budget',
-                'budget-a2',
-                '--account',
-                'acct-a2',
-                '--from',
-                '2024-01-01',
-                '--to',
-                '2024-01-31',
-                '--dry-run',
-            ],
-            {
-                env: {
-                    CLI_TEST_CONTEXT_DIR: contextDir,
-                    CLI_TEST_EVENTS_FILE: eventsFile,
-                    NODE_NO_WARNINGS: '1',
-                },
-                nodeOptions: loaderNodeOptions,
-            }
-        );
-
-        expect(result.exitCode).toBe(0);
-        expect(result.stderr).toBe('');
-        expect(result.stdout).toContain(
-            'DRY RUN MODE - Importing transactions (no changes will be made)... Budget: budget-a2'
-        );
-
-        const events = await readEvents(eventsFile);
-        const importerEvents = events.filter(
-            (event) => event.type === 'Importer#importTransactions'
-        );
-        expect(importerEvents).toEqual([
-            {
-                type: 'Importer#importTransactions',
-                budgetSyncId: 'budget-a2',
-                options: {
-                    accountRefs: ['acct-a2'],
-                    from: '2024-01-01T00:00:00.000Z',
-                    to: '2024-01-31T00:00:00.000Z',
-                    isDryRun: true,
-                },
-            },
-        ]);
-
-        const loadEvents = events.filter(
-            (event) => event.type === 'ActualApi#loadBudget'
-        );
-        expect(loadEvents).toEqual([
-            {
-                type: 'ActualApi#loadBudget',
-                serverUrl: 'https://server-a.example.com',
-                budgetSyncId: 'budget-a2',
-            },
-        ]);
+            ]);
         },
         CLI_TIMEOUT_MS
     );
@@ -204,69 +204,75 @@ describe('import command (CLI)', () => {
     it(
         'imports all budgets for the selected server when dry-run is disabled',
         async () => {
-        const config = {
-            ...createBaseConfig(),
-            actualServers: [
+            const config = {
+                ...createBaseConfig(),
+                actualServers: [
+                    {
+                        serverUrl: 'https://server-only.example.com',
+                        serverPassword: 'secret-main',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'primary-budget',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { primary: 'actual-primary' },
+                            },
+                            {
+                                syncId: 'secondary-budget',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: {
+                                    secondary: 'actual-secondary',
+                                },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const { contextDir, eventsFile } = await createContextDir({
+                config,
+            });
+
+            const result = await runCli(
+                ['import', '--server', 'https://server-only.example.com'],
                 {
-                    serverUrl: 'https://server-only.example.com',
-                    serverPassword: 'secret-main',
-                    requestTimeoutMs: 45000,
-                    budgets: [
-                        {
-                            syncId: 'primary-budget',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { primary: 'actual-primary' },
-                        },
-                        {
-                            syncId: 'secondary-budget',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { secondary: 'actual-secondary' },
-                        },
-                    ],
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                }
+            );
+
+            expect(result.exitCode).toBe(0);
+            expect(result.stderr).toBe('');
+            expect(result.stdout).toContain(
+                'Importing transactions... Budget: primary-budget'
+            );
+            expect(result.stdout).toContain(
+                'Importing transactions... Budget: secondary-budget'
+            );
+
+            const events = await readEvents(eventsFile);
+            const importerEvents = events
+                .filter((event) => event.type === 'Importer#importTransactions')
+                .map((event) => event.options);
+
+            expect(importerEvents).toEqual([
+                {
+                    accountRefs: null,
+                    from: null,
+                    to: null,
+                    isDryRun: false,
                 },
-            ],
-        };
-
-        const { contextDir, eventsFile } = await createContextDir({
-            config,
-        });
-
-        const result = await runCli(
-            ['import', '--server', 'https://server-only.example.com'],
-            {
-                env: {
-                    CLI_TEST_CONTEXT_DIR: contextDir,
-                    CLI_TEST_EVENTS_FILE: eventsFile,
-                    NODE_NO_WARNINGS: '1',
+                {
+                    accountRefs: null,
+                    from: null,
+                    to: null,
+                    isDryRun: false,
                 },
-                nodeOptions: loaderNodeOptions,
-            }
-        );
-
-        expect(result.exitCode).toBe(0);
-        expect(result.stderr).toBe('');
-        expect(result.stdout).toContain('Importing transactions... Budget: primary-budget');
-        expect(result.stdout).toContain('Importing transactions... Budget: secondary-budget');
-
-        const events = await readEvents(eventsFile);
-        const importerEvents = events
-            .filter((event) => event.type === 'Importer#importTransactions')
-            .map((event) => event.options);
-
-        expect(importerEvents).toEqual([
-            {
-                accountRefs: null,
-                from: null,
-                to: null,
-                isDryRun: false,
-            },
-            {
-                accountRefs: null,
-                from: null,
-                to: null,
-                isDryRun: false,
-            },
-        ]);
+            ]);
         },
         CLI_TIMEOUT_MS
     );
@@ -274,84 +280,84 @@ describe('import command (CLI)', () => {
     it(
         'sets a non-zero exit code when the importer throws an unexpected error',
         async () => {
-        const config = {
-            ...createBaseConfig(),
-            actualServers: [
+            const config = {
+                ...createBaseConfig(),
+                actualServers: [
+                    {
+                        serverUrl: 'https://server-failure.example.com',
+                        serverPassword: 'secret',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'budget-failure',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { primary: 'actual-primary' },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const failureMessage = 'Importer crashed while synchronising';
+
+            const { contextDir, eventsFile } = await createContextDir({
+                config,
+                importer: {
+                    failures: {
+                        'budget-failure': failureMessage,
+                    },
+                },
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--server',
+                    'https://server-failure.example.com',
+                    '--budget',
+                    'budget-failure',
+                    '--dry-run',
+                ],
                 {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stderr).toContain(failureMessage);
+
+            const events = await readEvents(eventsFile);
+            const importerEvents = events.filter(
+                (event) => event.type === 'Importer#importTransactions'
+            );
+            expect(importerEvents).toEqual([
+                {
+                    type: 'Importer#importTransactions',
+                    budgetSyncId: 'budget-failure',
+                    options: {
+                        accountRefs: null,
+                        from: null,
+                        to: null,
+                        isDryRun: true,
+                    },
+                    error: failureMessage,
+                },
+            ]);
+
+            const shutdownEvents = events.filter(
+                (event) => event.type === 'ActualApi#shutdown'
+            );
+            expect(shutdownEvents).toEqual([
+                {
+                    type: 'ActualApi#shutdown',
                     serverUrl: 'https://server-failure.example.com',
-                    serverPassword: 'secret',
-                    requestTimeoutMs: 45000,
-                    budgets: [
-                        {
-                            syncId: 'budget-failure',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { primary: 'actual-primary' },
-                        },
-                    ],
                 },
-            ],
-        };
-
-        const failureMessage = 'Importer crashed while synchronising';
-
-        const { contextDir, eventsFile } = await createContextDir({
-            config,
-            importer: {
-                failures: {
-                    'budget-failure': failureMessage,
-                },
-            },
-        });
-
-        const result = await runCli(
-            [
-                'import',
-                '--server',
-                'https://server-failure.example.com',
-                '--budget',
-                'budget-failure',
-                '--dry-run',
-            ],
-            {
-                env: {
-                    CLI_TEST_CONTEXT_DIR: contextDir,
-                    CLI_TEST_EVENTS_FILE: eventsFile,
-                    NODE_NO_WARNINGS: '1',
-                },
-                nodeOptions: loaderNodeOptions,
-            }
-        );
-
-        expect(result.exitCode).toBe(1);
-        expect(result.stderr).toContain(failureMessage);
-
-        const events = await readEvents(eventsFile);
-        const importerEvents = events.filter(
-            (event) => event.type === 'Importer#importTransactions'
-        );
-        expect(importerEvents).toEqual([
-            {
-                type: 'Importer#importTransactions',
-                budgetSyncId: 'budget-failure',
-                options: {
-                    accountRefs: null,
-                    from: null,
-                    to: null,
-                    isDryRun: true,
-                },
-                error: failureMessage,
-            },
-        ]);
-
-        const shutdownEvents = events.filter(
-            (event) => event.type === 'ActualApi#shutdown'
-        );
-        expect(shutdownEvents).toEqual([
-            {
-                type: 'ActualApi#shutdown',
-                serverUrl: 'https://server-failure.example.com',
-            },
-        ]);
+            ]);
         },
         CLI_TIMEOUT_MS
     );
@@ -359,65 +365,67 @@ describe('import command (CLI)', () => {
     it(
         'fails with a helpful error when account filters are unknown',
         async () => {
-        const config = {
-            ...createBaseConfig(),
-            actualServers: [
+            const config = {
+                ...createBaseConfig(),
+                actualServers: [
+                    {
+                        serverUrl: 'https://server-only.example.com',
+                        serverPassword: 'secret-main',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'primary-budget',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: { primary: 'actual-primary' },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const { contextDir, eventsFile } = await createContextDir({
+                config,
+                importer: {
+                    failOnUnknownAccounts: true,
+                    knownAccounts: ['primary'],
+                },
+            });
+
+            const result = await runCli(
+                ['import', '--account', 'unknown-account'],
                 {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stderr).toContain(
+                'Unknown account reference: unknown-account'
+            );
+
+            const events = await readEvents(eventsFile);
+            const shutdownEvents = events.filter(
+                (event) => event.type === 'ActualApi#shutdown'
+            );
+            expect(shutdownEvents).toEqual([
+                {
+                    type: 'ActualApi#shutdown',
                     serverUrl: 'https://server-only.example.com',
-                    serverPassword: 'secret-main',
-                    requestTimeoutMs: 45000,
-                    budgets: [
-                        {
-                            syncId: 'primary-budget',
-                            e2eEncryption: { enabled: false, password: '' },
-                            accountMapping: { primary: 'actual-primary' },
-                        },
-                    ],
                 },
-            ],
-        };
+            ]);
 
-        const { contextDir, eventsFile } = await createContextDir({
-            config,
-            importer: {
-                failOnUnknownAccounts: true,
-                knownAccounts: ['primary'],
-            },
-        });
-
-        const result = await runCli(
-            ['import', '--account', 'unknown-account'],
-            {
-                env: {
-                    CLI_TEST_CONTEXT_DIR: contextDir,
-                    CLI_TEST_EVENTS_FILE: eventsFile,
-                    NODE_NO_WARNINGS: '1',
-                },
-                nodeOptions: loaderNodeOptions,
-            }
-        );
-
-        expect(result.exitCode).toBe(1);
-        expect(result.stderr).toContain('Unknown account reference: unknown-account');
-
-        const events = await readEvents(eventsFile);
-        const shutdownEvents = events.filter(
-            (event) => event.type === 'ActualApi#shutdown'
-        );
-        expect(shutdownEvents).toEqual([
-            {
-                type: 'ActualApi#shutdown',
-                serverUrl: 'https://server-only.example.com',
-            },
-        ]);
-
-        const importerEvents = events.filter(
-            (event) => event.type === 'Importer#importTransactions'
-        );
-        expect(importerEvents).toHaveLength(1);
-        expect(importerEvents[0]).toMatchObject({
-            error: 'Unknown account reference: unknown-account',
-        });
+            const importerEvents = events.filter(
+                (event) => event.type === 'Importer#importTransactions'
+            );
+            expect(importerEvents).toHaveLength(1);
+            expect(importerEvents[0]).toMatchObject({
+                error: 'Unknown account reference: unknown-account',
+            });
         },
         CLI_TIMEOUT_MS
     );

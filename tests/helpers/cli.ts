@@ -83,7 +83,9 @@ async function ensureCliBuilt(): Promise<void> {
     await buildPromise;
 }
 
-export function createCliEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+export function createCliEnv(
+    overrides: NodeJS.ProcessEnv = {}
+): NodeJS.ProcessEnv {
     return {
         ...process.env,
         NODE_ENV: 'test',

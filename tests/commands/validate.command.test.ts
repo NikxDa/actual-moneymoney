@@ -5,11 +5,11 @@ import { ZodError } from 'zod';
 
 import { EXAMPLE_CONFIG } from '../../src/utils/shared.js';
 
-const readFileMock = vi.fn<typeof import('node:fs/promises')['readFile']>();
-const writeFileMock = vi.fn<typeof import('node:fs/promises')['writeFile']>();
-const mkdirMock = vi.fn<typeof import('node:fs/promises')['mkdir']>();
+const readFileMock = vi.fn<(typeof import('node:fs/promises'))['readFile']>();
+const writeFileMock = vi.fn<(typeof import('node:fs/promises'))['writeFile']>();
+const mkdirMock = vi.fn<(typeof import('node:fs/promises'))['mkdir']>();
 
-const tomlParseMock = vi.fn<typeof import('toml')['parse']>();
+const tomlParseMock = vi.fn<(typeof import('toml'))['parse']>();
 
 vi.mock('node:fs/promises', () => ({
     __esModule: true,
@@ -30,9 +30,8 @@ vi.mock('toml', () => ({
     },
 }));
 
-const getConfigFileMock = vi.fn<
-    typeof import('../../src/utils/config.js')['getConfigFile']
->();
+const getConfigFileMock =
+    vi.fn<(typeof import('../../src/utils/config.js'))['getConfigFile']>();
 const configSchemaParseMock = vi.fn();
 
 vi.mock('../../src/utils/config.js', () => ({
@@ -106,12 +105,13 @@ describe('validate command', () => {
             $0: 'test',
         } as ArgumentsCamelCase);
 
-        expect(mkdirMock).toHaveBeenCalledWith('tmp/custom', { recursive: true });
-        expect(writeFileMock).toHaveBeenCalledWith(
-            configPath,
-            EXAMPLE_CONFIG,
-            { encoding: 'utf-8', mode: 0o600 }
-        );
+        expect(mkdirMock).toHaveBeenCalledWith('tmp/custom', {
+            recursive: true,
+        });
+        expect(writeFileMock).toHaveBeenCalledWith(configPath, EXAMPLE_CONFIG, {
+            encoding: 'utf-8',
+            mode: 0o600,
+        });
         expect(configSchemaParseMock).not.toHaveBeenCalled();
     });
 
@@ -139,11 +139,10 @@ describe('validate command', () => {
         } as ArgumentsCamelCase);
 
         expect(mkdirMock).toHaveBeenCalledWith('.', { recursive: true });
-        expect(writeFileMock).toHaveBeenCalledWith(
-            configPath,
-            EXAMPLE_CONFIG,
-            { encoding: 'utf-8', mode: 0o600 }
-        );
+        expect(writeFileMock).toHaveBeenCalledWith(configPath, EXAMPLE_CONFIG, {
+            encoding: 'utf-8',
+            mode: 0o600,
+        });
     });
 
     it('logs and rethrows when the configuration directory cannot be created', async () => {
