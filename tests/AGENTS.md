@@ -4,10 +4,10 @@
 
 - Vitest powers the automated tests. Run the full suite with `npm test` (configured as `vitest run`).
 - Tests live under `tests/` and mirror the structure of `src/`:
-    - `ActualApi.test.ts` covers timeout handling, console suppression, and the lifecycle of the Actual API wrapper.
-    - `Importer.test.ts` verifies MoneyMoney transaction filtering, deduplication, and dry-run behaviour.
-    - `PayeeTransformer.test.ts` exercises OpenAI integration, caching, and logging safeguards.
-    - `config.test.ts` validates the Zod schema, earliest import date parsing, and encryption requirements.
+  - `ActualApi.test.ts` covers timeout handling, console suppression, and the lifecycle of the Actual API wrapper.
+  - `Importer.test.ts` verifies MoneyMoney transaction filtering, deduplication, and dry-run behaviour.
+  - `PayeeTransformer.test.ts` exercises OpenAI integration, caching, and logging safeguards.
+  - `config.test.ts` validates the Zod schema, earliest import date parsing, and encryption requirements.
 
 ## Writing and maintaining tests
 
@@ -29,4 +29,5 @@ skip low-value scenarios so long as the critical paths continue to have protecti
 ## Tooling expectations
 
 - Keep the Vitest configuration (`vitest.config.ts`) untouched unless you have a compelling reason to change the runtime.
-- Tests should pass with the repo’s linting and formatting rules. Prettier and ESLint ignore the `tests/` directory today, but follow the existing style (4 spaces, single quotes) for consistency.
+- Tests should pass with the repo’s linting and formatting rules. ESLint and Prettier run against the TypeScript tests, while
+  Markdown documentation relies on `mdformat`—stick to the existing style (4 spaces, single quotes) for consistency.

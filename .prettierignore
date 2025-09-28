@@ -1,3 +1,5 @@
 dist/
 node_modules/
 coverage/
+# Markdown formatting is enforced separately via mdformat in CodeRabbit.
+**/*.md

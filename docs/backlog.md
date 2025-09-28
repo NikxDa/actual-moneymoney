@@ -9,13 +9,13 @@
 ## Recommended Epic Delivery Order
 
 1. **Epic 4 – CLI usability and coverage:** Establishing the CLI harness (Story 4.1) is a prerequisite for validating later CLI UX, error handling, and roadmap stories. Landing it first gives us executable end-to-end coverage for anything that touches the command surface.
-2. **Epic 2 – Importer determinism and guard rails:** With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation.
-3. **Epic 6 – Testing & reliability:** Broaden error-path tests and log schema assertions while the importer changes are fresh. These suites will catch regressions introduced by the upcoming refactors.
-4. **Epic 8 – Code quality and maintainability:** Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features.
-5. **Epic 5 – Observability and developer experience:** Layer in smoke scripts, defaulting logs, and contributor docs to make the preceding changes supportable and to keep new contributors productive.
-6. **Epic 9 – Integration and tooling:** Extend lint/format coverage and onboarding once smoke scripts exist, and enable cognitive-complexity checks so the refactored code stays within agreed budgets.
-7. **Epic 7 – CLI UX:** Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented.
-8. **Epic 10 – Roadmap features:** Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk.
+1. **Epic 2 – Importer determinism and guard rails:** With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation.
+1. **Epic 6 – Testing & reliability:** Broaden error-path tests and log schema assertions while the importer changes are fresh. These suites will catch regressions introduced by the upcoming refactors.
+1. **Epic 8 – Code quality and maintainability:** Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features.
+1. **Epic 5 – Observability and developer experience:** Layer in smoke scripts, defaulting logs, and contributor docs to make the preceding changes supportable and to keep new contributors productive.
+1. **Epic 9 – Integration and tooling:** Extend lint/format coverage and onboarding once smoke scripts exist, and enable cognitive-complexity checks so the refactored code stays within agreed budgets.
+1. **Epic 7 – CLI UX:** Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented.
+1. **Epic 10 – Roadmap features:** Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk.
 
 ## Epic 1: Actual session lifecycle resilience
 
@@ -63,9 +63,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `Importer.importTransactions` consumes the raw array from `moneymoney.getTransactions` without sorting. Deduplication relies on iteration order, which remains implicit.
 - **Next Steps:**
-    - Sort the transaction list by `valueDate` and a stable identifier (e.g., `id`) immediately after fetching.
-    - Extend `tests/Importer.test.ts` with an unsorted fixture that verifies deterministic ordering and downstream balance calculations.
-    - Confirm no regressions in synthetic starting-balance logic, especially around earliest import dates.
+  - Sort the transaction list by `valueDate` and a stable identifier (e.g., `id`) immediately after fetching.
+  - Extend `tests/Importer.test.ts` with an unsorted fixture that verifies deterministic ordering and downstream balance calculations.
+  - Confirm no regressions in synthetic starting-balance logic, especially around earliest import dates.
 - **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
 
 ### Story 2.2 – Extend starting balance coverage for missing booked transactions
@@ -74,9 +74,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** The importer emits warnings when an Actual account lacks MoneyMoney transactions, but tests only cover presence/absence of transactions—not scenarios where MoneyMoney omits booked entries.
 - **Next Steps:**
-    - Add fixtures where MoneyMoney omits booked transactions but balances still imply a starting transaction.
-    - Assert warning text, synthetic transaction amount, and generated memo (`Starting balance`) in `tests/Importer.test.ts`.
-    - Ensure the logger hints align with contributor guidance (`Extend the date range...`).
+  - Add fixtures where MoneyMoney omits booked transactions but balances still imply a starting transaction.
+  - Assert warning text, synthetic transaction amount, and generated memo (`Starting balance`) in `tests/Importer.test.ts`.
+  - Ensure the logger hints align with contributor guidance (`Extend the date range...`).
 - **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
 
 ### Story 2.3 – Fail imports when account mapping resolution breaks
@@ -85,9 +85,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `AccountMap.loadFromConfig` logs and skips unresolved mappings rather than failing fast, so `import` can proceed silently with partial coverage.
 - **Next Steps:**
-    - Make `loadFromConfig` throw when either side of a configured mapping cannot be resolved during an unconstrained import.
-    - Add CLI-level tests (`tests/commands`) to assert the surfaced error message when mappings fail.
-    - Document the failure mode in the README/backlog so operators know to fix configuration.
+  - Make `loadFromConfig` throw when either side of a configured mapping cannot be resolved during an unconstrained import.
+  - Add CLI-level tests (`tests/commands`) to assert the surfaced error message when mappings fail.
+  - Document the failure mode in the README/backlog so operators know to fix configuration.
 - **Key Files:** `src/utils/AccountMap.ts`, `tests/commands/import.command.test.ts` (new).
 
 ## Epic 3: Payee transformer resilience
@@ -100,8 +100,8 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `PayeeTransformer` returns `null` if `openai-model-cache.json` cannot be parsed but leaves the corrupt file in place and provides no remediation logging.
 - **Next Steps:**
-    - When JSON parsing fails, delete the cache file and emit a warning noting the reset.
-    - Add filesystem-mocked coverage to `tests/PayeeTransformer.test.ts` to ensure repeated runs recover gracefully.
+  - When JSON parsing fails, delete the cache file and emit a warning noting the reset.
+  - Add filesystem-mocked coverage to `tests/PayeeTransformer.test.ts` to ensure repeated runs recover gracefully.
 - **Key Files:** `src/utils/PayeeTransformer.ts`, `tests/PayeeTransformer.test.ts`.
 
 ### Story 3.2 – Short-circuit on malformed OpenAI payloads
@@ -110,8 +110,8 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** The transformer caches any parsed JSON object, even when the payload is empty or contains duplicate keys, leading to stale names being reused.
 - **Next Steps:**
-    - Detect empty payloads or duplicate keys and fall back to original payee names with a warning.
-    - Extend tests with fixtures covering duplicate/empty responses to assert the fallback path and logging hints.
+  - Detect empty payloads or duplicate keys and fall back to original payee names with a warning.
+  - Extend tests with fixtures covering duplicate/empty responses to assert the fallback path and logging hints.
 - **Key Files:** `src/utils/PayeeTransformer.ts`, `tests/PayeeTransformer.test.ts`.
 
 ### Story 3.3 – Emit structured timing metrics for payee transformation
@@ -120,9 +120,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** The importer logs total transformation duration but not structured timing hints. There is no schema for downstream consumers to parse.
 - **Next Steps:**
-    - Extend `Logger` usage to emit a consistent object (e.g., start/end timestamps and elapsed ms) when `transformPayees` runs.
-    - Add assertions in `tests/PayeeTransformer.test.ts` that log shape remains backward compatible.
-    - Consider adding a metrics hook to bubble timing to CLI-level logs.
+  - Extend `Logger` usage to emit a consistent object (e.g., start/end timestamps and elapsed ms) when `transformPayees` runs.
+  - Add assertions in `tests/PayeeTransformer.test.ts` that log shape remains backward compatible.
+  - Consider adding a metrics hook to bubble timing to CLI-level logs.
 - **Key Files:** `src/utils/PayeeTransformer.ts`, `src/utils/Logger.ts`, `tests/PayeeTransformer.test.ts`.
 
 ## Epic 4: CLI usability and coverage
@@ -214,9 +214,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** Existing tests focus on happy paths. There are no fixtures for network failures, malformed exports, or invalid credentials.
 - **Next Steps:**
-    - Build shared fixtures simulating network disconnects and credential errors at the API boundary.
-    - Add importer-level tests for malformed MoneyMoney exports, asserting user-facing error messages.
-    - Document new scenarios in testing docs for future contributors.
+  - Build shared fixtures simulating network disconnects and credential errors at the API boundary.
+  - Add importer-level tests for malformed MoneyMoney exports, asserting user-facing error messages.
+  - Document new scenarios in testing docs for future contributors.
 - **Key Files:** `tests/helpers/`, `tests/Importer.test.ts`, `docs/` (testing README).
 
 #### Task 6.1a – Shared error fixtures
@@ -243,8 +243,8 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** Logs across modules vary in structure; no schema validation exists for tests to assert consistent JSON output.
 - **Next Steps:**
-    - Define a structured log shape (likely JSON objects) and update logger helpers to emit accordingly when a `structuredLogs` flag is enabled.
-    - Update fixtures/tests to validate schema and ensure compatibility with existing log consumers.
+  - Define a structured log shape (likely JSON objects) and update logger helpers to emit accordingly when a `structuredLogs` flag is enabled.
+  - Update fixtures/tests to validate schema and ensure compatibility with existing log consumers.
 - **Key Files:** `src/utils/Logger.ts`, `tests/` (log assertions), CI log parsing if applicable.
 
 ## Epic 7: CLI UX
@@ -257,8 +257,8 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `--help` output lacks concrete examples for `import`, `sync`, or `resolve` workflows.
 - **Next Steps:**
-    - Augment command definitions with `.example()` entries demonstrating common usage.
-    - Snapshot help output in tests to catch regressions when options change.
+  - Augment command definitions with `.example()` entries demonstrating common usage.
+  - Snapshot help output in tests to catch regressions when options change.
 - **Key Files:** `src/index.ts`, `src/commands/*.ts`, `tests/commands`.
 
 ### Story 7.2 – Map backend errors to friendly CLI output
@@ -267,8 +267,8 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** Backend errors propagate raw messages. Although `ActualApi` has special handling for missing files, the CLI does not translate frequent errors into user-friendly text.
 - **Next Steps:**
-    - Introduce an error translation layer that maps common Actual server errors (`file-not-found`, `group-not-found`, HTTP 404) to actionable CLI messages.
-    - Add integration tests verifying mappings stay in sync with `ActualApi.getFriendlyErrorMessage`.
+  - Introduce an error translation layer that maps common Actual server errors (`file-not-found`, `group-not-found`, HTTP 404) to actionable CLI messages.
+  - Add integration tests verifying mappings stay in sync with `ActualApi.getFriendlyErrorMessage`.
 - **Key Files:** `src/commands/import.command.ts`, `src/utils/ActualApi.ts`, `tests/commands`.
 
 ## Epic 8: Code quality and maintainability
@@ -281,9 +281,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** Budget directory resolution and retry logic live inline within `ActualApi`, making reuse difficult across commands.
 - **Next Steps:**
-    - Audit resolution touchpoints and design a helper API (likely in `src/utils/`) with strong typings.
-    - Update importer/CLI callers to use the helper, adding regression tests for success and failure flows.
-    - Document helper usage and update ADR/backlog notes accordingly.
+  - Audit resolution touchpoints and design a helper API (likely in `src/utils/`) with strong typings.
+  - Update importer/CLI callers to use the helper, adding regression tests for success and failure flows.
+  - Document helper usage and update ADR/backlog notes accordingly.
 - **Key Files:** `src/utils/ActualApi.ts`, `src/utils/shared.ts`, `tests/ActualApi.test.ts`, docs.
 
 #### Task 8.1a – Draft helper API
@@ -310,9 +310,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** PostError and HTTP errors are handled ad hoc across modules, producing inconsistent messaging.
 - **Next Steps:**
-    - Define a unified error class encapsulating HTTP status, Actual error metadata, and user-facing messages.
-    - Migrate CLI and logger usage to consume the new class, updating tests accordingly.
-    - Document the hierarchy for future contributors.
+  - Define a unified error class encapsulating HTTP status, Actual error metadata, and user-facing messages.
+  - Migrate CLI and logger usage to consume the new class, updating tests accordingly.
+  - Document the hierarchy for future contributors.
 - **Key Files:** `src/utils/ActualApi.ts`, `src/commands/import.command.ts`, `tests/ActualApi.test.ts`.
 
 #### Task 8.2a – Define consolidated error shape
@@ -339,9 +339,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `Importer.importTransactions` orchestrates fetching, filtering, mapping, and reconciliation in a single ~200 line method. The mix of async calls, logging, and state mutation makes it hard to reason about edge cases (e.g., dry-run, unchecked filters, synthetic balances) and increases regression risk when adding features like off-budget sync.
 - **Next Steps:**
-    - Map the responsibilities into discrete stages (fetch, filter, transform, reconcile, persist) and design composable helpers to isolate concerns.
-    - Move pattern matching and transaction conversion into reusable modules with targeted unit tests so future changes (e.g., category translation) have narrow blast radius.
-    - Add high-level integration coverage to ensure stage ordering remains correct and dry-run/real modes share behaviour except for side effects.
+  - Map the responsibilities into discrete stages (fetch, filter, transform, reconcile, persist) and design composable helpers to isolate concerns.
+  - Move pattern matching and transaction conversion into reusable modules with targeted unit tests so future changes (e.g., category translation) have narrow blast radius.
+  - Add high-level integration coverage to ensure stage ordering remains correct and dry-run/real modes share behaviour except for side effects.
 - **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`, future CLI integration tests.
 
 #### Task 8.3a – Define importer stage interfaces
@@ -368,9 +368,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** The request wrapper coordinates timeouts, console patching, shutdown recovery, and friendly errors within one function. Nested promises and manual state resets are difficult to test, and regressions could leave the Actual client initialised incorrectly after timeouts.
 - **Next Steps:**
-    - Break timeout orchestration, console suppression, and error translation into dedicated utilities with deterministic unit tests.
-    - Add targeted tests that simulate slow responses and thrown errors to confirm data dir state and logger output stay consistent.
-    - Document extension points so new API operations reuse the simplified flow without duplicating timeout logic.
+  - Break timeout orchestration, console suppression, and error translation into dedicated utilities with deterministic unit tests.
+  - Add targeted tests that simulate slow responses and thrown errors to confirm data dir state and logger output stay consistent.
+  - Document extension points so new API operations reuse the simplified flow without duplicating timeout logic.
 - **Key Files:** `src/utils/ActualApi.ts`, `tests/ActualApi.test.ts`.
 
 #### Task 8.4a – Extract console patching & logging utilities
@@ -397,9 +397,9 @@
 - **Status:** ⬜ Not started
 - **Current Behaviour:** `handleCommand` inside `src/commands/import.command.ts` wires configuration parsing, validation, MoneyMoney checks, Actual session lifecycle, and nested server/budget loops in one function. The mixture of data shaping, error messaging, and control-flow flags (`dry-run`, filters) makes it brittle to extend (e.g., adding multi-budget sync telemetry) and difficult to test without duplicating setup in each scenario.
 - **Next Steps:**
-    - Extract pure helpers for parsing CLI filters, validating configuration selections, and iterating over servers/budgets so they can be unit tested independently.
-    - Introduce higher-level orchestration that composes the helpers and coordinates lifecycle logging, keeping the command handler thin.
-    - Backfill Vitest coverage for the new helpers plus CLI harness tests (after Story 4.1) to confirm dry-run, filter, and failure messaging remain unchanged.
+  - Extract pure helpers for parsing CLI filters, validating configuration selections, and iterating over servers/budgets so they can be unit tested independently.
+  - Introduce higher-level orchestration that composes the helpers and coordinates lifecycle logging, keeping the command handler thin.
+  - Backfill Vitest coverage for the new helpers plus CLI harness tests (after Story 4.1) to confirm dry-run, filter, and failure messaging remain unchanged.
 - **Key Files:** `src/commands/import.command.ts`, `tests/commands/import.command.test.ts` (new helpers), `tests/helpers/cli.ts` (once harness exists).
 
 #### Task 8.5a – Extract filter parsing & validation helpers
@@ -469,8 +469,8 @@
 
 - **Complexity:** 5 pts
 - **Status:** ✅ Done
-- **Outcome:** `eslint.config.ts` now lints the source, test, and TypeScript configuration files with Vitest globals for tests, while the npm scripts call ESLint against the repository root. Prettier runs over the same surface area with a shared `.prettierignore` to skip build artifacts, and contributor docs spell out the broadened coverage and how to extend it.
-- **Evidence:** Updated ESLint flat config, root-level lint/format scripts in `package.json`, the new `.prettierignore`, and refreshed guidance in `CONTRIBUTING.md` all landed together with the CI matrix continuing to exercise the expanded commands.
+- **Outcome:** `eslint.config.ts` now lints the source, test, and TypeScript configuration files with Vitest globals for tests, while the npm scripts call ESLint against the repository root. Prettier runs over the same surface area except for Markdown, which is formatted by `mdformat` to stay compatible with CodeRabbit’s suggestions; the shared `.prettierignore` skips generated artifacts and `.md` files, and contributor docs spell out the split tooling and how to extend it.
+- **Evidence:** Updated ESLint flat config, root-level lint/format scripts in `package.json`, the refined `.prettierignore`, and refreshed guidance in `CONTRIBUTING.md` all landed together with the CI matrix continuing to exercise the expanded commands.
 - **Future Work:** None—add directories to the lint/format scope by updating `eslint.config.ts` and `.prettierignore` when new code paths are introduced.
 
 ## Epic 10: Roadmap features
@@ -484,9 +484,9 @@
 - **Current Behaviour:** The importer processes one budget at a time per server. There is no persistence for multi-budget state beyond the existing configuration schema.
 - **Assessment:** Ambitious but plausible once Epic 8 refactors land. Actual’s Node bindings support switching sync IDs, yet we would need design spikes to confirm cache invalidation, credential reuse, and logging expectations so we do not regress the session lifecycle work in Epic 1. High discovery risk remains around how operators expect to configure multiple budgets per server and how we surface partial failures in CLI output.
 - **Next Steps:**
-    - Model multi-budget configuration requirements and capture design notes covering edge cases.
-    - Implement runtime support for switching budgets with tests across session lifecycles and logging enhancements.
-    - Document multi-budget workflows for operators.
+  - Model multi-budget configuration requirements and capture design notes covering edge cases.
+  - Implement runtime support for switching budgets with tests across session lifecycles and logging enhancements.
+  - Document multi-budget workflows for operators.
 - **Key Files:** `src/commands/import.command.ts`, `src/utils/ActualApi.ts`, docs.
 
 #### Task 10.1a – Model configuration and persistence
@@ -514,9 +514,9 @@
 - **Current Behaviour:** `DEFAULT_DATA_DIR` is fixed; there is no CLI flag or environment variable to override the data directory.
 - **Assessment:** Clear operator ask with manageable scope. We must audit all touchpoints that assume the default path (tests, docs, resolver helpers) and document how overrides interact with existing auto-discovery so that diagnostics (e.g., Story 1.2 error messages) remain accurate. Expect churn in onboarding docs but low technical risk once schema validation is in place.
 - **Next Steps:**
-    - Extend the configuration schema and CLI parsing to accept an override (via env var or flag) with validation.
-    - Update integration tests/documentation to cover the new option and ensure backward compatibility.
-    - Emit migration guidance for existing setups that rely on the default path.
+  - Extend the configuration schema and CLI parsing to accept an override (via env var or flag) with validation.
+  - Update integration tests/documentation to cover the new option and ensure backward compatibility.
+  - Emit migration guidance for existing setups that rely on the default path.
 - **Key Files:** `src/index.ts`, `src/utils/shared.ts`, `src/utils/config.ts`, docs, tests.
 
 #### Task 10.2a – Extend configuration/CLI parsing
@@ -544,9 +544,9 @@
 - **Current Behaviour:** Off-budget accounts (e.g., investment portfolios) are ignored after initial import, so Actual balances drift as market values change in MoneyMoney.
 - **Assessment:** Valuable for parity with MoneyMoney but requires careful design. MoneyMoney’s API only exposes point-in-time balances, so we must guarantee idempotent reconciliation entries and ensure we do not spam Actual with noise when markets fluctuate daily. Coordination with Story 8.3’s importer refactor feels mandatory to keep the pipeline understandable.
 - **Next Steps:**
-    - Expand the importer to fetch current balance snapshots for off-budget accounts and compare them with Actual’s recorded totals.
-    - Generate reconciliation transactions that capture gains/losses with clear memos (`Off-budget balance sync`) and attach them to a configurable reconciliation category.
-    - Expose CLI/config toggles to opt-in per account and document how the synthetic entries appear in Actual.
+  - Expand the importer to fetch current balance snapshots for off-budget accounts and compare them with Actual’s recorded totals.
+  - Generate reconciliation transactions that capture gains/losses with clear memos (`Off-budget balance sync`) and attach them to a configurable reconciliation category.
+  - Expose CLI/config toggles to opt-in per account and document how the synthetic entries appear in Actual.
 - **Key Files:** `src/utils/Importer.ts`, `src/utils/config.ts`, `src/commands/import.command.ts`, `tests/Importer.test.ts`, docs.
 
 #### Task 10.3a – Model configuration for off-budget balance sync
@@ -574,9 +574,9 @@
 - **Current Behaviour:** Imports preserve MoneyMoney category names verbatim, leaving users to manually remap transactions in Actual even when MoneyMoney already applied rules.
 - **Assessment:** Reasonable stretch goal once configuration ergonomics improve. Requires confirmation that we can reliably address Actual categories by stable IDs (not display names) and that MoneyMoney exports carry sufficient identifiers. We should prototype config ergonomics alongside Story 2.1’s normalisation so category lookups happen in a deterministic order.
 - **Next Steps:**
-    - Introduce an optional category translation table that resolves MoneyMoney category identifiers to Actual category IDs or names.
-    - Update importer flows to apply translations with validation for unmapped categories and clear logging when fallbacks are used.
-    - Provide configuration and CLI documentation showing how to enable, seed, and test the mapping.
+  - Introduce an optional category translation table that resolves MoneyMoney category identifiers to Actual category IDs or names.
+  - Update importer flows to apply translations with validation for unmapped categories and clear logging when fallbacks are used.
+  - Provide configuration and CLI documentation showing how to enable, seed, and test the mapping.
 - **Key Files:** `src/utils/Importer.ts`, `src/utils/config.ts`, `README.md`, `tests/Importer.test.ts`.
 
 #### Task 10.4a – Define category translation configuration
