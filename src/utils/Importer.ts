@@ -418,7 +418,8 @@ class Importer {
 
         if (
             typeof transaction.amount !== 'number' ||
-            Number.isNaN(transaction.amount)
+            Number.isNaN(transaction.amount) ||
+            !Number.isFinite(transaction.amount)
         ) {
             issues.push('amount is missing or invalid');
         }
