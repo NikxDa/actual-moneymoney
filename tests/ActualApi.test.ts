@@ -210,11 +210,12 @@ describe('ActualApi', () => {
 
         initMock.mockRejectedValue(makeNetworkDisconnectError());
 
-        await expect(api.init()).rejects.toThrow(
-            /Unable to reach Actual server/
-        );
+        const guidance =
+            'Unable to reach Actual server. Check your network connection and verify the Actual server is running.';
+
+        await expect(api.init()).rejects.toThrow(guidance);
         expect(logger.error).toHaveBeenCalledWith(
-            expect.stringContaining('Unable to reach Actual server'),
+            expect.stringContaining(guidance),
             expect.arrayContaining(['Server URL: http://localhost:5006'])
         );
     });

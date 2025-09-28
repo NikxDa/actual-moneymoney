@@ -271,8 +271,8 @@ class ActualApi {
     ): string | null {
         if (this.isNetworkError(error)) {
             return (
-                `Unable to reach Actual server at ${this.serverConfig.serverUrl}. ` +
-                'Verify the server is running and reachable before retrying.'
+                'Unable to reach Actual server. ' +
+                'Check your network connection and verify the Actual server is running.'
             );
         }
 

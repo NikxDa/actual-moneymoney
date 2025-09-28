@@ -406,7 +406,7 @@ class Importer {
         };
     }
 
-    private assertValidTransaction(transaction: MonMonTransaction) {
+    private assertValidTransaction(transaction: MonMonTransaction): void {
         const issues: string[] = [];
 
         const hasValidDate =
