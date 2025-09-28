@@ -44,6 +44,7 @@ reviews:
               Leftover TODOs in the code should be handled.
               Remove any console.log statements.
               Docstring coverage is not tracked in this repository. Do not request or enforce docstring coverage metrics in reviews.
+              This is a macOS-only project. Do not suggest cross-platform solutions like cross-env, win32-specific code, or other platform abstractions. Use native macOS tools and syntax (e.g., environment variables with ENABLE_VAR=true syntax).
               Name Test Files Descriptively: Adopt the .spec.ts extension and maintain a corresponding filename to the source file being tested, and place the test files in the same directory as your source code to ensure that new code is being tested promptly.
               Describe what Your Test Cases Cover: Use understandable and clear language for both the describe and it blocks to specify what function is being tested and what the expected outcome is.
               Cover One Aspect in Each Test: While writing tests, make sure each test covers only one aspect of the functionality. Multiple assertions can be made but they should be testing the same thing.
