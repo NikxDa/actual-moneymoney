@@ -186,22 +186,16 @@ export function logDefaultedConfigDecisions(logger, decisions) {
 
 function formatMockDefaultValue(value) {
     if (typeof value === 'string') {
-        return "'" + value + "'";
+        return value;
     }
     if (typeof value === 'number' || typeof value === 'boolean') {
         return String(value);
     }
-    if (Array.isArray(value)) {
-        return '[' + value.map(formatMockDefaultValue).join(', ') + ']';
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
     }
-    if (value && typeof value === 'object') {
-        try {
-            return JSON.stringify(value);
-        } catch {
-            return '[object Object]';
-        }
-    }
-    return String(value);
 }
 
 export function getConfigFile() {
