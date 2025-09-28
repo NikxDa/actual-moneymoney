@@ -108,7 +108,8 @@
 - **Status:** ✅ Done
 - **Context:** Coverage now exercises importer behaviour when MoneyMoney omits
   booked transactions, ensuring unchecked entries still produce a starting
-  balance while disabled unchecked imports surface actionable warnings.
+  balance while disabled unchecked imports continue to emit the generic
+  missing-transactions hint to extend the date range or review ignore patterns.
 - **Evidence:** `tests/Importer.test.ts` asserts the warning text, hint, and
   synthetic `Starting balance` memo/amount for unchecked-transaction scenarios.
 - **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
