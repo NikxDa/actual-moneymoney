@@ -15,22 +15,22 @@
   validating failure flows. Finishing the tasks demonstrates the story’s
   outcome.
 
-## Recommended Epic Delivery Order
+## Roadmap
 
 | Order | Epic | State | Notes |
 | --- | --- | --- | --- |
-| 1 | **Epic 4 – CLI usability and coverage** | ✅ Completed | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
-| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (not yet started) | With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation. |
-| 3 | **Epic 6 – Testing & reliability** | 🚧 In progress | Shared failure fixtures and importer guards now cover credential, network, and malformed-export flows; structured log schema work remains to finish the epic. |
+| 1 | **Epic 4 – CLI usability and coverage** | ✅ Done | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
+| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (Story 2.3) | With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation once the mapping failure guards land. |
+| 3 | **Epic 6 – Testing & reliability** | ✅ Done | Error-path fixtures, malformed export guards, and structured logging are complete, keeping the CLI observable and resilient under test. |
 | 4 | **Epic 8 – Code quality and maintainability** | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
-| 5 | **Epic 5 – Observability and developer experience** | ✅ Completed | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
-| 6 | **Epic 9 – Integration and tooling** | ✅ Completed | Extend lint/format coverage and onboarding once smoke scripts exist, and enable cognitive-complexity checks so the refactored code stays within agreed budgets. |
+| 5 | **Epic 5 – Observability and developer experience** | ✅ Done | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
+| 6 | **Epic 9 – Integration and tooling** | ✅ Done | Lint/format coverage and onboarding improvements shipped alongside cognitive-complexity checks so the refactored code stays within agreed budgets. |
 | 7 | **Epic 7 – CLI UX** | 🚧 Not started | Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented. |
 | 8 | **Epic 10 – Roadmap features** | 🧭 Discovery mode | Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk. |
 
 ## Epic 1: Actual session lifecycle resilience
 
-- **Epic Assessment:** ✅ Completed. The session lifecycle guardrails shipped
+- **Epic Assessment:** ✅ Done. The session lifecycle guardrails shipped
   across Stories 1.1–1.4 with regression coverage in `tests/ActualApi.test.ts`,
   so ongoing work can assume directory resolution, error surfacing, and logging
   are stable foundations.
@@ -182,7 +182,7 @@
 
 ## Epic 4: CLI usability and coverage
 
-**Epic Assessment:** ✅ Completed. Stories 4.1–4.3 shipped the harness, option
+**Epic Assessment:** ✅ Done. Stories 4.1–4.3 shipped the harness, option
 validation, and failure propagation coverage, so downstream work can rely on
 end-to-end CLI tests being available.
 
@@ -253,7 +253,7 @@ end-to-end CLI tests being available.
 
 ## Epic 5: Observability and developer experience
 
-- **Epic Assessment:** ✅ Completed. Configuration default logging now ships
+- **Epic Assessment:** ✅ Done. Configuration default logging now ships
   alongside consolidated local CI tooling and contributor documentation, so
   engineers have the observability and workflow guardrails envisioned for this
   epic.
@@ -306,7 +306,7 @@ end-to-end CLI tests being available.
 
 ## Epic 6: Testing & Reliability
 
-- **Epic Assessment:** ✅ Completed. Error-path fixtures, malformed export
+- **Epic Assessment:** ✅ Done. Error-path fixtures, malformed export
   guards, and structured logging schemas now keep the CLI observable and
   resilient under test.
 
@@ -608,7 +608,7 @@ end-to-end CLI tests being available.
 
 ## Epic 9: Integration and tooling
 
-- **Epic Assessment:** ✅ Completed. CI now enforces linting, complexity, and
+- **Epic Assessment:** ✅ Done. CI now enforces linting, complexity, and
   formatting across application, test, and config code while onboarding docs
   capture the expanded coverage, fulfilling the epic’s integration and tooling
   goals.
