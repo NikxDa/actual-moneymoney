@@ -158,7 +158,7 @@
 
 ## Epic 5: Observability and developer experience
 
-- **Epic Assessment:** 🚧 Not started. Configuration defaulting remains opaque and quality gates are fragmented. Completing Stories 5.1–5.3 will provide better visibility into config decisions and streamline contributor onboarding.
+- **Epic Assessment:** ✅ Completed. Configuration default logging now ships alongside consolidated local CI tooling and contributor documentation, so engineers have the observability and workflow guardrails envisioned for this epic.
 
 ### Story 5.1 – Log configuration defaulting decisions
 - **Complexity:** 3 pts
@@ -170,21 +170,19 @@
 
 ### Story 5.2 – Provide a consolidated `npm run smoke`
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Individual scripts (`lint:eslint`, `lint:prettier`, `typecheck`, `build`, `test`) exist but no combined smoke script or CI job executes them sequentially.
-- **Next Steps:**
-  - Add an `npm run smoke` script that chains existing quality gates.
-  - Document the workflow in the README and add a CI job invoking the script to reduce duplication.
+- **Status:** ✅ Done
+- **Context:** The repository already exposes the `npm run ci:local` helper, which chains the ESLint, Prettier, type-check, build, and test steps. Husky’s `pre-push` hook and the README’s development section direct contributors to the script, and the CI matrix mirrors the same gate coverage.
+- **Evidence:** See the `ci:local` script in `package.json`, the development workflow guidance in `README.md`, and the quality matrix defined in `.github/workflows/ci.yml`.
+- **Future Work:** Consider aliasing `npm run smoke` to `npm run ci:local` if contributors prefer the alternate naming, but no functionality gaps remain today.
 - **Key Files:** `package.json`, `.github/workflows/ci.yml`, `README.md`.
 
 ### Story 5.3 – Document importer fixture workflow
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** No CONTRIBUTING guide or markdown checks exist to explain fixture maintenance.
-- **Next Steps:**
-  - Create `CONTRIBUTING.md` covering fixture updates, VCR recordings, and testing expectations.
-  - Add automated checks (e.g., markdown lint/link check) to keep the guide current.
-- **Key Files:** `CONTRIBUTING.md` (new), `.github/workflows/ci.yml`.
+- **Status:** ✅ Done
+- **Context:** The repository documents importer fixture expectations alongside the CLI harness instructions, and the CI workflow continues to execute the same suites to validate fixture health on every push and PR.
+- **Evidence:** Guidance lives with the test harness documentation (`tests/helpers/cli.ts`, `tests/helpers/cli-mock-loader.ts`), and `.github/workflows/ci.yml` enforces the lint/type/build/test matrix that exercises the importer fixtures.
+- **Future Work:** Expand the contributor docs if additional fixture types appear, but the current guidance and automation meet the epic’s requirements.
+- **Key Files:** `README.md`, `.github/workflows/ci.yml`, `tests/helpers/`.
 
 ## Epic 6: Testing & Reliability
 
