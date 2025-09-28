@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { LogLevel } from '../../src/utils/Logger.js';
 import { runCli } from '../helpers/cli.js';
 
 interface CliTestContext {
@@ -20,6 +21,13 @@ const loaderPath = fileURLToPath(
 );
 
 const CLI_TIMEOUT_MS = 20000;
+
+const numericLogLevels = Object.values(LogLevel).filter(
+    (value): value is number => typeof value === 'number'
+);
+const expectedInvalidLogLevelMessage = `--logLevel must be a finite number. Values are clamped to ${Math.min(
+    ...numericLogLevels
+)}-${Math.max(...numericLogLevels)}.`;
 
 const tmpPrefix = path.join(os.tmpdir(), 'actual-monmon-cli-options-');
 
@@ -188,7 +196,7 @@ describe('CLI global options', () => {
             expect(result.exitCode).toBe(1);
             expect(result.stdout).toBe('');
             expect(result.stderr).toContain(
-                '--logLevel must be a number between 0 (error) and 3 (debug).'
+                expectedInvalidLogLevelMessage
             );
 
             const events = await readEvents(eventsFile);
