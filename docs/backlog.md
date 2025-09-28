@@ -116,7 +116,7 @@
 
 ## Epic 4: CLI usability and coverage
 
-- **Epic Assessment:** ✅ Completed. Stories 4.1–4.3 shipped the harness, option validation, and failure propagation coverage, so downstream work can rely on end-to-end CLI tests being available.
+**Epic Assessment:** ✅ Completed. Stories 4.1–4.3 shipped the harness, option validation, and failure propagation coverage, so downstream work can rely on end-to-end CLI tests being available.
 
 ### Story 4.1 – Establish CLI integration tests for `import`
 - **Complexity:** 8 pts
