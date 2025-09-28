@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -e
+
+npm run lint:prettier
+npm run lint:eslint

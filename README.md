@@ -214,6 +214,12 @@ Helpful npm scripts when working on the project:
 - `npm run typecheck` – perform a strict TypeScript type check without emitting files.
 - `npm run build` – compile the CLI for distribution.
 - `npm test` – execute the Vitest suite.
+- `npm run ci:local` – chain the same lint/type/build/test steps used in CI.
+
+The repository includes Husky hooks to keep the working tree clean:
+
+- `pre-commit` runs `npm run lint:prettier` and `npm run lint:eslint` to block formatting or lint violations.
+- `pre-push` runs `npm run ci:local` so that pushes only succeed when the entire local CI suite is green.
 
 Tests exist to guard the most important scenarios. Keep the high-value suites running, but there is no expectation of exhaustive
 coverage or 100% coverage.

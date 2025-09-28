@@ -5,11 +5,13 @@
     "exports": "./index.js",
     "scripts": {
         "build": "npx tsc",
+        "ci:local": "npm run lint:eslint && npm run lint:prettier && npm run typecheck && npm run build && npm test",
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "start": "node dist/index.js",
         "lint:eslint": "eslint src",
         "lint:prettier": "prettier --check 'src/**/*.ts'",
         "lint:prettier:fix": "prettier --write 'src/**/*.ts'",
+        "prepare": "husky",
         "test": "vitest run"
     },
     "type": "module",
@@ -50,6 +52,7 @@
         "@types/yargs": "^17.0.33",
         "eslint": "^9.36.0",
         "globals": "^16.4.0",
+        "husky": "^9.1.7",
         "prettier": "^3.6.2",
         "semantic-release": "^24.2.9",
         "ts-node": "^10.9.2",
