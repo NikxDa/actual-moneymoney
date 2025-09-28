@@ -404,12 +404,9 @@
 
 ### Story 9.2 – Improve developer onboarding
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** No `CONTRIBUTING.md` exists and the README lacks structured setup guidance beyond script listings.
-- **Next Steps:**
-  - Author `CONTRIBUTING.md` covering environment setup, scripts, and contribution workflow.
-  - Update the README with a dedicated onboarding section linking to the new guide and smoke test once Story 5.2 lands.
-- **Key Files:** `README.md`, `CONTRIBUTING.md` (new), docs.
+- **Status:** ✅ Done
+- **Outcome:** Added a comprehensive `CONTRIBUTING.md`, refreshed the README with a developer onboarding section, and aligned the `.coderabbit` knowledge base with the new guidance.
+- **Key Files:** `README.md`, `CONTRIBUTING.md`, `.coderabbit.yaml`.
 
 ### Story 9.3 – Enforce cyclomatic complexity budgets via ESLint
 - **Complexity:** 5 pts

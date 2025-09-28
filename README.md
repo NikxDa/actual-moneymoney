@@ -25,6 +25,7 @@ This fork includes significant enhancements over the upstream version:
 
 - [Installation](#installation)
 - [Dependencies](#dependencies)
+- [Developer Onboarding](#developer-onboarding)
 - [Configuration](#configuration)
   - [Basic Configuration](#basic-configuration)
   - [Advanced Configuration](#advanced-configuration)
@@ -50,6 +51,23 @@ The application will be accessible as a CLI tool with the name `actual-monmon`.
 - A licensed copy of MoneyMoney on macOS to access the transaction database
 
 **Note on zod version**: This project must remain on zod v3 due to a peer dependency conflict with the openai package. We currently depend on `zod@^3.25.76`, which keeps us on the 3.x line (openai requires `^3.23.8`) while still allowing Dependabot to deliver minor and patch releases. We'll move to zod v4 once openai ships a compatible update.
+
+## Developer Onboarding
+
+New to the project? Follow these steps to get your development environment ready:
+
+1. Confirm you are running Node.js **v20.9.0 or newer**.
+2. Install dependencies after cloning the repository:
+   ```bash
+   npm install
+   ```
+3. Run the local smoke test to ensure linting, type checks, the build, and tests all pass:
+   ```bash
+   npm run ci:local
+   ```
+4. Read through the detailed [contributor guide](./CONTRIBUTING.md) for workflow expectations, helpful scripts, and documentation requirements.
+
+The [Development](#development) section later in this document highlights the most frequently used scripts if you need a quick refresher.
 
 ## Configuration
 
@@ -207,7 +225,7 @@ actual-monmon --help
 
 ## Development
 
-Helpful npm scripts when working on the project:
+For detailed workflows, see [CONTRIBUTING.md](./CONTRIBUTING.md). Helpful npm scripts when working on the project:
 
 - `npm run lint:eslint` – run ESLint against the TypeScript sources.
 - `npm run lint:prettier` – check formatting with Prettier.
