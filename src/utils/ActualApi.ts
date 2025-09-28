@@ -560,10 +560,12 @@ class ActualApi {
                     downloadHints
                 );
 
-                const resolvedBudget = await this.resolveBudgetDataDir(
-                    budgetConfig.syncId,
-                    downloadRootDir
-                );
+                const resolvedBudget =
+                    initialResolution ??
+                    (await this.resolveBudgetDataDir(
+                        budgetConfig.syncId,
+                        downloadRootDir
+                    ));
 
                 const finalRootDir = path.dirname(resolvedBudget.directory);
 

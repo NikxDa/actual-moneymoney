@@ -132,7 +132,13 @@ export function logDefaultedConfigDecisions(logger, decisions) {
         return;
     }
 
-    for (const decision of decisions ?? []) {
+    const entries = Array.isArray(decisions) ? decisions : [];
+    if (entries.length === 0) {
+        return;
+    }
+
+    if (entries.length === 1) {
+        const [decision] = entries;
         const pathValue =
             decision && typeof decision.path === 'string'
                 ? decision.path
@@ -146,7 +152,30 @@ export function logDefaultedConfigDecisions(logger, decisions) {
             valueLine,
             ...hintLines,
         ]);
+        return;
     }
+
+    const aggregatedHints = [];
+    for (const decision of entries) {
+        const pathValue =
+            decision && typeof decision.path === 'string'
+                ? decision.path
+                : String(decision?.path ?? '<unknown>');
+        aggregatedHints.push(
+            pathValue + ': ' + formatMockDefaultValue(decision?.value)
+        );
+        const hintLines = normaliseHints(decision?.hints).map((hint) =>
+            '  ' + String(hint)
+        );
+        aggregatedHints.push(...hintLines);
+    }
+
+    logger.debug(
+        'Using default configuration values for ' +
+            entries.length +
+            ' entries.',
+        aggregatedHints
+    );
 }
 
 function formatMockDefaultValue(value) {

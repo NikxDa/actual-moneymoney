@@ -238,14 +238,38 @@ export const logDefaultedConfigDecisions = (
     logger: Logger,
     decisions: ConfigDefaultDecision[]
 ) => {
-    for (const decision of decisions) {
+    if (decisions.length === 0) {
+        return;
+    }
+
+    if (decisions.length === 1) {
+        const decision = decisions[0];
+        if (!decision) {
+            return;
+        }
         const hints = [
             `Path: ${decision.path}`,
             `Value: ${formatDefaultValue(decision.value)}`,
             ...(decision.hints ?? []),
         ];
         logger.debug('Using default configuration value.', hints);
+        return;
     }
+
+    const aggregatedHints: string[] = [];
+    for (const decision of decisions) {
+        aggregatedHints.push(
+            `${decision.path}: ${formatDefaultValue(decision.value)}`
+        );
+        for (const hint of decision.hints ?? []) {
+            aggregatedHints.push(`  ${hint}`);
+        }
+    }
+
+    logger.debug(
+        `Using default configuration values for ${decisions.length} entries.`,
+        aggregatedHints
+    );
 };
 
 export const getConfigFile = (argv: ArgumentsCamelCase): string => {

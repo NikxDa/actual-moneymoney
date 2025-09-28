@@ -470,4 +470,30 @@ password = ""
             consoleSpy.mockRestore();
         }
     });
+
+    it('aggregates multiple default decisions into a single debug entry', () => {
+        const logger = new Logger(LogLevel.DEBUG);
+        const debugSpy = vi
+            .spyOn(logger, 'debug')
+            .mockImplementation(() => undefined);
+
+        try {
+            logDefaultedConfigDecisions(logger, [
+                { path: 'first.path', value: true },
+                {
+                    path: 'second.path',
+                    value: 'value',
+                    hints: ['extra context'],
+                },
+            ]);
+
+            expect(debugSpy).toHaveBeenCalledTimes(1);
+            expect(debugSpy).toHaveBeenCalledWith(
+                'Using default configuration values for 2 entries.',
+                ['first.path: true', 'second.path: value', '  extra context']
+            );
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
 });
