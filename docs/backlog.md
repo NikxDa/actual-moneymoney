@@ -116,13 +116,13 @@
 
 ## Epic 4: CLI usability and coverage
 
-- **Epic Assessment:** 🚧 In progress. Story 4.1’s harness and CLI import coverage landed, so follow-up work can assume end-to-end tests exist when refining options, exit codes, and UX.
+- **Epic Assessment:** ✅ Completed. Stories 4.1–4.3 shipped the harness, option validation, and failure propagation coverage, so downstream work can rely on end-to-end CLI tests being available.
 
 ### Story 4.1 – Establish CLI integration tests for `import`
 - **Complexity:** 8 pts
 - **Status:** ✅ Done
 - **Outcome:** CLI integration coverage now executes the compiled binary with a reusable harness. Tests simulate multiple servers, dry-run imports, and invalid account filters by injecting mock Actual/MoneyMoney layers via a custom loader.
-- **Evidence:** `tests/helpers/cli.ts` builds the CLI once per run, `tests/helpers/cli-mock-loader.mjs` records dependency usage, and `tests/commands/import.command.test.ts` asserts dry-run messaging, multi-budget imports, and error propagation.
+- **Evidence:** `tests/helpers/cli.ts` builds the CLI once per run, `tests/helpers/cli-mock-loader.ts` records dependency usage, and `tests/commands/import.command.test.ts` asserts dry-run messaging, multi-budget imports, and error propagation.
 - **Follow-up:** Future CLI stories can extend the harness with additional assertions (e.g., exit-code propagation, help output snapshots).
 
 #### Task 4.1a – Build CLI test harness
@@ -153,7 +153,7 @@
 - **Complexity:** 3 pts
 - **Status:** ✅ Done
 - **Outcome:** CLI integration coverage now forces importer failures and verifies the process exits with code `1`, confirming the `run().catch` boundary surfaces errors to callers instead of silently logging them.
-- **Evidence:** `tests/commands/import.command.test.ts` asserts the mocked importer failure propagates to `stderr` and a non-zero exit code, while `tests/helpers/cli-mock-loader.mjs` records the synthetic crash for debugging.
+- **Evidence:** `tests/commands/import.command.test.ts` asserts the mocked importer failure propagates to `stderr` and a non-zero exit code, while `tests/helpers/cli-mock-loader.ts` records the synthetic crash for debugging.
 - **Follow-up:** None at this time.
 
 ## Epic 5: Observability and developer experience

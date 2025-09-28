@@ -1,6 +1,40 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+type ResolveContext = {
+    readonly conditions?: readonly string[];
+    readonly parentURL?: string;
+    readonly importAssertions?: Record<string, unknown>;
+};
+
+type ResolveResult = {
+    readonly url: string;
+    readonly shortCircuit?: boolean;
+};
+
+type ResolveHook = (
+    specifier: string,
+    context: ResolveContext,
+    defaultResolve: ResolveHook,
+) => Promise<ResolveResult>;
+
+type LoadContext = {
+    readonly format?: string;
+    readonly importAssertions?: Record<string, unknown>;
+};
+
+type LoadResult = {
+    readonly format: string;
+    readonly source: string | ArrayBuffer | Uint8Array;
+    readonly shortCircuit?: boolean;
+};
+
+type LoadHook = (
+    url: string,
+    context: LoadContext,
+    defaultLoad: LoadHook,
+) => Promise<LoadResult>;
+
 const MOCK_URL_PREFIX = 'cli-mock://';
 
 const loggerUrl = `${MOCK_URL_PREFIX}logger`;
@@ -40,7 +74,7 @@ function normaliseHints(hints) {
 }
 `;
 
-const MODULE_SOURCES = new Map([
+const MODULE_SOURCES = new Map<string, string>([
     [
         loggerUrl,
         `import fs from 'node:fs';
@@ -294,7 +328,11 @@ export async function checkDatabaseUnlocked() {
     ],
 ]);
 
-export async function resolve(specifier, context, defaultResolve) {
+export const resolve: ResolveHook = async (
+    specifier,
+    context,
+    defaultResolve,
+) => {
     if (specifier === 'moneymoney') {
         return { url: moneyMoneyUrl, shortCircuit: true };
     }
@@ -324,13 +362,13 @@ export async function resolve(specifier, context, defaultResolve) {
     }
 
     return defaultResolve(specifier, context, defaultResolve);
-}
+};
 
-export async function load(url, context, defaultLoad) {
+export const load: LoadHook = async (url, context, defaultLoad) => {
     const source = MODULE_SOURCES.get(url);
     if (source) {
         return { format: 'module', source, shortCircuit: true };
     }
 
     return defaultLoad(url, context, defaultLoad);
-}
+};
