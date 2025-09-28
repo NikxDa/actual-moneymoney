@@ -11,6 +11,7 @@ interface CliTestContext {
     readonly importer?: {
         readonly failOnUnknownAccounts?: boolean;
         readonly knownAccounts?: readonly string[];
+        readonly failures?: Record<string, string>;
     };
     readonly accountMap?: unknown;
     readonly moneyMoney?: {
