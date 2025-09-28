@@ -358,7 +358,7 @@ export const resolve = async (specifier, context, defaultResolve) => {
     if (specifier.endsWith('/utils/PayeeTransformer.js')) {
         return { url: payeeTransformerUrl, shortCircuit: true };
     }
-    return defaultResolve(specifier, context, defaultResolve);
+    return defaultResolve(specifier, context);
 };
 export const load = async (url, context, defaultLoad) => {
     const source = MODULE_SOURCES.get(url);
