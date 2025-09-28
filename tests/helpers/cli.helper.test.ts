@@ -150,4 +150,22 @@ describe('runCli (timeouts and I/O)', () => {
         expect(runProcess.stdout.setEncoding).toHaveBeenCalledWith('utf8');
         expect(runProcess.stderr.setEncoding).toHaveBeenCalledWith('utf8');
     });
+
+    it('includes custom node options when provided', async () => {
+        const { getCliEntrypoint, runCli } = await import('./cli.ts');
+        const entryPoint = await getCliEntrypoint();
+        const runProcess = createMockProcess();
+        spawnMock.mockReset();
+        spawnMock.mockImplementation((..._args) => runProcess);
+
+        await runCli(['--noop'], {
+            nodeOptions: ['--loader', '/tmp/mock-loader.mjs'],
+        });
+
+        expect(spawnMock).toHaveBeenCalledWith(
+            process.execPath,
+            ['--loader', '/tmp/mock-loader.mjs', entryPoint, '--noop'],
+            expect.any(Object)
+        );
+    });
 });

@@ -10,6 +10,7 @@ type CliSpawnOptions = Pick<SpawnOptions, 'cwd' | 'env'>;
 export interface CliRunOptions extends CliSpawnOptions {
     readonly input?: string;
     readonly timeoutMs?: number;
+    readonly nodeOptions?: readonly string[];
 }
 
 export interface CliRunResult {
@@ -104,7 +105,12 @@ export async function runCli(
         stdio: ['pipe', 'pipe', 'pipe'],
     };
 
-    const childProcess = spawn(process.execPath, [cliEntryPoint, ...args], spawnOptions);
+    const nodeArgs = [
+        ...(options.nodeOptions ? [...options.nodeOptions] : []),
+        cliEntryPoint,
+        ...args,
+    ];
+    const childProcess = spawn(process.execPath, nodeArgs, spawnOptions);
 
     if (options.input) {
         childProcess.stdin?.write(options.input);

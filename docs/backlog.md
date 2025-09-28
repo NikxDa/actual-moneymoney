@@ -116,32 +116,29 @@
 
 ## Epic 4: CLI usability and coverage
 
-- **Epic Assessment:** 🚧 Not started. Lack of CLI integration tests and parameter validation means regressions slip through manual QA; delivering Story 4.1’s harness is prerequisite for follow-up CLI enhancements in this and later epics.
+- **Epic Assessment:** 🚧 In progress. Story 4.1’s harness and CLI import coverage landed, so follow-up work can assume end-to-end tests exist when refining options, exit codes, and UX.
 
 ### Story 4.1 – Establish CLI integration tests for `import`
 - **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Only the `validate` command has dedicated tests. The `import` command is untested end-to-end, leaving filters and dry-run behaviour uncovered.
-- **Next Steps:**
-  - Create a reusable CLI harness to execute the built binary with configurable environment overrides.
-  - Cover positive flows (budget/server filters, dry run) and negative flows (invalid account references) with stdout/stderr assertions.
-  - Mirror fixture usage from unit tests to keep scenarios realistic.
-- **Key Files:** `src/commands/import.command.ts`, `tests/commands/` (new harness).
+- **Status:** ✅ Done
+- **Outcome:** CLI integration coverage now executes the compiled binary with a reusable harness. Tests simulate multiple servers, dry-run imports, and invalid account filters by injecting mock Actual/MoneyMoney layers via a custom loader.
+- **Evidence:** `tests/helpers/cli.ts` builds the CLI once per run, `tests/helpers/cli-mock-loader.mjs` records dependency usage, and `tests/commands/import.command.test.ts` asserts dry-run messaging, multi-budget imports, and error propagation.
+- **Follow-up:** Future CLI stories can extend the harness with additional assertions (e.g., exit-code propagation, help output snapshots).
 
 #### Task 4.1a – Build CLI test harness
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Use `tests/helpers` as the home for spawn utilities that compile the CLI once per suite and expose helpers for environment injection.
+- **Status:** ✅ Done
+- **Notes:** Harness lives in `tests/helpers/cli.ts` and exposes `runCli`, `createCliEnv`, and `getCliEntrypoint` helpers that compile the CLI once and wire custom Node options.
 
 #### Task 4.1b – Cover positive CLI flows
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Validate filter combinations, dry-run messaging, and success exit codes. Snapshot key log output when feasible to detect regressions.
+- **Status:** ✅ Done
+- **Notes:** `tests/commands/import.command.test.ts` validates dry-run messaging, server/budget filtering, and successful execution across multiple budgets.
 
 #### Task 4.1c – Exercise negative CLI paths
 - **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Ensure invalid account/server/budget references fail with helpful messaging and non-zero exit codes.
+- **Status:** ✅ Done
+- **Notes:** CLI tests assert the mocked importer throws on unknown accounts and that the command exits with a non-zero code while still shutting down Actual connections.
 
 ### Story 4.2 – Clamp `--logLevel` via a yargs coercion hook
 - **Complexity:** 3 pts
