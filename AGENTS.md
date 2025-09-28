@@ -27,6 +27,9 @@
    - `npm run build`
    - `npm test`
 
+   Tests are meant to cover the most important paths; we do not require or aim for 100% coverage. Keep the critical scenarios
+   healthy and feel free to trim suites that provide little value.
+
 These commands are the same ones used in CI; keeping them green locally avoids surprises.
 
 ### Source updates

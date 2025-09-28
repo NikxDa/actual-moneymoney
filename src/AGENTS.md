@@ -100,6 +100,6 @@
 
 ## Testing expectations
 
-- Add or update Vitest coverage in `tests/` whenever changing behaviour. Command logic is exercised indirectly through utility tests; keep the unit tests for `ActualApi`, `Importer`, `PayeeTransformer`, and configuration validation in sync with implementation changes.
+- Add or update Vitest coverage in `tests/` whenever changing behaviour, prioritising the most important execution paths. There is no requirement to chase 100% coverage—lean suites that guard critical flows are preferred over exhaustive maintenance burdens.
 - Use `vi.mock()` to isolate external services (`@actual-app/api`, `moneymoney`, `openai`) and prefer per-test resets via `beforeEach`/`afterEach`.
 

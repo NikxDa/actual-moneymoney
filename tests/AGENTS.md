@@ -17,6 +17,9 @@
 - When asserting logging behaviour, rely on `vi.spyOn(logger, 'method')` or mock loggers that mimic the interface in `src/utils/Logger.ts`.
 - Keep expectations specific: check argument values, invocation order, and error messages so regressions are caught early.
 
+Target the assertions that deliver the most value—100% coverage is neither expected nor desired. It is acceptable to prune or
+skip low-value scenarios so long as the critical paths continue to have protection.
+
 ## Updating tests alongside source changes
 
 - Whenever you touch logic in `src/utils/` or `src/commands/`, review the related test file(s) and extend them to cover the new behaviour.

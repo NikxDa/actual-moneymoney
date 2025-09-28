@@ -4,7 +4,7 @@
 
 A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actual Budget](https://actualbudget.org), written in TypeScript
 
-> **Fork Notice**: This is an enhanced fork of [NikxDa/actual-moneymoney](https://github.com/NikxDa/actual-moneymoney) with significant improvements including comprehensive testing, enhanced error handling, timeout management, and advanced configuration options.
+> **Fork Notice**: This is an enhanced fork of [NikxDa/actual-moneymoney](https://github.com/NikxDa/actual-moneymoney) with significant improvements including targeted regression coverage, enhanced error handling, timeout management, and advanced configuration options.
 
 ![GitHub Checks](https://badgers.space/github/checks/1cu/actual-moneymoney/develop)
 
@@ -12,7 +12,7 @@ A CLI to import [MoneyMoney](https://moneymoney-app.com) transactions into [Actu
 
 This fork includes significant enhancements over the upstream version:
 
-- **🧪 Comprehensive Testing**: Full Vitest test suite with 11 passing tests covering API, importer, and payee transformation
+- **🧪 Targeted Testing**: Focused Vitest suite exercising the essential API, importer, and payee transformation paths—no push for 100% coverage
 - **⏱️ Timeout Management**: Configurable request timeouts with proper cleanup and error handling
 - **🔒 Privacy Protection**: Payee log masking to protect sensitive financial data
 - **🎯 Server Filtering**: Import specific accounts from selected MoneyMoney servers
@@ -214,6 +214,9 @@ Helpful npm scripts when working on the project:
 - `npm run typecheck` – perform a strict TypeScript type check without emitting files.
 - `npm run build` – compile the CLI for distribution.
 - `npm test` – execute the Vitest suite.
+
+Tests exist to guard the most important scenarios. Keep the high-value suites running, but there is no expectation of exhaustive
+coverage or 100% coverage.
 
 ## Account Mapping
 
