@@ -10,7 +10,7 @@ import { EXAMPLE_CONFIG } from '../utils/shared.js';
 const handleValidate = async (argv: ArgumentsCamelCase) => {
     const configPath = await getConfigFile(argv);
 
-    const logLevel = (argv.logLevel || LogLevel.INFO) as number;
+    const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
     const logger = new Logger(logLevel);
 
     logger.info(`Current configuration file: ${configPath}`);

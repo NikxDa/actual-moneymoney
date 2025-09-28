@@ -12,7 +12,7 @@ import { DATE_FORMAT } from '../utils/shared.js';
 const handleCommand = async (argv: ArgumentsCamelCase) => {
     const config = await getConfig(argv);
 
-    const logLevel = (argv.logLevel || LogLevel.INFO) as number;
+    const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
     const logger = new Logger(logLevel);
 
     const payeeTransformer = config.payeeTransformation.enabled

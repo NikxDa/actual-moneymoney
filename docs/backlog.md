@@ -142,12 +142,12 @@
 
 ### Story 4.2 – Clamp `--logLevel` via a yargs coercion hook
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `src/index.ts` accepts any numeric log level without validation, so unsupported values slip through.
-- **Next Steps:**
-  - Add a `.coerce('logLevel', ...)` hook that enforces the 0–3 range or throws with guidance.
-  - Snapshot `--help` output in tests to ensure flag documentation stays accurate.
-- **Key Files:** `src/index.ts`, `tests/commands` (new coverage).
+- **Status:** ✅ Done
+- **Outcome:** The CLI now clamps `--logLevel` to the supported 0–3 range via a yargs coercion hook and throws with actionable
+  guidance when non-numeric values are provided, preventing unsupported verbosity settings from leaking into commands.
+- **Evidence:** `tests/commands/cli-options.command.test.ts` records the constructed logger level for high/low inputs, asserts the
+  validation error path, and snapshots `--help` output so global option documentation stays in sync.
+- **Follow-up:** None at this time.
 
 ### Story 4.3 – Propagate CLI exit codes for importer failures
 - **Complexity:** 3 pts
