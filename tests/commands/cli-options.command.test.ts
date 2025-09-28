@@ -253,6 +253,99 @@ describe('CLI global options', () => {
     );
 
     it(
+        'respects --structuredLogs=false when CLI initialisation fails',
+        async () => {
+            const { contextDir, eventsFile } = await createContextDir({
+                config: createBaseConfig(),
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--dry-run',
+                    '--structuredLogs=false',
+                    '--logLevel',
+                    'abc',
+                ],
+                {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stdout).toBe('');
+            expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
+
+            const events = await readEvents(eventsFile);
+            const loggerEvents = events.filter(
+                (event) => event.type === 'Logger#constructor'
+            );
+
+            expect(loggerEvents).toEqual([
+                {
+                    type: 'Logger#constructor',
+                    level: LogLevel.INFO,
+                    structuredLogs: false,
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
+        'enables structured logs for --structured-logs true when CLI initialisation fails',
+        async () => {
+            const { contextDir, eventsFile } = await createContextDir({
+                config: createBaseConfig(),
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--dry-run',
+                    '--structured-logs',
+                    'true',
+                    '--logLevel',
+                    'abc',
+                ],
+                {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stdout).toBe('');
+            expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
+
+            const events = await readEvents(eventsFile);
+            const loggerEvents = events.filter(
+                (event) => event.type === 'Logger#constructor'
+            );
+
+            expect(loggerEvents).toEqual([
+                {
+                    type: 'Logger#constructor',
+                    level: LogLevel.INFO,
+                    structuredLogs: true,
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
         'documents the global options in --help output',
         async () => {
             const { contextDir, eventsFile } = await createContextDir({

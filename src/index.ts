@@ -81,9 +81,54 @@ const run = async (): Promise<void> => {
 run().catch((error: unknown) => {
     if (!structuredLogsEnabled) {
         const rawArgs = process.argv.slice(2);
-        structuredLogsEnabled = rawArgs.some((arg) =>
-            ['--structuredLogs', '--structured-logs'].includes(arg)
-        );
+        const flagNames = ['--structuredLogs', '--structured-logs'] as const;
+        const parseBoolean = (value: string): boolean | undefined => {
+            const normalisedValue = value.trim().toLowerCase();
+
+            if (normalisedValue === 'true') {
+                return true;
+            }
+
+            if (normalisedValue === 'false') {
+                return false;
+            }
+
+            return undefined;
+        };
+
+        for (let index = 0; index < rawArgs.length; index += 1) {
+            const arg = rawArgs[index];
+
+            if (arg === undefined) {
+                continue;
+            }
+
+            const matchingFlag = flagNames.find(
+                (flag) => arg === flag || arg.startsWith(`${flag}=`)
+            );
+
+            if (!matchingFlag) {
+                continue;
+            }
+
+            let parsedValue: boolean | undefined;
+
+            if (arg.includes('=')) {
+                const [, value = ''] = arg.split('=', 2);
+                parsedValue = parseBoolean(value) ?? true;
+            } else {
+                const nextArg = rawArgs[index + 1];
+
+                if (nextArg !== undefined && !nextArg.startsWith('-')) {
+                    parsedValue = parseBoolean(nextArg) ?? true;
+                } else {
+                    parsedValue = true;
+                }
+            }
+
+            structuredLogsEnabled = parsedValue;
+            break;
+        }
     }
 
     const logger = new Logger(LogLevel.INFO, {
