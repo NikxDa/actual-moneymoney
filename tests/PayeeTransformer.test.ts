@@ -106,6 +106,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'custom-model',
                 skipModelValidation: true,
+                maskPayeeNamesInLogs: false,
             },
             createLogger()
         );
@@ -128,6 +129,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'gpt-3.5-turbo',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             createLogger()
         );
@@ -140,6 +142,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'gpt-3.5-turbo',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             createLogger()
         );
@@ -158,6 +161,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'gpt-3.5-turbo',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             createLogger()
         );
@@ -210,6 +214,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'cached-model-a',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             createLogger()
         );
@@ -232,6 +237,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'gpt-3.5-turbo',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             logger
         );
@@ -292,6 +298,7 @@ describe('PayeeTransformer', () => {
                 openAiApiKey: 'key',
                 openAiModel: 'gpt-3.5-turbo',
                 skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
             },
             secondLogger
         );
@@ -305,5 +312,91 @@ describe('PayeeTransformer', () => {
         });
         expect(secondLogger.warn).not.toHaveBeenCalled();
         expect(listMock).not.toHaveBeenCalled();
+    });
+
+    it('handles empty OpenAI payload by falling back to original payee names', async () => {
+        const PayeeTransformer = await importTransformer();
+        const logger = createLogger();
+        const transformer = new PayeeTransformer(
+            {
+                enabled: true,
+                openAiApiKey: 'key',
+                openAiModel: 'gpt-3.5-turbo',
+                skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
+            },
+            logger
+        );
+
+        // Mock OpenAI to return empty payload
+        createMock.mockImplementation(async () => ({
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify({}),
+                    },
+                },
+            ],
+        }));
+
+        const result = await transformer.transformPayees([
+            'Vendor A',
+            'Vendor B',
+        ]);
+
+        expect(result).toEqual({
+            'Vendor A': 'Vendor A',
+            'Vendor B': 'Vendor B',
+        });
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            'OpenAI returned empty payload, falling back to original payee names',
+            [
+                'This may indicate the model failed to process the request properly',
+            ]
+        );
+    });
+
+    it('handles duplicate keys in OpenAI payload by falling back to original payee names', async () => {
+        const PayeeTransformer = await importTransformer();
+        const logger = createLogger();
+        const transformer = new PayeeTransformer(
+            {
+                enabled: true,
+                openAiApiKey: 'key',
+                openAiModel: 'gpt-3.5-turbo',
+                skipModelValidation: false,
+                maskPayeeNamesInLogs: false,
+            },
+            logger
+        );
+
+        // Mock OpenAI to return payload with duplicate keys
+        // Note: This is technically invalid JSON, but we want to test the duplicate key detection
+        createMock.mockImplementation(async () => ({
+            choices: [
+                {
+                    message: {
+                        content:
+                            '{"Vendor A": "Normalized A", "Vendor A": "Normalized B"}',
+                    },
+                },
+            ],
+        }));
+
+        const result = await transformer.transformPayees([
+            'Vendor A',
+            'Vendor B',
+        ]);
+
+        expect(result).toEqual({
+            'Vendor A': 'Vendor A',
+            'Vendor B': 'Vendor B',
+        });
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            'OpenAI response contains duplicate keys, falling back to original payee names',
+            ['This indicates malformed response structure']
+        );
     });
 });

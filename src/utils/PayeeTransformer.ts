@@ -197,6 +197,29 @@ class PayeeTransformer {
                     [key: string]: string;
                 };
 
+                // Check for empty payload
+                if (Object.keys(transformedPayees).length === 0) {
+                    this.logger.warn(
+                        'OpenAI returned empty payload, falling back to original payee names',
+                        [
+                            'This may indicate the model failed to process the request properly',
+                        ]
+                    );
+                    return this.buildResponse(uniquePayees);
+                }
+
+                // Check for duplicate keys by parsing the raw JSON string
+                // This is necessary because JSON.parse will silently use the last duplicate key
+                const rawKeys = this.extractKeysFromJsonString(output);
+                const uniqueRawKeys = new Set(rawKeys);
+                if (rawKeys.length !== uniqueRawKeys.size) {
+                    this.logger.warn(
+                        'OpenAI response contains duplicate keys, falling back to original payee names',
+                        ['This indicates malformed response structure']
+                    );
+                    return this.buildResponse(uniquePayees);
+                }
+
                 for (const [original, transformed] of Object.entries(
                     transformedPayees
                 )) {
@@ -574,6 +597,22 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
             },
             {} as Record<string, string>
         );
+    }
+
+    private extractKeysFromJsonString(jsonString: string): string[] {
+        // Simple regex to extract keys from JSON string
+        // This matches quoted strings followed by a colon
+        const keyRegex = /"([^"]+)":/g;
+        const keys: string[] = [];
+        let match;
+
+        while ((match = keyRegex.exec(jsonString)) !== null) {
+            if (match[1]) {
+                keys.push(match[1]);
+            }
+        }
+
+        return keys;
     }
 }
 
