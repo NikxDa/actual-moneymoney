@@ -11,7 +11,8 @@ import { DATE_FORMAT } from '../utils/shared.js';
 
 const handleCommand = async (argv: ArgumentsCamelCase) => {
     const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
-    const logger = new Logger(logLevel);
+    const structuredLogs = Boolean(argv.structuredLogs);
+    const logger = new Logger(logLevel, { structuredLogs });
 
     const { config, defaultDecisions } = await loadConfig(argv);
 

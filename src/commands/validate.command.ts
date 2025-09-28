@@ -11,7 +11,8 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
     const configPath = await getConfigFile(argv);
 
     const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
-    const logger = new Logger(logLevel);
+    const structuredLogs = Boolean(argv.structuredLogs);
+    const logger = new Logger(logLevel, { structuredLogs });
 
     logger.info(`Current configuration file: ${configPath}`);
 

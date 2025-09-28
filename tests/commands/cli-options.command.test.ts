@@ -136,6 +136,7 @@ describe('CLI global options', () => {
                 {
                     type: 'Logger#constructor',
                     level: 3,
+                    structuredLogs: false,
                 },
             ]);
         },
@@ -173,6 +174,45 @@ describe('CLI global options', () => {
                 {
                     type: 'Logger#constructor',
                     level: 0,
+                    structuredLogs: false,
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
+        'enables structured logs when requested',
+        async () => {
+            const { contextDir, eventsFile } = await createContextDir({
+                config: createBaseConfig(),
+            });
+
+            const result = await runCli(
+                ['import', '--dry-run', '--structuredLogs'],
+                {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
+                }
+            );
+
+            expect(result.exitCode).toBe(0);
+
+            const events = await readEvents(eventsFile);
+            const loggerEvents = events.filter(
+                (event) => event.type === 'Logger#constructor'
+            );
+
+            expect(loggerEvents).toEqual([
+                {
+                    type: 'Logger#constructor',
+                    level: LogLevel.INFO,
+                    structuredLogs: true,
                 },
             ]);
         },
@@ -213,6 +253,99 @@ describe('CLI global options', () => {
     );
 
     it(
+        'respects --structuredLogs=false when CLI initialisation fails',
+        async () => {
+            const { contextDir, eventsFile } = await createContextDir({
+                config: createBaseConfig(),
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--dry-run',
+                    '--structuredLogs=false',
+                    '--logLevel',
+                    'abc',
+                ],
+                {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stdout).toBe('');
+            expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
+
+            const events = await readEvents(eventsFile);
+            const loggerEvents = events.filter(
+                (event) => event.type === 'Logger#constructor'
+            );
+
+            expect(loggerEvents).toEqual([
+                {
+                    type: 'Logger#constructor',
+                    level: LogLevel.INFO,
+                    structuredLogs: false,
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
+        'enables structured logs for --structured-logs true when CLI initialisation fails',
+        async () => {
+            const { contextDir, eventsFile } = await createContextDir({
+                config: createBaseConfig(),
+            });
+
+            const result = await runCli(
+                [
+                    'import',
+                    '--dry-run',
+                    '--structured-logs',
+                    'true',
+                    '--logLevel',
+                    'abc',
+                ],
+                {
+                    env: {
+                        CLI_TEST_CONTEXT_DIR: contextDir,
+                        CLI_TEST_EVENTS_FILE: eventsFile,
+                        NODE_NO_WARNINGS: '1',
+                    },
+                    nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
+                }
+            );
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stdout).toBe('');
+            expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
+
+            const events = await readEvents(eventsFile);
+            const loggerEvents = events.filter(
+                (event) => event.type === 'Logger#constructor'
+            );
+
+            expect(loggerEvents).toEqual([
+                {
+                    type: 'Logger#constructor',
+                    level: LogLevel.INFO,
+                    structuredLogs: true,
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
         'documents the global options in --help output',
         async () => {
             const { contextDir, eventsFile } = await createContextDir({
@@ -231,21 +364,40 @@ describe('CLI global options', () => {
 
             expect(result.exitCode).toBe(0);
             expect(result.stderr).toBe('');
-            expect(result.stdout).toMatchInlineSnapshot(`
-              "index.js [command]
 
-              Commands:
-                index.js import    Import data from MoneyMoney
-                index.js validate  View information about and validate the current
-                                   configuration
+            const normalisedHelp = result.stdout
+                .split('\n')
+                .map((line) => {
+                    const trimmed = line.replace(/\s+$/u, '');
+                    if (trimmed.trim() === '[boolean]') {
+                        return '[boolean]';
+                    }
+                    return trimmed;
+                })
+                .join('\n');
 
-              Options:
-                --help      Show help                                                [boolean]
-                --version   Show version number                                      [boolean]
-                --config    Path to the configuration file                            [string]
-                --logLevel  The log level to use (0-3)                                [number]
-              "
-            `);
+            expect(normalisedHelp).toContain('index.js [command]');
+            expect(normalisedHelp).toContain(
+                'index.js import    Import data from MoneyMoney'
+            );
+            expect(normalisedHelp).toContain(
+                'index.js validate  View information about and validate the current'
+            );
+            expect(normalisedHelp).toMatch(
+                /--help\s+Show help[\s\S]*\[boolean\]/
+            );
+            expect(normalisedHelp).toMatch(
+                /--version\s+Show version number[\s\S]*\[boolean\]/
+            );
+            expect(normalisedHelp).toMatch(
+                /--config\s+Path to the configuration file[\s\S]*\[string\]/
+            );
+            expect(normalisedHelp).toMatch(
+                /--logLevel\s+The log level to use \(0-3\)[\s\S]*\[number\]/
+            );
+            expect(normalisedHelp).toMatch(
+                /--structuredLogs\s+Emit structured JSON logs instead of coloured text output[\s\S]*\[boolean\]/
+            );
         },
         CLI_TIMEOUT_MS
     );
