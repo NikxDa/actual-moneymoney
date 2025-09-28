@@ -22,6 +22,7 @@
 2. Install dependencies with `npm install`.
 3. Run the quality gates from the repository root:
    - `npm run lint:eslint`
+   - `npm run lint:complexity`
    - `npm run lint:prettier`
    - `npm run typecheck`
    - `npm run build`

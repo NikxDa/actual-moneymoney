@@ -228,6 +228,7 @@ actual-monmon --help
 For detailed workflows, see [CONTRIBUTING.md](./CONTRIBUTING.md). Helpful npm scripts when working on the project:
 
 - `npm run lint:eslint` – run ESLint against the TypeScript sources.
+- `npm run lint:complexity` – enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets for the source tree.
 - `npm run lint:prettier` – check formatting with Prettier.
 - `npm run typecheck` – perform a strict TypeScript type check without emitting files.
 - `npm run build` – compile the CLI for distribution.
@@ -236,7 +237,7 @@ For detailed workflows, see [CONTRIBUTING.md](./CONTRIBUTING.md). Helpful npm sc
 
 The repository includes Husky hooks to keep the working tree clean:
 
-- `pre-commit` runs `npm run lint:prettier` and `npm run lint:eslint` to block formatting or lint violations.
+- `pre-commit` runs `npm run lint:prettier`, `npm run lint:eslint`, and `npm run lint:complexity` to block formatting, lint, or complexity violations.
 - `pre-push` runs `npm run ci:local` so that pushes only succeed when the entire local CI suite is green.
 
 Tests exist to guard the most important scenarios. Keep the high-value suites running, but there is no expectation of exhaustive
