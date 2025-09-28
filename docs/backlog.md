@@ -862,4 +862,3 @@ end-to-end CLI tests being available.
 - **Status:** ⬜ Not started
 - **Notes:** Update importer logic/tests to apply mappings, ensuring unlisted
   categories fall back gracefully with warnings.
-
