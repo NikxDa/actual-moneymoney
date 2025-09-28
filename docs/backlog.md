@@ -416,18 +416,18 @@
   - Add `eslint-plugin-sonarjs` (or similar) and enable rules like `sonarjs/cognitive-complexity` and the core `complexity` rule with agreed thresholds.
   - Wire a dedicated npm script (e.g., `npm run lint:complexity`) and include it in the smoke/CI workflows so pull requests fail when complexity budgets are exceeded.
   - Document remediation guidance in the contributing docs so engineers know how to respond to violations.
-- **Key Files:** `package.json`, `eslint.config.mjs`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
+- **Key Files:** `package.json`, `eslint.config.ts`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
 
 ### Story 9.4 – Align lint and formatter coverage with active code paths
 - **Complexity:** 5 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** `eslint.config.mjs` only targets `src/**/*.ts`, leaving `tests/`, `scripts/`, and configuration files unchecked. Prettier scripts likewise scope to `src/`, so documentation, tests, and workflow files can diverge from agreed formatting or miss lint feedback until review time. Several utilities (e.g., CLI harnesses planned in Epic 4) will live outside `src/`, making the gap more pronounced as the repository grows.
+- **Current Behaviour:** `eslint.config.ts` only targets `src/**/*.ts`, leaving `tests/`, `scripts/`, and configuration files unchecked. Prettier scripts likewise scope to `src/`, so documentation, tests, and workflow files can diverge from agreed formatting or miss lint feedback until review time. Several utilities (e.g., CLI harnesses planned in Epic 4) will live outside `src/`, making the gap more pronounced as the repository grows.
 - **Next Steps:**
   - Expand ESLint configuration to cover `tests/`, `scripts/`, and configuration TypeScript files while tuning rules (e.g., relaxed `no-unused-expressions`) where test ergonomics require it.
   - Broaden Prettier globs and add ignore files as needed so formatting applies consistently without touching generated artifacts.
   - Update npm scripts (`lint:eslint`, `lint:prettier`) and CI workflows to use the widened scope, ensuring local smoke checks stay aligned.
   - Document the new coverage expectations in `CONTRIBUTING.md`, including guidance for adding future directories to the lint/format scope.
-- **Key Files:** `eslint.config.mjs`, `.prettierignore`, `package.json`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
+- **Key Files:** `eslint.config.ts`, `.prettierignore`, `package.json`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
 
 ## Epic 10: Roadmap features
 
@@ -531,3 +531,18 @@
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
 - **Notes:** Update importer logic/tests to apply mappings, ensuring unlisted categories fall back gracefully with warnings.
+
+## Epic 11: TypeScript configuration parity
+
+- **Epic Assessment:** 🚧 Not started. A repository scan shows our first-party `.mjs` surface is limited to `eslint.config.mjs`. Converting it to TypeScript keeps tooling consistent with the rest of the project and unlocks stronger type inference for shared lint utilities.
+
+### Story 11.1 – Port ESLint configuration to TypeScript
+
+- **Complexity:** 3 pts
+- **Status:** ⬜ Not started
+- **Current Behaviour:** `eslint.config.mjs` exports the flat ESLint configuration via plain JavaScript, so TypeScript-aware helpers or shared types cannot be reused without manual annotations.
+- **Next Steps:**
+  - Rename the configuration to `eslint.config.ts` and update package scripts/ESLint entry points to load the TypeScript module (via `ts-node` or `tsx`).
+  - Replace CommonJS-style exports with typed `defineConfig` helpers so rule overrides and file globs benefit from IDE autocomplete.
+  - Remove the legacy `.mjs` file once the TypeScript version is wired through CI and local lint commands.
+- **Key Files:** `eslint.config.ts` (new), `eslint.config.mjs` (to remove), `package.json`, `tsconfig.json`, `.github/workflows/ci.yml`.
