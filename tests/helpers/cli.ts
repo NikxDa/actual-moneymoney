@@ -3,6 +3,7 @@ import type { SpawnOptions } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { BufferEncoding } from 'node:buffer';
 
 type CliSpawnOptions = Pick<SpawnOptions, 'cwd' | 'env'>;
 
@@ -24,6 +25,9 @@ const typescriptCli: string = require.resolve('typescript/bin/tsc');
 const repoRoot: string = fileURLToPath(new URL('../../', import.meta.url));
 const cliEntryPoint: string = path.join(repoRoot, 'dist', 'index.js');
 
+const TEXT_ENCODING: BufferEncoding = 'utf8';
+const KILL_GRACE_PERIOD_MS = 2000 as const;
+
 let buildPromise: Promise<void> | null = null;
 
 async function ensureCliBuilt(): Promise<void> {
@@ -44,8 +48,8 @@ async function ensureCliBuilt(): Promise<void> {
             let stderr = '';
             let stdout = '';
 
-            buildProcess.stdout?.setEncoding('utf8');
-            buildProcess.stderr?.setEncoding('utf8');
+            buildProcess.stdout?.setEncoding(TEXT_ENCODING);
+            buildProcess.stderr?.setEncoding(TEXT_ENCODING);
 
             buildProcess.stdout?.on('data', (chunk) => {
                 stdout += chunk;
@@ -110,8 +114,8 @@ export async function runCli(
     const stdoutChunks: string[] = [];
     const stderrChunks: string[] = [];
 
-    childProcess.stdout?.setEncoding('utf8');
-    childProcess.stderr?.setEncoding('utf8');
+    childProcess.stdout?.setEncoding(TEXT_ENCODING);
+    childProcess.stderr?.setEncoding(TEXT_ENCODING);
 
     childProcess.stdout?.on('data', (chunk) => {
         stdoutChunks.push(chunk);
@@ -134,7 +138,7 @@ export async function runCli(
                 // Escalate if the process refuses to die
                 forceKill = setTimeout(() => {
                     childProcess.kill('SIGKILL');
-                }, 2000);
+                }, KILL_GRACE_PERIOD_MS);
             }, options.timeoutMs);
         }
 

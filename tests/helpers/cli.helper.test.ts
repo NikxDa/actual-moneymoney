@@ -37,9 +37,22 @@ function createMockProcess(): MockChildProcess {
     };
     child.kill = vi.fn();
 
-    setImmediate(() => {
+    setTimeout(() => {
         child.emit('close', 0, null);
-    });
+    }, 0);
+
+    return child;
+}
+
+function createDeferredProcess(): MockChildProcess {
+    const child = new EventEmitter() as MockChildProcess;
+    (child as MockChildProcess).stdout = createMockStream();
+    (child as MockChildProcess).stderr = createMockStream();
+    (child as MockChildProcess).stdin = {
+        write: vi.fn(),
+        end: vi.fn(),
+    };
+    child.kill = vi.fn();
 
     return child;
 }
@@ -55,7 +68,7 @@ vi.mock('node:child_process', async () => {
 beforeEach(async () => {
     await vi.resetModules();
     spawnMock.mockReset();
-    spawnMock.mockImplementation(() => createMockProcess());
+    spawnMock.mockImplementation((..._args) => createMockProcess());
 });
 
 describe('createCliEnv', () => {
@@ -96,5 +109,45 @@ describe('getCliEntrypoint', () => {
 
         expect(first).toBe(second);
         expect(spawnMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('runCli (timeouts and I/O)', () => {
+    it('escalates from SIGTERM to SIGKILL on timeout and rejects', async () => {
+        const { getCliEntrypoint, runCli } = await import('./cli.ts');
+        await getCliEntrypoint();
+
+        vi.useFakeTimers();
+        try {
+            const deferredProcess = createDeferredProcess();
+            spawnMock.mockReset();
+            spawnMock.mockImplementation((..._args) => deferredProcess);
+
+            const runPromise = runCli(['--noop'], { timeoutMs: 1000 });
+
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(deferredProcess.kill).toHaveBeenCalledWith('SIGTERM');
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(deferredProcess.kill).toHaveBeenCalledWith('SIGKILL');
+
+            (deferredProcess as EventEmitter).emit('close', null, 'SIGKILL');
+
+            await expect(runPromise).rejects.toThrow('CLI process timed out');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('sets utf8 encoding on stdout and stderr', async () => {
+        const { getCliEntrypoint, runCli } = await import('./cli.ts');
+        await getCliEntrypoint();
+        const runProcess = createMockProcess();
+        spawnMock.mockReset();
+        spawnMock.mockImplementation((..._args) => runProcess);
+
+        await runCli(['--noop']);
+        expect(runProcess.stdout.setEncoding).toHaveBeenCalledWith('utf8');
+        expect(runProcess.stderr.setEncoding).toHaveBeenCalledWith('utf8');
     });
 });
