@@ -10,7 +10,7 @@
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "start": "node dist/index.js",
         "lint:eslint": "eslint .",
-        "lint:complexity": "cross-env ENABLE_COMPLEXITY_RULES=true eslint .",
+        "lint:complexity": "ENABLE_COMPLEXITY_RULES=true eslint .",
         "lint:prettier": "prettier --check .",
         "lint:prettier:fix": "prettier --write .",
         "prepare": "husky",
@@ -60,7 +60,6 @@
         "semantic-release": "^24.2.9",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.44.1",
-        "vitest": "^3.2.4",
-        "cross-env": "^7.0.3"
+        "vitest": "^3.2.4"
     }
 }
