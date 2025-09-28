@@ -29,7 +29,9 @@ const parser: Argv<unknown> = yargs(hideBin(process.argv))
         }
 
         const numericValue =
-            typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+            typeof value === 'number'
+                ? value
+                : Number.parseInt(String(value), 10);
 
         if (!Number.isFinite(numericValue)) {
             throw new Error(
