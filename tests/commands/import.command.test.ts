@@ -26,14 +26,9 @@ interface RecordedEvent {
 }
 
 const loaderPath = fileURLToPath(
-    new URL('../helpers/cli-mock-loader.ts', import.meta.url)
+    new URL('../helpers/cli-mock-loader.mjs', import.meta.url)
 );
-const loaderNodeOptions = [
-    '--loader',
-    'ts-node/esm',
-    '--loader',
-    loaderPath,
-] as const;
+const loaderNodeOptions = ['--loader', loaderPath] as const;
 
 const CLI_TIMEOUT_MS = 20000;
 

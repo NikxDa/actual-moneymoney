@@ -202,7 +202,7 @@ end-to-end CLI tests being available.
   invalid account filters by injecting mock Actual/MoneyMoney layers via a
   custom loader.
 - **Evidence:** `tests/helpers/cli.ts` builds the CLI once per run,
-  `tests/helpers/cli-mock-loader.ts` records dependency usage, and
+  `tests/helpers/cli-mock-loader.mjs` records dependency usage, and
   `tests/commands/import.command.test.ts` asserts dry-run messaging,
   multi-budget imports, and error propagation.
 - **Follow-up:** Future CLI stories can extend the harness with additional
@@ -255,7 +255,7 @@ end-to-end CLI tests being available.
   boundary surfaces errors to callers instead of silently logging them.
 - **Evidence:** `tests/commands/import.command.test.ts` asserts the mocked
   importer failure propagates to `stderr` and a non-zero exit code, while
-  `tests/helpers/cli-mock-loader.ts` records the synthetic crash for debugging.
+  `tests/helpers/cli-mock-loader.mjs` records the synthetic crash for debugging.
 - **Follow-up:** None at this time.
 
 ## Epic 5: Observability and developer experience
@@ -304,7 +304,7 @@ end-to-end CLI tests being available.
   the CLI harness instructions, and the CI workflow continues to execute the
   same suites to validate fixture health on every push and PR.
 - **Evidence:** Guidance lives with the test harness documentation
-  (`tests/helpers/cli.ts`, `tests/helpers/cli-mock-loader.ts`), and
+  (`tests/helpers/cli.ts`, `tests/helpers/cli-mock-loader.mjs`), and
   `.github/workflows/ci.yml` enforces the lint/type/build/test matrix that
   exercises the importer fixtures.
 - **Future Work:** Expand the contributor docs if additional fixture types
@@ -670,7 +670,7 @@ end-to-end CLI tests being available.
   cyclomatic complexity at 40 and cognitive complexity at 60. The guard rails
   are available through `npm run lint:complexity`, which CI and the local smoke
   test invoke alongside the existing lint workflow.
-- **Evidence:** `eslint.config.ts` gates the plugin via
+- **Evidence:** `eslint.config.mjs` gates the plugin via
   `ENABLE_COMPLEXITY_RULES`, `package.json` exposes the dedicated script,
   `.github/workflows/ci.yml` runs it in the lint matrix, and contributing docs
   explain how to respond to violations.
@@ -682,7 +682,7 @@ end-to-end CLI tests being available.
 
 - **Complexity:** 5 pts
 - **Status:** ✅ Done
-- **Outcome:** `eslint.config.ts` now lints the source, test, and TypeScript
+- **Outcome:** `eslint.config.mjs` now lints the source, test, and TypeScript
   configuration files with Vitest globals for tests, while the npm scripts call
   ESLint against the repository root. Prettier runs over the same surface area
   except for Markdown, which is formatted by `mdformat` to stay compatible with
@@ -694,7 +694,7 @@ end-to-end CLI tests being available.
   `CONTRIBUTING.md` all landed together with the CI matrix continuing to
   exercise the expanded commands.
 - **Future Work:** None—add directories to the lint/format scope by updating
-  `eslint.config.ts` and `.prettierignore` when new code paths are introduced.
+  `eslint.config.mjs` and `.prettierignore` when new code paths are introduced.
 
 ## Epic 10: Roadmap features
 
@@ -866,22 +866,3 @@ end-to-end CLI tests being available.
 - **Notes:** Update importer logic/tests to apply mappings, ensuring unlisted
   categories fall back gracefully with warnings.
 
-## Epic 11: TypeScript configuration parity
-
-- **Epic Assessment:** ✅ Completed. The ESLint flat configuration now lives in
-  `eslint.config.ts`, is executed via the TypeScript-aware loader in
-  `package.json`, and removes the final `.mjs` entrypoint from the repository.
-
-### Story 11.1 – Port ESLint configuration to TypeScript
-
-- **Complexity:** 3 pts
-- **Status:** ✅ Done
-- **Context:** The ESLint flat configuration has been rewritten in
-  `eslint.config.ts` using `typescript-eslint`'s typed `config` helper so file
-  globs and rule overrides benefit from editor inference.
-- **Evidence:** `package.json` runs ESLint through Node's `ts-node` loader,
-  ensuring the TypeScript module executes during local and CI lint jobs. The
-  obsolete `eslint.config.mjs` file has been removed.
-- **Future Work:** None. Additional lint surface can extend `eslint.config.ts`
-  directly as new directories or rules are introduced.
-- **Key Files:** `eslint.config.ts`, `package.json`.

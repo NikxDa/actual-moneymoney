@@ -27,7 +27,13 @@ const sharedRules = {
 
 export default defineConfig(
     {
-        ignores: ['dist/**', 'node_modules/**', 'coverage/**', '**/*.js'],
+        ignores: [
+            'dist/**',
+            'node_modules/**',
+            'coverage/**',
+            '**/*.js',
+            '**/*.mjs',
+        ],
     },
     eslint.configs.recommended,
     tsConfigs.recommended,
