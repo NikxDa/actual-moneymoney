@@ -20,7 +20,7 @@
 | Order | Epic | State | Notes |
 | --- | --- | --- | --- |
 | 1 | **Epic 4 – CLI usability and coverage** | ✅ Done | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
-| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (Story 2.3) | With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation once the mapping failure guards land. |
+| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (Story 2.3) | CLI coverage is in place and Stories 2.1–2.2 shipped; finishing the mapping failure guards in Story 2.3 will give downstream refactors a predictable foundation. |
 | 3 | **Epic 6 – Testing & reliability** | ✅ Done | Error-path fixtures, malformed export guards, and structured logging are complete, keeping the CLI observable and resilient under test. |
 | 4 | **Epic 8 – Code quality and maintainability** | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
 | 5 | **Epic 5 – Observability and developer experience** | ✅ Done | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
@@ -84,10 +84,9 @@
 
 ## Epic 2: Importer determinism and guard rails
 
-- **Epic Assessment:** 🚧 In progress (not yet started). Importer flows still
-  rely on implicit ordering and best-effort warnings; landing Stories 2.1–2.3
-  will unlock confident refactors in Epics 8 and 10 by hardening transaction
-  normalisation and mapping validation.
+- **Epic Assessment:** 🚧 In progress. Stories 2.1 and 2.2 landed, but mapping
+  validation in Story 2.3 still needs to fail fast so importer refactors in
+  Epics 8 and 10 have a deterministic foundation.
 
 ### Story 2.1 – Normalize MoneyMoney transactions before conversion
 
@@ -324,11 +323,11 @@ end-to-end CLI tests being available.
     fails due to network or credential issues.
   - `tests/Importer.test.ts` asserts the importer surfaces guidance when
     MoneyMoney exports omit critical transaction fields.
-  - Documentation in `docs/testing.md` captures the new failure scenarios for
-    contributors.
+  - Testing guidelines in `tests/AGENTS.md` outline how to extend the fixtures
+    when new failure scenarios surface.
 - **Next Steps:** Monitor for additional failure shapes (e.g., TLS errors) to
   expand the fixture catalog as they surface.
-- **Key Files:** `tests/helpers/`, `tests/Importer.test.ts`, `docs/testing.md`.
+- **Key Files:** `tests/helpers/`, `tests/Importer.test.ts`, `tests/AGENTS.md`.
 
 #### Task 6.1a – Shared error fixtures
 
@@ -349,7 +348,7 @@ end-to-end CLI tests being available.
 - **Complexity:** 1 pt
 - **Status:** ✅ Done
 - **Notes:** Documented the shared fixtures and malformed export guidance in
-  `docs/testing.md` for future contributors.
+  `tests/AGENTS.md` so future contributors know how to extend coverage.
 
 ### Story 6.2 – Standardise debug log schema for observability
 
