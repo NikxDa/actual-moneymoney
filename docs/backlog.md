@@ -92,18 +92,15 @@
 ### Story 2.1 – Normalize MoneyMoney transactions before conversion
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `Importer.importTransactions` consumes the raw array
-  from `moneymoney.getTransactions` without sorting. Deduplication relies on
-  iteration order, which remains implicit.
-- **Next Steps:**
-  - Sort the transaction list by `valueDate` and a stable identifier (e.g.,
-    `id`) immediately after fetching.
-  - Extend `tests/Importer.test.ts` with an unsorted fixture that verifies
-    deterministic ordering and downstream balance calculations.
-  - Confirm no regressions in synthetic starting-balance logic, especially
-    around earliest import dates.
-- **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** MoneyMoney transactions are now sorted by `valueDate` and a
+  deterministic tie-breaker before any importer filtering or conversion so the
+  downstream balance calculations and deduplication logic operate on a stable
+  sequence.
+- **Evidence:** Implemented in `src/utils/Importer.ts` with regression coverage
+  in `tests/Importer.test.ts` to confirm ordering and starting-balance
+  behaviour.
+- **Future Work:** None at this time.
 
 ### Story 2.2 – Extend starting balance coverage for missing booked transactions
 
