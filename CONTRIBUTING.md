@@ -72,7 +72,7 @@ up, run the quality checks, and collaborate smoothly with the team.
   `npm run lint:prettier:fix` to apply the shared style to code, and run
   `mdformat <files>` locally if you need to tidy documentation ahead of review.
 - ESLint covers application, test, and configuration TypeScript files. Update
-  [`eslint.config.ts`](./eslint.config.ts) and the `.prettierignore` file if you
+  [`eslint.config.mjs`](./eslint.config.mjs) and the `.prettierignore` file if you
   add new directories that should participate in linting or formatting.
 - Husky hooks guard the commit and push flows:
   - `pre-commit` runs the linting, complexity, and formatting checks.

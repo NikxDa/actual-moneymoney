@@ -1,39 +1,4 @@
-type ResolveContext = {
-    readonly conditions?: readonly string[];
-    readonly parentURL?: string;
-    readonly importAssertions?: Record<string, unknown>;
-};
-
-type ResolveResult = {
-    readonly url: string;
-    readonly shortCircuit?: boolean;
-};
-
-type ResolveHook = (
-    specifier: string,
-    context: ResolveContext,
-    defaultResolve: ResolveHook
-) => Promise<ResolveResult>;
-
-type LoadContext = {
-    readonly format?: string;
-    readonly importAssertions?: Record<string, unknown>;
-};
-
-type LoadResult = {
-    readonly format: string;
-    readonly source: string | ArrayBuffer | Uint8Array;
-    readonly shortCircuit?: boolean;
-};
-
-type LoadHook = (
-    url: string,
-    context: LoadContext,
-    defaultLoad: LoadHook
-) => Promise<LoadResult>;
-
 const MOCK_URL_PREFIX = 'cli-mock://';
-
 const loggerUrl = `${MOCK_URL_PREFIX}logger`;
 const configUrl = `${MOCK_URL_PREFIX}config`;
 const actualApiUrl = `${MOCK_URL_PREFIX}actual-api`;
@@ -41,7 +6,6 @@ const accountMapUrl = `${MOCK_URL_PREFIX}account-map`;
 const importerUrl = `${MOCK_URL_PREFIX}importer`;
 const payeeTransformerUrl = `${MOCK_URL_PREFIX}payee-transformer`;
 const moneyMoneyUrl = `${MOCK_URL_PREFIX}moneymoney`;
-
 const COMMON_SOURCE = `
 const CONTEXT_DIR = process.env.CLI_TEST_CONTEXT_DIR;
 const EVENTS_FILE = process.env.CLI_TEST_EVENTS_FILE;
@@ -70,8 +34,7 @@ function normaliseHints(hints) {
     return Array.isArray(hints) ? hints : [hints];
 }
 `;
-
-const MODULE_SOURCES = new Map<string, string>([
+const MODULE_SOURCES = new Map([
     [
         loggerUrl,
         `import fs from 'node:fs';
@@ -368,48 +331,34 @@ export async function checkDatabaseUnlocked() {
 `,
     ],
 ]);
-
-export const resolve: ResolveHook = async (
-    specifier,
-    context,
-    defaultResolve
-) => {
+export const resolve = async (specifier, context, defaultResolve) => {
     if (specifier === 'moneymoney') {
         return { url: moneyMoneyUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/Logger.js')) {
         return { url: loggerUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/config.js')) {
         return { url: configUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/ActualApi.js')) {
         return { url: actualApiUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/AccountMap.js')) {
         return { url: accountMapUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/Importer.js')) {
         return { url: importerUrl, shortCircuit: true };
     }
-
     if (specifier.endsWith('/utils/PayeeTransformer.js')) {
         return { url: payeeTransformerUrl, shortCircuit: true };
     }
-
     return defaultResolve(specifier, context, defaultResolve);
 };
-
-export const load: LoadHook = async (url, context, defaultLoad) => {
+export const load = async (url, context, defaultLoad) => {
     const source = MODULE_SOURCES.get(url);
     if (source) {
         return { format: 'module', source, shortCircuit: true };
     }
-
     return defaultLoad(url, context, defaultLoad);
 };
