@@ -145,17 +145,17 @@
 ### Story 3.1 – Heal corrupt payee cache entries automatically
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `PayeeTransformer` returns `null` if
-  `openai-model-cache.json` cannot be parsed but leaves the corrupt file in
-  place and provides no remediation logging.
-- **Next Steps:**
-  - When JSON parsing fails, delete the cache file and emit a warning noting the
-    reset.
-  - Add filesystem-mocked coverage to `tests/PayeeTransformer.test.ts` to ensure
-    repeated runs recover gracefully.
-- **Key Files:** `src/utils/PayeeTransformer.ts`,
-  `tests/PayeeTransformer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** `PayeeTransformer` now detects JSON parse failures when loading
+  `openai-model-cache.json`, logs a warning that the cache was reset, and removes
+  the corrupt file before refetching the model list so subsequent runs receive a
+  fresh cache.
+- **Evidence:** The regression coverage in `tests/PayeeTransformer.test.ts`
+  stubs a corrupted cache file, asserts the warning, verifies the healed cache
+  contents, and confirms a follow-up run uses the regenerated file without
+  additional API calls.
+- **Future Work:** Consider treating structurally invalid cache payloads (e.g.,
+  missing fields) as corrupt to provide the same auto-healing behaviour.
 
 ### Story 3.2 – Short-circuit on malformed OpenAI payloads
 
