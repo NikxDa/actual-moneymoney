@@ -227,7 +227,7 @@ describe('CLI global options', () => {
                     CLI_TEST_EVENTS_FILE: eventsFile,
                     NODE_NO_WARNINGS: '1',
                 },
-                nodeOptions: ['--loader', loaderPath],
+                nodeOptions: loaderNodeOptions,
                 timeoutMs: CLI_TIMEOUT_MS,
             });
 
