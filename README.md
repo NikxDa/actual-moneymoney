@@ -240,7 +240,8 @@ actual-monmon validate
 
 You can increase or decrease CLI verbosity with `--logLevel` (`0 = ERROR`,
 `1 = WARN`, `2 = INFO`, `3 = DEBUG`). Combine it with `--config` to validate a
-different configuration file:
+different configuration file, and use `--structuredLogs` when you need
+machine-readable JSON output for log aggregation:
 
 ```bash
 actual-monmon validate --config ./config.toml --logLevel 3
@@ -265,6 +266,7 @@ You can limit the scope of an import with additional flags:
 - `--from YYYY-MM-DD` / `--to YYYY-MM-DD` – bound the transaction date range.
 - `--dry-run` – simulate the import without persisting any changes.
 - `--logLevel <0-3>` – control CLI verbosity (defaults to `2`, INFO).
+- `--structuredLogs` – emit JSON-formatted logs instead of coloured text.
 - `--config <path>` – load a configuration file from a custom path.
 
 ### Command Options

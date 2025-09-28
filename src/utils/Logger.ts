@@ -9,11 +9,18 @@ export enum LogLevel {
 
 type LogHint = string | Error | Array<string | Error>;
 
+interface LoggerOptions {
+    readonly structuredLogs?: boolean;
+}
+
 class Logger {
     private logLevel: LogLevel;
 
-    constructor(logLevel = LogLevel.INFO) {
+    private readonly structuredLogs: boolean;
+
+    constructor(logLevel = LogLevel.INFO, options?: LoggerOptions) {
         this.logLevel = logLevel;
+        this.structuredLogs = Boolean(options?.structuredLogs);
     }
 
     public setLogLevel(level: LogLevel) {
@@ -37,25 +44,44 @@ class Logger {
     }
 
     private log(level: LogLevel, message: string, hint?: LogHint) {
-        if (this.logLevel >= level) {
-            const timestamp = new Date().toISOString();
-            const prefix = `[${LogLevel[level].toUpperCase()}]`;
-            const chalkColor = {
-                [LogLevel.ERROR]: chalk.red,
-                [LogLevel.WARN]: chalk.yellow,
-                [LogLevel.INFO]: chalk.cyan,
-                [LogLevel.DEBUG]: chalk.gray,
-            }[level];
+        if (this.logLevel < level) {
+            return;
+        }
 
-            console.log(chalkColor(prefix), `[${timestamp}]`, message);
-            const hints = this.normaliseHints(hint);
-            if (hints.length > 0) {
-                const hintIndent = ' '.repeat(
-                    `${prefix} [${timestamp}] `.length
-                );
-                for (const line of hints) {
-                    console.log(chalk.gray(hintIndent, '↳ ', line));
-                }
+        const timestamp = new Date().toISOString();
+        const levelName = LogLevel[level].toUpperCase();
+        const hints = this.normaliseHints(hint);
+
+        if (this.structuredLogs) {
+            const payload = {
+                level: levelName,
+                timestamp,
+                message,
+                hints,
+            } satisfies Record<string, unknown>;
+
+            const serialised = JSON.stringify(payload);
+            if (level === LogLevel.ERROR) {
+                console.error(serialised);
+            } else {
+                console.log(serialised);
+            }
+            return;
+        }
+
+        const prefix = `[${levelName}]`;
+        const chalkColor = {
+            [LogLevel.ERROR]: chalk.red,
+            [LogLevel.WARN]: chalk.yellow,
+            [LogLevel.INFO]: chalk.cyan,
+            [LogLevel.DEBUG]: chalk.gray,
+        }[level];
+
+        console.log(chalkColor(prefix), `[${timestamp}]`, message);
+        if (hints.length > 0) {
+            const hintIndent = ' '.repeat(`${prefix} [${timestamp}] `.length);
+            for (const line of hints) {
+                console.log(chalk.gray(hintIndent, '↳ ', line));
             }
         }
     }
