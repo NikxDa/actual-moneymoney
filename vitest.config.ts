@@ -8,5 +8,8 @@ export default defineConfig({
             reporter: ['text', 'html'],
             enabled: false,
         },
+        env: {
+            TZ: 'UTC',
+        },
     },
 });
