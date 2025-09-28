@@ -265,6 +265,91 @@ describe('import command (CLI)', () => {
     );
 
     it(
+        'sets a non-zero exit code when the importer throws an unexpected error',
+        async () => {
+        const config = {
+            ...createBaseConfig(),
+            actualServers: [
+                {
+                    serverUrl: 'https://server-failure.example.com',
+                    serverPassword: 'secret',
+                    requestTimeoutMs: 45000,
+                    budgets: [
+                        {
+                            syncId: 'budget-failure',
+                            e2eEncryption: { enabled: false, password: '' },
+                            accountMapping: { primary: 'actual-primary' },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const failureMessage = 'Importer crashed while synchronising';
+
+        const { contextDir, eventsFile } = await createContextDir({
+            config,
+            importer: {
+                failures: {
+                    'budget-failure': failureMessage,
+                },
+            },
+        });
+
+        const result = await runCli(
+            [
+                'import',
+                '--server',
+                'https://server-failure.example.com',
+                '--budget',
+                'budget-failure',
+                '--dry-run',
+            ],
+            {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: ['--loader', loaderPath],
+            }
+        );
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr).toContain(failureMessage);
+
+        const events = await readEvents(eventsFile);
+        const importerEvents = events.filter(
+            (event) => event.type === 'Importer#importTransactions'
+        );
+        expect(importerEvents).toEqual([
+            {
+                type: 'Importer#importTransactions',
+                budgetSyncId: 'budget-failure',
+                options: {
+                    accountRefs: null,
+                    from: null,
+                    to: null,
+                    isDryRun: true,
+                },
+                error: failureMessage,
+            },
+        ]);
+
+        const shutdownEvents = events.filter(
+            (event) => event.type === 'ActualApi#shutdown'
+        );
+        expect(shutdownEvents).toEqual([
+            {
+                type: 'ActualApi#shutdown',
+                serverUrl: 'https://server-failure.example.com',
+            },
+        ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
         'fails with a helpful error when account filters are unknown',
         async () => {
         const config = {

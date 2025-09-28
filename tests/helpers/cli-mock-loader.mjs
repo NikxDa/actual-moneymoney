@@ -237,6 +237,13 @@ export default class Importer {
             },
         };
 
+        const failureMessage =
+            importerConfig.failures?.[this.budgetConfig.syncId];
+        if (typeof failureMessage === 'string' && failureMessage.length > 0) {
+            recordEvent({ ...eventBase, error: failureMessage });
+            throw new Error(failureMessage);
+        }
+
         if (
             importerConfig.failOnUnknownAccounts &&
             Array.isArray(options.accountRefs)

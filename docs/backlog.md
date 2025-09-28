@@ -151,12 +151,10 @@
 
 ### Story 4.3 – Propagate CLI exit codes for importer failures
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** The CLI logs errors but lacks tests asserting non-zero exit codes when importer operations throw.
-- **Next Steps:**
-  - Add CLI harness coverage (once Story 4.1 lands) that forces importer failures and asserts `process.exitCode`.
-  - Ensure `run().catch` in `src/index.ts` remains the single error boundary setting exit codes.
-- **Key Files:** `src/index.ts`, `tests/commands`.
+- **Status:** ✅ Done
+- **Outcome:** CLI integration coverage now forces importer failures and verifies the process exits with code `1`, confirming the `run().catch` boundary surfaces errors to callers instead of silently logging them.
+- **Evidence:** `tests/commands/import.command.test.ts` asserts the mocked importer failure propagates to `stderr` and a non-zero exit code, while `tests/helpers/cli-mock-loader.mjs` records the synthetic crash for debugging.
+- **Follow-up:** None at this time.
 
 ## Epic 5: Observability and developer experience
 
