@@ -21,6 +21,8 @@ const logLevelEnumValues = Object.values(LogLevel).filter(
 const minLogLevel = Math.min(...logLevelEnumValues);
 const maxLogLevel = Math.max(...logLevelEnumValues);
 
+let structuredLogsEnabled = false;
+
 const parser: Argv<unknown> = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
@@ -29,6 +31,11 @@ const parser: Argv<unknown> = yargs(hideBin(process.argv))
     .option('logLevel', {
         type: 'number',
         description: 'The log level to use (0-3)',
+    })
+    .option('structuredLogs', {
+        type: 'boolean',
+        description:
+            'Emit structured JSON logs instead of coloured text output',
     })
     .coerce('logLevel', (value: unknown): number | null | undefined => {
         if (value === undefined || value === null) {
@@ -55,6 +62,9 @@ const parser: Argv<unknown> = yargs(hideBin(process.argv))
     })
     .command(importCommand)
     .command(validateCommand)
+    .middleware((argv) => {
+        structuredLogsEnabled = Boolean(argv.structuredLogs);
+    })
     .showHelpOnFail(false)
     .fail((msg, err) => {
         if (err) {
@@ -69,7 +79,61 @@ const run = async (): Promise<void> => {
 };
 
 run().catch((error: unknown) => {
-    const logger = new Logger();
+    if (!structuredLogsEnabled) {
+        const rawArgs = process.argv.slice(2);
+        const flagNames = ['--structuredLogs', '--structured-logs'] as const;
+        const parseBoolean = (value: string): boolean | undefined => {
+            const normalisedValue = value.trim().toLowerCase();
+
+            if (normalisedValue === 'true') {
+                return true;
+            }
+
+            if (normalisedValue === 'false') {
+                return false;
+            }
+
+            return undefined;
+        };
+
+        for (let index = 0; index < rawArgs.length; index += 1) {
+            const arg = rawArgs[index];
+
+            if (arg === undefined) {
+                continue;
+            }
+
+            const matchingFlag = flagNames.find(
+                (flag) => arg === flag || arg.startsWith(`${flag}=`)
+            );
+
+            if (!matchingFlag) {
+                continue;
+            }
+
+            let parsedValue: boolean | undefined;
+
+            if (arg.includes('=')) {
+                const [, value = ''] = arg.split('=', 2);
+                parsedValue = parseBoolean(value) ?? true;
+            } else {
+                const nextArg = rawArgs[index + 1];
+
+                if (nextArg !== undefined && !nextArg.startsWith('-')) {
+                    parsedValue = parseBoolean(nextArg) ?? true;
+                } else {
+                    parsedValue = true;
+                }
+            }
+
+            structuredLogsEnabled = parsedValue;
+            break;
+        }
+    }
+
+    const logger = new Logger(LogLevel.INFO, {
+        structuredLogs: structuredLogsEnabled,
+    });
 
     if (error instanceof Error) {
         logger.error(error.message);

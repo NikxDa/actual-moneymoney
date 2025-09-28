@@ -92,18 +92,15 @@
 ### Story 2.1 – Normalize MoneyMoney transactions before conversion
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `Importer.importTransactions` consumes the raw array
-  from `moneymoney.getTransactions` without sorting. Deduplication relies on
-  iteration order, which remains implicit.
-- **Next Steps:**
-  - Sort the transaction list by `valueDate` and a stable identifier (e.g.,
-    `id`) immediately after fetching.
-  - Extend `tests/Importer.test.ts` with an unsorted fixture that verifies
-    deterministic ordering and downstream balance calculations.
-  - Confirm no regressions in synthetic starting-balance logic, especially
-    around earliest import dates.
-- **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** MoneyMoney transactions are now sorted by `valueDate` and a
+  deterministic tie-breaker before any importer filtering or conversion so the
+  downstream balance calculations and deduplication logic operate on a stable
+  sequence.
+- **Evidence:** Implemented in `src/utils/Importer.ts` with regression coverage
+  in `tests/Importer.test.ts` to confirm ordering and starting-balance
+  behaviour.
+- **Future Work:** None at this time.
 
 ### Story 2.2 – Extend starting balance coverage for missing booked transactions
 
@@ -148,17 +145,17 @@
 ### Story 3.1 – Heal corrupt payee cache entries automatically
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `PayeeTransformer` returns `null` if
-  `openai-model-cache.json` cannot be parsed but leaves the corrupt file in
-  place and provides no remediation logging.
-- **Next Steps:**
-  - When JSON parsing fails, delete the cache file and emit a warning noting the
-    reset.
-  - Add filesystem-mocked coverage to `tests/PayeeTransformer.test.ts` to ensure
-    repeated runs recover gracefully.
-- **Key Files:** `src/utils/PayeeTransformer.ts`,
-  `tests/PayeeTransformer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** `PayeeTransformer` now detects JSON parse failures when loading
+  `openai-model-cache.json`, logs a warning that the cache was reset, and removes
+  the corrupt file before refetching the model list so subsequent runs receive a
+  fresh cache.
+- **Evidence:** The regression coverage in `tests/PayeeTransformer.test.ts`
+  stubs a corrupted cache file, asserts the warning, verifies the healed cache
+  contents, and confirms a follow-up run uses the regenerated file without
+  additional API calls.
+- **Future Work:** Consider treating structurally invalid cache payloads (e.g.,
+  missing fields) as corrupt to provide the same auto-healing behaviour.
 
 ### Story 3.2 – Short-circuit on malformed OpenAI payloads
 
@@ -316,9 +313,9 @@ end-to-end CLI tests being available.
 
 ## Epic 6: Testing & Reliability
 
-- **Epic Assessment:** 🚧 In progress. Error-path fixtures and malformed export
-  protections now land via Story 6.1, but structured logging schema coverage
-  from Story 6.2 is still outstanding.
+- **Epic Assessment:** ✅ Completed. Error-path fixtures, malformed export
+  guards, and structured logging schemas now keep the CLI observable and
+  resilient under test.
 
 ### Story 6.1 – Expand error-path coverage
 
@@ -364,16 +361,21 @@ end-to-end CLI tests being available.
 ### Story 6.2 – Standardise debug log schema for observability
 
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Logs across modules vary in structure; no schema
-  validation exists for tests to assert consistent JSON output.
-- **Next Steps:**
-  - Define a structured log shape (likely JSON objects) and update logger
-    helpers to emit accordingly when a `structuredLogs` flag is enabled.
-  - Update fixtures/tests to validate schema and ensure compatibility with
-    existing log consumers.
-- **Key Files:** `src/utils/Logger.ts`, `tests/` (log assertions), CI log
-  parsing if applicable.
+- **Status:** ✅ Done
+- **Outcome:** CLI callers can opt into structured JSON logs, ensuring
+  observability tools receive a consistent schema while keeping colourful text
+  output as the default experience.
+- **Evidence:**
+  - `src/utils/Logger.ts` accepts a `structuredLogs` flag and serialises
+    messages, timestamps, and normalised hints into JSON payloads.
+  - CLI global options expose `--structuredLogs`, flowing through
+    `src/index.ts`, command handlers, and CLI harness tests.
+  - `tests/utils/Logger.test.ts` asserts the JSON envelope while
+    `tests/commands/cli-options.command.test.ts` verifies the new CLI switch.
+- **Next Steps:** Monitor downstream tooling for additional fields (e.g.,
+  request identifiers) that might warrant schema extensions.
+- **Key Files:** `src/utils/Logger.ts`, `src/index.ts`,
+  `tests/utils/Logger.test.ts`, `tests/commands/cli-options.command.test.ts`.
 
 ## Epic 7: CLI UX
 

@@ -46,9 +46,14 @@ const LEVELS = ['ERROR', 'WARN', 'INFO', 'DEBUG'];
 export const LogLevel = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
 
 export default class Logger {
-    constructor(level = LogLevel.INFO) {
+    constructor(level = LogLevel.INFO, options = {}) {
         this.level = level;
-        recordEvent({ type: 'Logger#constructor', level });
+        this.structuredLogs = Boolean(options.structuredLogs);
+        recordEvent({
+            type: 'Logger#constructor',
+            level,
+            structuredLogs: this.structuredLogs,
+        });
     }
 
     getLevel() {

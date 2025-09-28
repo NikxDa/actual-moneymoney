@@ -219,4 +219,91 @@ describe('PayeeTransformer', () => {
         expect(listMock).not.toHaveBeenCalled();
         expect(createMock).toHaveBeenCalledTimes(1);
     });
+
+    it('heals corrupted disk cache entries automatically', async () => {
+        const cacheFile = path.join(dataDir, 'openai-model-cache.json');
+        await fs.writeFile(cacheFile, '{ invalid json', 'utf-8');
+
+        const PayeeTransformer = await importTransformer();
+        const logger = createLogger();
+        const transformer = new PayeeTransformer(
+            {
+                enabled: true,
+                openAiApiKey: 'key',
+                openAiModel: 'gpt-3.5-turbo',
+                skipModelValidation: false,
+            },
+            logger
+        );
+
+        const result = await transformer.transformPayees([
+            'Vendor Corrupted Cache',
+        ]);
+
+        expect(result).toEqual({
+            'Vendor Corrupted Cache': 'Vendor Corrupted Cache-normalized',
+        });
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            'OpenAI model cache was corrupted and has been reset.',
+            expect.arrayContaining([
+                expect.stringContaining(`Path: ${cacheFile}`),
+                expect.stringContaining('Parse error:'),
+            ])
+        );
+
+        const healedContent = await fs.readFile(cacheFile, 'utf-8');
+        expect(() => JSON.parse(healedContent)).not.toThrow();
+        const healedCache = JSON.parse(healedContent) as {
+            models: string[];
+            expiresAt: number;
+        };
+
+        expect(healedCache.models).toEqual(['gpt-3.5-turbo', 'gpt-4o-mini']);
+        expect(typeof healedCache.expiresAt).toBe('number');
+
+        listMock.mockClear();
+        createMock.mockClear();
+
+        await vi.resetModules();
+
+        vi.doMock('openai', () => ({
+            default: MockOpenAI,
+        }));
+
+        vi.doMock('../src/utils/shared.js', async () => {
+            const actual = await vi.importActual<
+                typeof import('../src/utils/shared.js')
+            >('../src/utils/shared.js');
+
+            return {
+                ...actual,
+                get DEFAULT_DATA_DIR() {
+                    return dataDir;
+                },
+            };
+        });
+
+        const ReloadedPayeeTransformer = await importTransformer();
+        const secondLogger = createLogger();
+        const secondTransformer = new ReloadedPayeeTransformer(
+            {
+                enabled: true,
+                openAiApiKey: 'key',
+                openAiModel: 'gpt-3.5-turbo',
+                skipModelValidation: false,
+            },
+            secondLogger
+        );
+
+        const secondResult = await secondTransformer.transformPayees([
+            'Vendor Healthy Cache',
+        ]);
+
+        expect(secondResult).toEqual({
+            'Vendor Healthy Cache': 'Vendor Healthy Cache-normalized',
+        });
+        expect(secondLogger.warn).not.toHaveBeenCalled();
+        expect(listMock).not.toHaveBeenCalled();
+    });
 });
