@@ -409,6 +409,164 @@ describe('Importer', () => {
         expect(importedIds).toContain('primary-account-txn-1');
     });
 
+    it('sorts MoneyMoney transactions deterministically before conversion', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: false,
+                skipModelValidation: false,
+                openAiModel: 'gpt-3.5-turbo',
+            },
+            import: {
+                importUncheckedTransactions: true,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: undefined,
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const account = {
+            uuid: 'primary-account',
+            name: 'Checking',
+            balance: [[1000]],
+        };
+
+        const actualAccount = {
+            id: 'actual-1',
+            name: 'Checking',
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'txn-3',
+                accountUuid: account.uuid,
+                name: 'Utilities',
+                purpose: 'Electric bill',
+                comment: '',
+                valueDate: new Date('2024-02-10T00:00:00Z'),
+                bookingDate: new Date('2024-02-11T00:00:00Z'),
+                amount: 120.25,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+            {
+                id: 'txn-2',
+                accountUuid: account.uuid,
+                name: 'Coffee',
+                purpose: 'Morning coffee',
+                comment: '',
+                valueDate: new Date('2024-02-05T00:00:00Z'),
+                bookingDate: new Date('2024-02-05T00:00:00Z'),
+                amount: 4.5,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+            {
+                id: 'txn-1',
+                accountUuid: account.uuid,
+                name: 'Groceries',
+                purpose: 'Weekly groceries',
+                comment: '',
+                valueDate: new Date('2024-02-05T00:00:00Z'),
+                bookingDate: new Date('2024-02-06T00:00:00Z'),
+                amount: 85.75,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+            {
+                id: 'txn-4',
+                accountUuid: account.uuid,
+                name: 'Dining out',
+                purpose: 'Dinner with friends',
+                comment: '',
+                valueDate: new Date('2024-02-07T00:00:00Z'),
+                bookingDate: new Date('2024-02-08T00:00:00Z'),
+                amount: 45.95,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn().mockResolvedValue([]),
+            importTransactions: vi.fn().mockResolvedValue({
+                added: [],
+                updated: [],
+                errors: [],
+            }),
+        };
+
+        const accountMap = {
+            getMap: () => new Map([[account, actualAccount]]),
+        };
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            createLogger(),
+            accountMap as unknown as AccountMap,
+            undefined
+        );
+
+        await importer.importTransactions({});
+
+        expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
+        const [, createTransactions] =
+            actualApi.importTransactions.mock.calls[0];
+
+        const importedIds = createTransactions.map(
+            (transaction: { imported_id?: string }) => transaction.imported_id
+        );
+        expect(importedIds).toEqual([
+            'primary-account-txn-1',
+            'primary-account-txn-2',
+            'primary-account-txn-4',
+            'primary-account-txn-3',
+            'primary-account-start',
+        ]);
+
+        const startTransaction = createTransactions.at(-1);
+        expect(startTransaction?.date).toBe('2024-02-10');
+    });
+
     it('imports new transactions for mapped accounts while skipping duplicates and unchecked entries', async () => {
         const config: Config = {
             payeeTransformation: {

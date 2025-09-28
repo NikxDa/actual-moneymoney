@@ -92,18 +92,15 @@
 ### Story 2.1 – Normalize MoneyMoney transactions before conversion
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `Importer.importTransactions` consumes the raw array
-  from `moneymoney.getTransactions` without sorting. Deduplication relies on
-  iteration order, which remains implicit.
-- **Next Steps:**
-  - Sort the transaction list by `valueDate` and a stable identifier (e.g.,
-    `id`) immediately after fetching.
-  - Extend `tests/Importer.test.ts` with an unsorted fixture that verifies
-    deterministic ordering and downstream balance calculations.
-  - Confirm no regressions in synthetic starting-balance logic, especially
-    around earliest import dates.
-- **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** MoneyMoney transactions are now sorted by `valueDate` and a
+  deterministic tie-breaker before any importer filtering or conversion so the
+  downstream balance calculations and deduplication logic operate on a stable
+  sequence.
+- **Evidence:** Implemented in `src/utils/Importer.ts` with regression coverage
+  in `tests/Importer.test.ts` to confirm ordering and starting-balance
+  behaviour.
+- **Future Work:** None at this time.
 
 ### Story 2.2 – Extend starting balance coverage for missing booked transactions
 
@@ -148,17 +145,17 @@
 ### Story 3.1 – Heal corrupt payee cache entries automatically
 
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `PayeeTransformer` returns `null` if
-  `openai-model-cache.json` cannot be parsed but leaves the corrupt file in
-  place and provides no remediation logging.
-- **Next Steps:**
-  - When JSON parsing fails, delete the cache file and emit a warning noting the
-    reset.
-  - Add filesystem-mocked coverage to `tests/PayeeTransformer.test.ts` to ensure
-    repeated runs recover gracefully.
-- **Key Files:** `src/utils/PayeeTransformer.ts`,
-  `tests/PayeeTransformer.test.ts`.
+- **Status:** ✅ Done
+- **Context:** `PayeeTransformer` now detects JSON parse failures when loading
+  `openai-model-cache.json`, logs a warning that the cache was reset, and removes
+  the corrupt file before refetching the model list so subsequent runs receive a
+  fresh cache.
+- **Evidence:** The regression coverage in `tests/PayeeTransformer.test.ts`
+  stubs a corrupted cache file, asserts the warning, verifies the healed cache
+  contents, and confirms a follow-up run uses the regenerated file without
+  additional API calls.
+- **Future Work:** Consider treating structurally invalid cache payloads (e.g.,
+  missing fields) as corrupt to provide the same auto-healing behaviour.
 
 ### Story 3.2 – Short-circuit on malformed OpenAI payloads
 

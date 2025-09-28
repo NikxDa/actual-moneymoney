@@ -40,7 +40,18 @@ class PayeeTransformer {
         await fs.mkdir(DEFAULT_DATA_DIR, { recursive: true });
     }
 
-    private static async readModelCacheFromDisk(): Promise<ModelCache | null> {
+    private static async deleteModelCacheFile(): Promise<void> {
+        try {
+            const cacheFile = PayeeTransformer.getCacheFilePath();
+            await fs.rm(cacheFile, { force: true });
+        } catch (_error) {
+            // Ignore cache deletion errors; a fresh cache will be written later.
+        }
+    }
+
+    private static async readModelCacheFromDisk(
+        logger?: Logger
+    ): Promise<ModelCache | null> {
         try {
             const cacheFile = PayeeTransformer.getCacheFilePath();
             const cacheContent = await fs.readFile(cacheFile, 'utf-8');
@@ -56,6 +67,15 @@ class PayeeTransformer {
         } catch (error) {
             if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
                 return null;
+            }
+
+            if (error instanceof SyntaxError) {
+                const cacheFile = PayeeTransformer.getCacheFilePath();
+                logger?.warn(
+                    'OpenAI model cache was corrupted and has been reset.',
+                    [`Path: ${cacheFile}`, `Parse error: ${error.message}`]
+                );
+                await PayeeTransformer.deleteModelCacheFile();
             }
 
             return null;
@@ -360,7 +380,9 @@ class PayeeTransformer {
             return this.availableModels;
         }
 
-        const diskCache = await PayeeTransformer.readModelCacheFromDisk();
+        const diskCache = await PayeeTransformer.readModelCacheFromDisk(
+            this.logger
+        );
         if (diskCache && diskCache.expiresAt > now) {
             this.logger.debug('Loaded OpenAI model list from disk cache.');
             PayeeTransformer.modelCache = diskCache;

@@ -69,6 +69,7 @@ class Importer {
             from: importDate,
             to: toDate,
         });
+        monMonTransactions = this.sortTransactions(monMonTransactions);
         const fetchEndTime = Date.now();
         this.logger.debug(
             `MoneyMoney transaction fetch completed in ${fetchEndTime - fetchStartTime}ms`
@@ -386,6 +387,46 @@ class Importer {
         if (!hasNewTransactions) {
             this.logger.info('No new transactions to import.');
         }
+    }
+
+    private sortTransactions(transactions: MonMonTransaction[]) {
+        return [...transactions].sort((left, right) => {
+            const leftTime = this.getTransactionTime(left.valueDate);
+            const rightTime = this.getTransactionTime(right.valueDate);
+
+            if (leftTime < rightTime) {
+                return -1;
+            }
+
+            if (leftTime > rightTime) {
+                return 1;
+            }
+
+            const leftId =
+                left.id === undefined || left.id === null
+                    ? ''
+                    : String(left.id);
+            const rightId =
+                right.id === undefined || right.id === null
+                    ? ''
+                    : String(right.id);
+
+            return leftId.localeCompare(rightId);
+        });
+    }
+
+    private getTransactionTime(valueDate: MonMonTransaction['valueDate']) {
+        if (!(valueDate instanceof Date)) {
+            return Number.POSITIVE_INFINITY;
+        }
+
+        const time = valueDate.getTime();
+
+        if (Number.isNaN(time)) {
+            return Number.POSITIVE_INFINITY;
+        }
+
+        return time;
     }
 
     private async convertToActualTransaction(
