@@ -4,6 +4,7 @@ import toml from 'toml';
 import type { ArgumentsCamelCase } from 'yargs';
 import { formatISO, isValid as isValidDate, parseISO } from 'date-fns';
 import { ZodError, ZodIssueCode, z } from 'zod';
+import Logger from './Logger.js';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
 
 const trimmedNonEmptyString = (message: string) =>
@@ -130,6 +131,120 @@ export type ActualServerConfig = z.infer<typeof actualServerSchema>;
 export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
 export type Config = z.infer<typeof configSchema>;
 
+export interface ConfigDefaultDecision {
+    path: string;
+    value: unknown;
+    hints?: string[];
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasOwn = (value: Record<string, unknown>, key: string) =>
+    Object.prototype.hasOwnProperty.call(value, key);
+
+const formatDefaultValue = (value: unknown): string => {
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    try {
+        return JSON.stringify(value);
+    } catch (error) {
+        return String(value);
+    }
+};
+
+export const collectDefaultedConfigDecisions = (
+    rawConfig: unknown,
+    parsedConfig: Config
+): ConfigDefaultDecision[] => {
+    if (!isRecord(rawConfig)) {
+        return [];
+    }
+
+    const decisions: ConfigDefaultDecision[] = [];
+
+    const importConfig = isRecord(rawConfig.import)
+        ? rawConfig.import
+        : {};
+    if (!hasOwn(importConfig, 'synchronizeClearedStatus')) {
+        decisions.push({
+            path: 'import.synchronizeClearedStatus',
+            value: parsedConfig.import.synchronizeClearedStatus,
+        });
+    }
+    if (!hasOwn(importConfig, 'maskPayeeNamesInLogs')) {
+        decisions.push({
+            path: 'import.maskPayeeNamesInLogs',
+            value: parsedConfig.import.maskPayeeNamesInLogs,
+        });
+    }
+
+    const payeeTransformationConfig = isRecord(rawConfig.payeeTransformation)
+        ? rawConfig.payeeTransformation
+        : {};
+    if (!hasOwn(payeeTransformationConfig, 'openAiModel')) {
+        decisions.push({
+            path: 'payeeTransformation.openAiModel',
+            value: parsedConfig.payeeTransformation.openAiModel,
+        });
+    }
+    if (!hasOwn(payeeTransformationConfig, 'skipModelValidation')) {
+        decisions.push({
+            path: 'payeeTransformation.skipModelValidation',
+            value: parsedConfig.payeeTransformation.skipModelValidation,
+        });
+    }
+    if (!hasOwn(payeeTransformationConfig, 'maskPayeeNamesInLogs')) {
+        decisions.push({
+            path: 'payeeTransformation.maskPayeeNamesInLogs',
+            value: parsedConfig.payeeTransformation.maskPayeeNamesInLogs,
+        });
+    }
+
+    const actualServersRaw = Array.isArray(rawConfig.actualServers)
+        ? rawConfig.actualServers
+        : [];
+    for (const [index, server] of actualServersRaw.entries()) {
+        if (!isRecord(server) || hasOwn(server, 'requestTimeoutMs')) {
+            continue;
+        }
+
+        const parsedServer = parsedConfig.actualServers[index];
+        const hints = parsedServer?.serverUrl
+            ? [`Server URL: ${parsedServer.serverUrl}`]
+            : undefined;
+        decisions.push({
+            path: `actualServers[${index}].requestTimeoutMs`,
+            value:
+                parsedServer?.requestTimeoutMs ??
+                FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+            hints,
+        });
+    }
+
+    return decisions;
+};
+
+export const logDefaultedConfigDecisions = (
+    logger: Logger,
+    decisions: ConfigDefaultDecision[]
+) => {
+    for (const decision of decisions) {
+        const hints = [
+            `Path: ${decision.path}`,
+            `Value: ${formatDefaultValue(decision.value)}`,
+            ...(decision.hints ?? []),
+        ];
+        logger.debug('Using default configuration value.', hints);
+    }
+};
+
 export const getConfigFile = (argv: ArgumentsCamelCase): string => {
     if (argv.config) {
         const argvConfigFile = path.resolve(argv.config as string);
@@ -139,7 +254,10 @@ export const getConfigFile = (argv: ArgumentsCamelCase): string => {
     return DEFAULT_CONFIG_FILE;
 };
 
-export const getConfig = async (argv: ArgumentsCamelCase): Promise<Config> => {
+export const getConfig = async (
+    argv: ArgumentsCamelCase,
+    options?: { logger?: Logger }
+): Promise<Config> => {
     const configFile = getConfigFile(argv);
 
     let configContent: string;
@@ -156,7 +274,19 @@ export const getConfig = async (argv: ArgumentsCamelCase): Promise<Config> => {
 
     try {
         const configData = toml.parse(configContent);
-        return configSchema.parse(configData);
+        const config = configSchema.parse(configData);
+
+        if (options?.logger) {
+            const decisions = collectDefaultedConfigDecisions(
+                configData,
+                config
+            );
+            if (decisions.length > 0) {
+                logDefaultedConfigDecisions(options.logger, decisions);
+            }
+        }
+
+        return config;
     } catch (e) {
         const parseError = e as Error & { line?: number; column?: number };
         if (parseError instanceof Error && parseError.name === 'SyntaxError') {

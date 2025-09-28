@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { configSchema } from '../src/utils/config.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import type { ArgumentsCamelCase } from 'yargs';
+import {
+    collectDefaultedConfigDecisions,
+    configSchema,
+    getConfig,
+    FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+} from '../src/utils/config.js';
+import Logger, { LogLevel } from '../src/utils/Logger.js';
 
 const buildBaseConfig = () => ({
     payeeTransformation: {
@@ -26,6 +36,20 @@ const buildBaseConfig = () => ({
             ],
         },
     ],
+});
+
+const tmpPrefix = path.join(os.tmpdir(), 'actual-monmon-config-tests-');
+const createdTempDirs: string[] = [];
+
+afterEach(async () => {
+    while (createdTempDirs.length > 0) {
+        const dir = createdTempDirs.pop();
+        if (!dir) {
+            continue;
+        }
+
+        await rm(dir, { recursive: true, force: true });
+    }
 });
 
 describe('Config Validation', () => {
@@ -351,5 +375,93 @@ describe('Config Validation', () => {
 
             expect(() => configSchema.parse(invalidConfig)).toThrow();
         });
+    });
+});
+
+describe('Configuration default logging', () => {
+    it('collects defaulted configuration decisions for missing optional values', () => {
+        const rawConfig = buildBaseConfig();
+        const parsedConfig = configSchema.parse(rawConfig);
+
+        expect(
+            collectDefaultedConfigDecisions(rawConfig, parsedConfig)
+        ).toEqual([
+            {
+                path: 'import.synchronizeClearedStatus',
+                value: true,
+            },
+            {
+                path: 'import.maskPayeeNamesInLogs',
+                value: false,
+            },
+            {
+                path: 'payeeTransformation.openAiModel',
+                value: 'gpt-3.5-turbo',
+            },
+            {
+                path: 'payeeTransformation.skipModelValidation',
+                value: false,
+            },
+            {
+                path: 'payeeTransformation.maskPayeeNamesInLogs',
+                value: true,
+            },
+            {
+                path: 'actualServers[0].requestTimeoutMs',
+                value: FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+                hints: ['Server URL: http://localhost:5006'],
+            },
+        ]);
+    });
+
+    it('emits debug logs for defaults only when debug logging is enabled', async () => {
+        const tempDir = await mkdtemp(tmpPrefix);
+        createdTempDirs.push(tempDir);
+
+        const configPath = path.join(tempDir, 'config.toml');
+        const configContent = `
+[payeeTransformation]
+enabled = false
+
+[import]
+importUncheckedTransactions = true
+
+[[actualServers]]
+serverUrl = "http://localhost:5006"
+serverPassword = "test-password"
+
+[[actualServers.budgets]]
+syncId = "test-budget"
+
+[actualServers.budgets.e2eEncryption]
+enabled = false
+password = ""
+
+[actualServers.budgets.accountMapping]
+"test-account" = "actual-account-id"
+`;
+
+        await writeFile(configPath, configContent, 'utf8');
+
+        const argv = { config: configPath } as unknown as ArgumentsCamelCase;
+        const logger = new Logger(LogLevel.INFO);
+
+        const consoleSpy = vi
+            .spyOn(console, 'log')
+            .mockImplementation(() => undefined);
+
+        try {
+            await getConfig(argv, { logger });
+            expect(consoleSpy).not.toHaveBeenCalled();
+
+            consoleSpy.mockClear();
+            logger.setLogLevel(LogLevel.DEBUG);
+
+            await getConfig(argv, { logger });
+
+            expect(consoleSpy).toHaveBeenCalled();
+        } finally {
+            consoleSpy.mockRestore();
+        }
     });
 });

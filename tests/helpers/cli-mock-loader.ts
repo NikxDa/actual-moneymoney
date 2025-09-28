@@ -149,7 +149,7 @@ export const configSchema = {
     },
 };
 
-export async function getConfig() {
+export async function getConfig(argv, options) {
     const context = readContext();
     return context.config;
 }
