@@ -864,23 +864,3 @@ end-to-end CLI tests being available.
 - **Notes:** Update importer logic/tests to apply mappings, ensuring unlisted
   categories fall back gracefully with warnings.
 
-## Epic 11: TypeScript configuration parity
-
-- **Epic Assessment:** ✅ Completed. The ESLint flat configuration now lives in
-  `eslint.config.mjs`, runs directly under Node without a `ts-node` loader, and
-  keeps the repository fully ESM-native.
-
-### Story 11.1 – Port ESLint configuration to TypeScript
-
-- **Complexity:** 3 pts
-- **Status:** ✅ Done
-- **Context:** The ESLint flat configuration relies on
-  `typescript-eslint`'s typed `config` helper from `eslint.config.mjs` so file
-  globs and rule overrides retain the previous structure without needing runtime
-  transpilation.
-- **Evidence:** `package.json` now invokes ESLint directly via Node without
-  `--loader` flags, and the single `eslint.config.mjs` file defines the flat
-  config consumed in local and CI jobs.
-- **Future Work:** None. Additional lint surface can extend `eslint.config.mjs`
-  directly as new directories or rules are introduced.
-- **Key Files:** `eslint.config.mjs`, `package.json`.
