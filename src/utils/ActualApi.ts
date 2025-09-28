@@ -159,15 +159,135 @@ class ActualApi {
         return [`Server URL: ${this.serverConfig.serverUrl}`, ...extras];
     }
 
+    private isNetworkError(error: unknown): boolean {
+        if (!error || typeof error !== 'object') {
+            return false;
+        }
+
+        const { code, cause } = error as {
+            code?: unknown;
+            cause?: unknown;
+        };
+
+        const codeValue =
+            typeof code === 'string' || typeof code === 'number'
+                ? String(code)
+                : undefined;
+
+        const knownCodes = new Set([
+            'ECONNREFUSED',
+            'ECONNRESET',
+            'ENOTFOUND',
+            'EHOSTUNREACH',
+            'ETIMEDOUT',
+            'EAI_AGAIN',
+        ]);
+
+        if (codeValue && knownCodes.has(codeValue.toUpperCase())) {
+            return true;
+        }
+
+        const message =
+            error instanceof Error
+                ? error.message
+                : typeof (error as { message?: unknown }).message === 'string'
+                  ? String((error as { message?: unknown }).message)
+                  : '';
+
+        if (
+            message &&
+            /(connect\s+)?ECONNREFUSED|ECONNRESET|network\s+timeout|fetch\s+failed/i.test(
+                message
+            )
+        ) {
+            return true;
+        }
+
+        if (cause) {
+            return this.isNetworkError(cause);
+        }
+
+        return false;
+    }
+
+    private isAuthenticationError(error: unknown): boolean {
+        if (!error || typeof error !== 'object') {
+            return false;
+        }
+
+        const message =
+            error instanceof Error
+                ? error.message
+                : typeof (error as { message?: unknown }).message === 'string'
+                  ? String((error as { message?: unknown }).message)
+                  : '';
+
+        if (
+            /invalid\s+password|authentication\s+failed|unauthori[sz]ed/i.test(
+                message
+            )
+        ) {
+            return true;
+        }
+
+        const details = error as {
+            reason?: unknown;
+            status?: unknown;
+            response?: { status?: unknown };
+            cause?: unknown;
+        };
+
+        const reason =
+            typeof details.reason === 'string' ? details.reason : undefined;
+        const status =
+            typeof details.status === 'number'
+                ? details.status
+                : typeof details.status === 'string'
+                  ? Number.parseInt(details.status, 10)
+                  : undefined;
+        const responseStatus =
+            typeof details.response?.status === 'number'
+                ? details.response.status
+                : undefined;
+
+        if (
+            (reason && /invalid\s+password|auth/i.test(reason)) ||
+            status === 401 ||
+            responseStatus === 401
+        ) {
+            return true;
+        }
+
+        if (details.cause) {
+            return this.isAuthenticationError(details.cause);
+        }
+
+        return false;
+    }
+
     private getFriendlyErrorMessage(
         operation: string,
         error: unknown
     ): string | null {
-        if (
-            !operation.startsWith('download budget') ||
-            !error ||
-            typeof error !== 'object'
-        ) {
+        if (this.isNetworkError(error)) {
+            return (
+                `Unable to reach Actual server at ${this.serverConfig.serverUrl}. ` +
+                'Verify the server is running and reachable before retrying.'
+            );
+        }
+
+        if (this.isAuthenticationError(error)) {
+            return (
+                'Actual server rejected the provided password. ' +
+                'Update the credentials in your configuration and try again.'
+            );
+        }
+
+        if (!error || typeof error !== 'object') {
+            return null;
+        }
+
+        if (!operation.startsWith('download budget')) {
             return null;
         }
 

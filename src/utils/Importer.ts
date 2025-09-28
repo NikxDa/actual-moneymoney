@@ -391,6 +391,8 @@ class Importer {
     private async convertToActualTransaction(
         transaction: MonMonTransaction
     ): Promise<CreateTransaction> {
+        this.assertValidTransaction(transaction);
+
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),
             amount: Math.round(transaction.amount * 100),
@@ -402,6 +404,50 @@ class Importer {
             notes: transaction.purpose,
             // payee_name: transaction.name,
         };
+    }
+
+    private assertValidTransaction(transaction: MonMonTransaction) {
+        const issues: string[] = [];
+
+        const hasValidDate =
+            transaction.valueDate instanceof Date &&
+            !Number.isNaN(transaction.valueDate.getTime());
+        if (!hasValidDate) {
+            issues.push('valueDate is missing or invalid');
+        }
+
+        if (
+            typeof transaction.amount !== 'number' ||
+            Number.isNaN(transaction.amount)
+        ) {
+            issues.push('amount is missing or invalid');
+        }
+
+        if (!transaction.id) {
+            issues.push('id is missing');
+        }
+
+        if (!transaction.accountUuid) {
+            issues.push('accountUuid is missing');
+        }
+
+        if (issues.length === 0) {
+            return;
+        }
+
+        const transactionId = transaction.id ?? '(missing)';
+        const accountUuid = transaction.accountUuid ?? '(missing)';
+        const message = `MoneyMoney returned a malformed transaction (id: ${transactionId}, account: ${accountUuid}). ${issues.join(
+            '; '
+        )}.`;
+
+        this.logger.error(message, [
+            `Transaction ID: ${transactionId}`,
+            `MoneyMoney account UUID: ${accountUuid}`,
+            'Export a fresh transactions report from MoneyMoney or repair the database before retrying.',
+        ]);
+
+        throw new Error(message);
     }
 
     private getIdForMoneyMoneyTransaction(transaction: MonMonTransaction) {

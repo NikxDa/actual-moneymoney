@@ -17,24 +17,24 @@
 
 ## Recommended Epic Delivery Order
 
-1. **Epic 4 – CLI usability and coverage:** Establishing the CLI harness (Story
-   4.1) is a prerequisite for validating later CLI UX, error handling, and
-   roadmap stories. Landing it first gives us executable end-to-end coverage for
-   anything that touches the command surface.
+1. **Epic 4 – CLI usability and coverage (✅ Completed):** The CLI harness,
+   option validation, and failure propagation stories shipped, so downstream
+   work can assume end-to-end coverage already exists for anything that touches
+   the command surface.
 1. **Epic 2 – Importer determinism and guard rails:** With CLI coverage in place
    we can harden importer ordering, starting-balance handling, and mapping
    failures so downstream refactors and new features have a predictable
    foundation.
-1. **Epic 6 – Testing & reliability:** Broaden error-path tests and log schema
-   assertions while the importer changes are fresh. These suites will catch
-   regressions introduced by the upcoming refactors.
+1. **Epic 6 – Testing & reliability:** Shared failure fixtures and importer
+   guards now cover credential, network, and malformed-export flows; structured
+   log schema work remains to finish the epic.
 1. **Epic 8 – Code quality and maintainability:** Break up brittle flows such as
    `Importer.importTransactions` and `ActualApi.runActualRequest` once
    determinism and test scaffolding exist, reducing complexity before pursuing
    roadmap features.
-1. **Epic 5 – Observability and developer experience:** Layer in smoke scripts,
-   defaulting logs, and contributor docs to make the preceding changes
-   supportable and to keep new contributors productive.
+1. **Epic 5 – Observability and developer experience (✅ Completed):** Smoke
+   coverage, default logging, and contributor docs are live, giving follow-on
+   epics the observability and workflow guard rails they depend on.
 1. **Epic 9 – Integration and tooling:** Extend lint/format coverage and
    onboarding once smoke scripts exist, and enable cognitive-complexity checks
    so the refactored code stays within agreed budgets.
@@ -333,43 +333,50 @@ end-to-end CLI tests being available.
 
 ## Epic 6: Testing & Reliability
 
-- **Epic Assessment:** 🚧 Not started. Current coverage skews to happy paths;
-  extending fixtures and log schema checks via Stories 6.1–6.2 will mitigate
-  regressions uncovered during recent bug reviews.
+- **Epic Assessment:** 🚧 In progress. Error-path fixtures and malformed export
+  protections now land via Story 6.1, but structured logging schema coverage
+  from Story 6.2 is still outstanding.
 
 ### Story 6.1 – Expand error-path coverage
 
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Existing tests focus on happy paths. There are no
-  fixtures for network failures, malformed exports, or invalid credentials.
-- **Next Steps:**
-  - Build shared fixtures simulating network disconnects and credential errors
-    at the API boundary.
-  - Add importer-level tests for malformed MoneyMoney exports, asserting
-    user-facing error messages.
-  - Document new scenarios in testing docs for future contributors.
-- **Key Files:** `tests/helpers/`, `tests/Importer.test.ts`, `docs/` (testing
-  README).
+- **Status:** ✅ Done
+- **Outcome:** Tests now exercise Actual API network disconnects and credential
+  failures via shared fixtures, and the importer rejects malformed MoneyMoney
+  exports with actionable errors.
+- **Evidence:**
+  - `tests/helpers/error-fixtures.ts` centralises failure fixtures for reuse in
+    `tests/ActualApi.test.ts`.
+  - `tests/ActualApi.test.ts` covers friendly messaging when initialisation
+    fails due to network or credential issues.
+  - `tests/Importer.test.ts` asserts the importer surfaces guidance when
+    MoneyMoney exports omit critical transaction fields.
+  - Documentation in `docs/testing.md` captures the new failure scenarios for
+    contributors.
+- **Next Steps:** Monitor for additional failure shapes (e.g., TLS errors) to
+  expand the fixture catalog as they surface.
+- **Key Files:** `tests/helpers/`, `tests/Importer.test.ts`, `docs/testing.md`.
 
 #### Task 6.1a – Shared error fixtures
 
 - **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Centralise fixtures/mocks to reuse across `ActualApi` and importer
-  tests.
+- **Status:** ✅ Done
+- **Notes:** Added `tests/helpers/error-fixtures.ts` with reusable network and
+  credential failure builders referenced by Actual API suites.
 
 #### Task 6.1b – Malformed export tests
 
 - **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Assert error messaging and ensure CLI surfaces actionable hints.
+- **Status:** ✅ Done
+- **Notes:** Importer now guards against incomplete MoneyMoney transactions and
+  reports actionable errors backed by regression tests.
 
 #### Task 6.1c – Document new failure scenarios
 
 - **Complexity:** 1 pt
-- **Status:** ⬜ Not started
-- **Notes:** Update `docs/` (add a testing guide section) after fixtures land.
+- **Status:** ✅ Done
+- **Notes:** Documented the shared fixtures and malformed export guidance in
+  `docs/testing.md` for future contributors.
 
 ### Story 6.2 – Standardise debug log schema for observability
 

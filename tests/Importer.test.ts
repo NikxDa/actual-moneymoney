@@ -615,6 +615,100 @@ describe('Importer', () => {
         });
     });
 
+    it('rejects malformed MoneyMoney transactions with actionable guidance', async () => {
+        const config: Config = {
+            payeeTransformation: {
+                enabled: false,
+                skipModelValidation: false,
+                openAiModel: 'gpt-3.5-turbo',
+            },
+            import: {
+                importUncheckedTransactions: true,
+                synchronizeClearedStatus: true,
+                maskPayeeNamesInLogs: false,
+            },
+            actualServers: [],
+        };
+
+        const budgetConfig: ActualBudgetConfig = {
+            syncId: 'budget-1',
+            earliestImportDate: '2024-01-01',
+            e2eEncryption: {
+                enabled: false,
+                password: undefined,
+            },
+            accountMapping: {},
+        };
+
+        const account = {
+            uuid: 'account-uuid',
+            name: 'Checking',
+            balance: [[1000]],
+        };
+
+        const actualAccount = {
+            id: 'actual-1',
+            name: 'Checking',
+        };
+
+        moneyMoneyTransactionsMock.mockResolvedValue([
+            {
+                id: 'txn-1',
+                accountUuid: account.uuid,
+                name: 'Broken entry',
+                purpose: 'Corrupted export',
+                comment: '',
+                valueDate: undefined,
+                bookingDate: new Date('2024-01-16T00:00:00Z'),
+                amount: 123.45,
+                booked: true,
+                bankCode: '',
+                accountNumber: '',
+                partner: '',
+                partnerAccount: '',
+                category: '',
+                purposeCode: '',
+                currencyCode: 'EUR',
+                balance: 0,
+            },
+        ]);
+
+        const actualApi = {
+            getTransactions: vi.fn(),
+            importTransactions: vi.fn(),
+        };
+
+        const accountMap = {
+            getMap: () => new Map([[account, actualAccount]]),
+        };
+
+        const logger = createLogger();
+
+        const importer = new Importer(
+            config,
+            budgetConfig,
+            actualApi as unknown as ActualApi,
+            logger,
+            accountMap as unknown as AccountMap,
+            undefined
+        );
+
+        await expect(
+            importer.importTransactions({
+                from: new Date('2024-01-01T00:00:00Z'),
+            })
+        ).rejects.toThrow(/malformed transaction/);
+
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.stringContaining('malformed transaction'),
+            expect.arrayContaining([
+                'Transaction ID: txn-1',
+                'MoneyMoney account UUID: account-uuid',
+            ])
+        );
+        expect(actualApi.getTransactions).not.toHaveBeenCalled();
+    });
+
     it('applies payee transformation results to new transactions', async () => {
         const config: Config = {
             payeeTransformation: {
