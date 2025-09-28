@@ -149,9 +149,33 @@ export const configSchema = {
     },
 };
 
-export async function getConfig(argv, options) {
+export async function loadConfig(argv) {
     const context = readContext();
-    return context.config;
+    return {
+        config: context.config,
+        defaultDecisions: context.defaultDecisions ?? [],
+    };
+}
+
+export async function getConfig(argv) {
+    const { config } = await loadConfig(argv);
+    return config;
+}
+
+export function logDefaultedConfigDecisions(logger, decisions) {
+    if (!logger || typeof logger.debug !== 'function') {
+        return;
+    }
+
+    for (const decision of decisions ?? []) {
+        const pathValue =
+            decision && typeof decision.path === 'string'
+                ? decision.path
+                : String(decision?.path ?? '<unknown>');
+        logger.debug('Using default configuration value.', [
+            'Path: ' + pathValue,
+        ]);
+    }
 }
 
 export function getConfigFile() {

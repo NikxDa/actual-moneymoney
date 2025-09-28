@@ -162,11 +162,10 @@
 
 ### Story 5.1 – Log configuration defaulting decisions
 - **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Defaulting logic in `config.ts` silently applies fallback values. No logs indicate when defaults were used or why.
-- **Next Steps:**
-  - Inject a logger (or return structured metadata) when defaults are applied so CLI commands can emit debug logs without polluting production runs.
-  - Add unit coverage ensuring log level gating prevents noisy output during normal operation.
+- **Status:** ✅ Done
+- **Context:** `loadConfig` now returns structured defaulting metadata so commands can emit debug logs summarising which configuration values fell back to defaults.
+- **Evidence:** `import.command.ts` logs default usage through `logDefaultedConfigDecisions` when DEBUG logging is enabled, and `tests/config.test.ts` covers metadata collection and log level gating.
+- **Future Work:** Consider surfacing aggregated summaries once additional modules start consuming the default metadata.
 - **Key Files:** `src/utils/config.ts`, `src/utils/Logger.ts`, `tests/config.test.ts`.
 
 ### Story 5.2 – Provide a consolidated `npm run smoke`

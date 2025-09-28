@@ -6,8 +6,9 @@ import type { ArgumentsCamelCase } from 'yargs';
 import {
     collectDefaultedConfigDecisions,
     configSchema,
-    getConfig,
     FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+    loadConfig,
+    logDefaultedConfigDecisions,
 } from '../src/utils/config.js';
 import Logger, { LogLevel } from '../src/utils/Logger.js';
 
@@ -451,13 +452,16 @@ password = ""
             .mockImplementation(() => undefined);
 
         try {
-            await getConfig(argv, { logger });
+            const { defaultDecisions } = await loadConfig(argv);
+            expect(defaultDecisions.length).toBeGreaterThan(0);
+
+            logDefaultedConfigDecisions(logger, defaultDecisions);
             expect(consoleSpy).not.toHaveBeenCalled();
 
             consoleSpy.mockClear();
             logger.setLogLevel(LogLevel.DEBUG);
 
-            await getConfig(argv, { logger });
+            logDefaultedConfigDecisions(logger, defaultDecisions);
 
             expect(consoleSpy).toHaveBeenCalled();
         } finally {

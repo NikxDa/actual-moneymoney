@@ -137,6 +137,11 @@ export interface ConfigDefaultDecision {
     hints?: string[];
 }
 
+export interface LoadedConfig {
+    config: Config;
+    defaultDecisions: ConfigDefaultDecision[];
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -154,7 +159,7 @@ const formatDefaultValue = (value: unknown): string => {
 
     try {
         return JSON.stringify(value);
-    } catch (error) {
+    } catch (_error) {
         return String(value);
     }
 };
@@ -169,9 +174,7 @@ export const collectDefaultedConfigDecisions = (
 
     const decisions: ConfigDefaultDecision[] = [];
 
-    const importConfig = isRecord(rawConfig.import)
-        ? rawConfig.import
-        : {};
+    const importConfig = isRecord(rawConfig.import) ? rawConfig.import : {};
     if (!hasOwn(importConfig, 'synchronizeClearedStatus')) {
         decisions.push({
             path: 'import.synchronizeClearedStatus',
@@ -254,10 +257,9 @@ export const getConfigFile = (argv: ArgumentsCamelCase): string => {
     return DEFAULT_CONFIG_FILE;
 };
 
-export const getConfig = async (
-    argv: ArgumentsCamelCase,
-    options?: { logger?: Logger }
-): Promise<Config> => {
+export const loadConfig = async (
+    argv: ArgumentsCamelCase
+): Promise<LoadedConfig> => {
     const configFile = getConfigFile(argv);
 
     let configContent: string;
@@ -275,18 +277,15 @@ export const getConfig = async (
     try {
         const configData = toml.parse(configContent);
         const config = configSchema.parse(configData);
+        const defaultDecisions = collectDefaultedConfigDecisions(
+            configData,
+            config
+        );
 
-        if (options?.logger) {
-            const decisions = collectDefaultedConfigDecisions(
-                configData,
-                config
-            );
-            if (decisions.length > 0) {
-                logDefaultedConfigDecisions(options.logger, decisions);
-            }
-        }
-
-        return config;
+        return {
+            config,
+            defaultDecisions,
+        };
     } catch (e) {
         const parseError = e as Error & { line?: number; column?: number };
         if (parseError instanceof Error && parseError.name === 'SyntaxError') {
@@ -313,4 +312,9 @@ export const getConfig = async (
             `Invalid configuration file format. Run 'validate' to see errors.`
         );
     }
+};
+
+export const getConfig = async (argv: ArgumentsCamelCase): Promise<Config> => {
+    const { config } = await loadConfig(argv);
+    return config;
 };

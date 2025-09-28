@@ -6,14 +6,18 @@ import ActualApi from '../utils/ActualApi.js';
 import Importer from '../utils/Importer.js';
 import Logger, { LogLevel } from '../utils/Logger.js';
 import PayeeTransformer from '../utils/PayeeTransformer.js';
-import { getConfig } from '../utils/config.js';
+import { loadConfig, logDefaultedConfigDecisions } from '../utils/config.js';
 import { DATE_FORMAT } from '../utils/shared.js';
 
 const handleCommand = async (argv: ArgumentsCamelCase) => {
     const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
     const logger = new Logger(logLevel);
 
-    const config = await getConfig(argv, { logger });
+    const { config, defaultDecisions } = await loadConfig(argv);
+
+    if (defaultDecisions.length > 0) {
+        logDefaultedConfigDecisions(logger, defaultDecisions);
+    }
 
     const payeeTransformer = config.payeeTransformation.enabled
         ? new PayeeTransformer(config.payeeTransformation, logger)
