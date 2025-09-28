@@ -17,33 +17,16 @@
 
 ## Recommended Epic Delivery Order
 
-1. **Epic 4 – CLI usability and coverage (✅ Completed):** The CLI harness,
-   option validation, and failure propagation stories shipped, so downstream
-   work can assume end-to-end coverage already exists for anything that touches
-   the command surface.
-1. **Epic 2 – Importer determinism and guard rails:** With CLI coverage in place
-   we can harden importer ordering, starting-balance handling, and mapping
-   failures so downstream refactors and new features have a predictable
-   foundation.
-1. **Epic 6 – Testing & reliability:** Shared failure fixtures and importer
-   guards now cover credential, network, and malformed-export flows; structured
-   log schema work remains to finish the epic.
-1. **Epic 8 – Code quality and maintainability:** Break up brittle flows such as
-   `Importer.importTransactions` and `ActualApi.runActualRequest` once
-   determinism and test scaffolding exist, reducing complexity before pursuing
-   roadmap features.
-1. **Epic 5 – Observability and developer experience (✅ Completed):** Smoke
-   coverage, default logging, and contributor docs are live, giving follow-on
-   epics the observability and workflow guard rails they depend on.
-1. **Epic 9 – Integration and tooling:** Extend lint/format coverage and
-   onboarding once smoke scripts exist, and enable cognitive-complexity checks
-   so the refactored code stays within agreed budgets.
-1. **Epic 7 – CLI UX:** Improve discoverability and error messaging after the
-   harness, importer guard rails, and observability improvements land, ensuring
-   UX changes are measurable and well-instrumented.
-1. **Epic 10 – Roadmap features:** Tackle multi-budget support, configurable
-   data directories, and category translation last—each relies on the
-   importer/CLI refactors and extended tooling to mitigate risk.
+| Order | Epic | State | Notes |
+| --- | --- | --- | --- |
+| 1 | **Epic 4 – CLI usability and coverage** | ✅ Completed | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
+| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (not yet started) | With CLI coverage in place we can harden importer ordering, starting-balance handling, and mapping failures so downstream refactors and new features have a predictable foundation. |
+| 3 | **Epic 6 – Testing & reliability** | 🚧 In progress | Shared failure fixtures and importer guards now cover credential, network, and malformed-export flows; structured log schema work remains to finish the epic. |
+| 4 | **Epic 8 – Code quality and maintainability** | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
+| 5 | **Epic 5 – Observability and developer experience** | ✅ Completed | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
+| 6 | **Epic 9 – Integration and tooling** | ✅ Completed | Extend lint/format coverage and onboarding once smoke scripts exist, and enable cognitive-complexity checks so the refactored code stays within agreed budgets. |
+| 7 | **Epic 7 – CLI UX** | 🚧 Not started | Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented. |
+| 8 | **Epic 10 – Roadmap features** | 🧭 Discovery mode | Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk. |
 
 ## Epic 1: Actual session lifecycle resilience
 
