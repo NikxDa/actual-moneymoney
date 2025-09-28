@@ -42,6 +42,7 @@ Thanks for helping improve Actual-MoneyMoney! This guide explains how to get set
 | Script | Purpose |
 | --- | --- |
 | `npm run lint:eslint` | Run ESLint against the TypeScript sources. |
+| `npm run lint:complexity` | Enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets. |
 | `npm run lint:prettier` | Check formatting with Prettier. |
 | `npm run typecheck` | Perform a strict TypeScript type check without emitting files. |
 | `npm run build` | Compile the CLI for distribution. |
@@ -53,8 +54,10 @@ Thanks for helping improve Actual-MoneyMoney! This guide explains how to get set
 - The project uses the ESM module system. When importing internal modules, include the `.js` extension (e.g., `import Logger from './Logger.js';`).
 - TypeScript files are formatted with Prettier (4-space indentation, single quotes, semicolons). Use `npm run lint:prettier:fix` to format automatically.
 - Husky hooks guard the commit and push flows:
-  - `pre-commit` runs the linting and formatting checks.
+  - `pre-commit` runs the linting, complexity, and formatting checks.
   - `pre-push` runs the full smoke test. Fix issues locally before retrying the push.
+- When a function approaches the 40/60 complexity limits, break the logic into smaller helpers or extract pure utilities so the
+  check stays green.
 - When working with OpenAI-powered payee transformation, avoid logging raw payee names if masking is enabled.
 
 ## Questions or Support

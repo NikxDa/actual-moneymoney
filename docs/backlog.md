@@ -407,13 +407,10 @@
 
 ### Story 9.3 – Enforce cyclomatic complexity budgets via ESLint
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** ESLint runs in CI but does not flag deeply nested logic such as `Importer.importTransactions`. The shared config only enables the unused-variable rule and ignores the `tests/` tree, so complex helpers or command flows added outside `src/` slip through without signal. Without automatic feedback, complexity drifts until manual review catches it.
-- **Next Steps:**
-  - Add `eslint-plugin-sonarjs` (or similar) and enable rules like `sonarjs/cognitive-complexity` and the core `complexity` rule with agreed thresholds.
-  - Wire a dedicated npm script (e.g., `npm run lint:complexity`) and include it in the smoke/CI workflows so pull requests fail when complexity budgets are exceeded.
-  - Document remediation guidance in the contributing docs so engineers know how to respond to violations.
-- **Key Files:** `package.json`, `eslint.config.ts`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
+- **Status:** ✅ Done
+- **Outcome:** Added `eslint-plugin-sonarjs`-backed rules that cap function cyclomatic complexity at 40 and cognitive complexity at 60. The guard rails are available through `npm run lint:complexity`, which CI and the local smoke test invoke alongside the existing lint workflow.
+- **Evidence:** `eslint.config.ts` gates the plugin via `ENABLE_COMPLEXITY_RULES`, `package.json` exposes the dedicated script, `.github/workflows/ci.yml` runs it in the lint matrix, and contributing docs explain how to respond to violations.
+- **Follow-up:** Monitor importer-heavy functions; if budgets prove too strict, adjust thresholds with design discussion rather than disabling the rule ad hoc.
 
 ### Story 9.4 – Align lint and formatter coverage with active code paths
 - **Complexity:** 5 pts

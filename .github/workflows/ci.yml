@@ -32,6 +32,9 @@ jobs:
             - name: ESLint
               if: matrix.task == 'lint'
               run: npm run lint:eslint
+            - name: Complexity budget
+              if: matrix.task == 'lint'
+              run: npm run lint:complexity
             - name: Prettier
               if: matrix.task == 'lint'
               run: npm run lint:prettier
