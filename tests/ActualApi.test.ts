@@ -2,6 +2,10 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import path from 'node:path';
 import type { Dirent } from 'node:fs';
 import { withFakeTimers } from './helpers/timers.js';
+import {
+    makeInvalidCredentialsError,
+    makeNetworkDisconnectError,
+} from './helpers/error-fixtures.js';
 
 // Type for transaction import - matches the ImportTransaction interface
 type ImportTransaction = {
@@ -194,6 +198,45 @@ describe('ActualApi', () => {
         ).toBe(false);
 
         logSpy.mockRestore();
+    });
+
+    it('wraps network disconnects with actionable guidance', async () => {
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const logger = createLogger();
+        const api = new ActualApi(makeServerConfig('budget'), logger);
+
+        initMock.mockRejectedValue(makeNetworkDisconnectError());
+
+        const guidance =
+            'Unable to reach Actual server. Check your network connection and verify the Actual server is running.';
+
+        await expect(api.init()).rejects.toThrow(guidance);
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.stringContaining(guidance),
+            expect.arrayContaining(['Server URL: http://localhost:5006'])
+        );
+    });
+
+    it('surfaces credential failures with guidance on updating configuration', async () => {
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const logger = createLogger();
+        const api = new ActualApi(makeServerConfig('budget'), logger);
+
+        initMock.mockRejectedValue(makeInvalidCredentialsError());
+
+        await expect(api.init()).rejects.toThrow(
+            /rejected the provided password/
+        );
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.stringContaining('rejected the provided password'),
+            expect.arrayContaining(['Server URL: http://localhost:5006'])
+        );
     });
 
     it('downloads, loads, and synchronises the requested budget', async () => {
