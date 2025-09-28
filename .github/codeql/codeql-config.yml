@@ -1,4 +1,4 @@
-name: "CodeQL Configuration"
+name: 'CodeQL Configuration'
 
 # This configuration file specifies the languages to analyze and queries to run
 # for the actual-moneymoney TypeScript CLI project.
@@ -16,17 +16,17 @@ queries:
 # Paths to exclude from analysis
 paths-ignore:
     # Exclude compiled output
-    - "dist/**"
+    - 'dist/**'
     # Exclude node_modules
-    - "node_modules/**"
+    - 'node_modules/**'
     # Exclude test files (optional - you may want to include these)
-    - "tests/**"
+    - 'tests/**'
     # Exclude documentation
-    - "docs/**"
+    - 'docs/**'
     # Exclude assets
-    - "assets/**"
+    - 'assets/**'
     # Exclude scripts
-    - "scripts/**"
+    - 'scripts/**'
 
 # Build command for TypeScript compilation
 build-mode: none

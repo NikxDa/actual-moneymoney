@@ -27,9 +27,9 @@ This fork includes significant enhancements over the upstream version:
 - [Dependencies](#dependencies)
 - [Developer Onboarding](#developer-onboarding)
 - [Configuration](#configuration)
-  - [Basic Configuration](#basic-configuration)
-  - [Advanced Configuration](#advanced-configuration)
-  - [Payee Transformation](#payee-transformation)
+    - [Basic Configuration](#basic-configuration)
+    - [Advanced Configuration](#advanced-configuration)
+    - [Payee Transformation](#payee-transformation)
 - [Usage](#usage)
 - [Development](#development)
 - [Account Mapping](#account-mapping)
@@ -58,13 +58,13 @@ New to the project? Follow these steps to get your development environment ready
 
 1. Confirm you are running Node.js **v20.9.0 or newer**.
 2. Install dependencies after cloning the repository:
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 3. Run the local smoke test to ensure linting, type checks, the build, and tests all pass:
-   ```bash
-   npm run ci:local
-   ```
+    ```bash
+    npm run ci:local
+    ```
 4. Read through the detailed [contributor guide](./CONTRIBUTING.md) for workflow expectations, helpful scripts, and documentation requirements.
 
 The [Development](#development) section later in this document highlights the most frequently used scripts if you need a quick refresher.

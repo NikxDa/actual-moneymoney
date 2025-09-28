@@ -1,143 +1,143 @@
 # yaml-language-server: $schema=https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
-language: "en-GB"
+language: 'en-GB'
 enable_free_tier: true
 early_access: true
 reviews:
-  profile: assertive
-  request_changes_workflow: true
-  high_level_summary: true
-  poem: false
-  review_status: false
-  sequence_diagrams: false
-  collapse_walkthrough: false
-  finishing_touches:
-    docstrings:
-      enabled: false
-    unit_tests:
-      enabled: false
-  auto_review:
-    enabled: true
-    ignore_title_keywords:
-      - "WIP"
-      - "DO NOT MERGE"
-      - "SWEEP"
-    drafts: false
-    base_branches:
-      - main
-      - "^release/.*$"
-      - develop
-  path_instructions:
-    - path: "*"
-      instructions: |
-        All character sets need to be in UTF-8.
-        Lines need to end with LF (line feed).
-        Spaces need to be utilized for indentation instead of tabs.
-        A newline must be inserted at the end of the file.
-        Trim all trailing whitespaces.
-        Ensure that lines align visually.
-        Maximum line length must be 120 characters.
-        Avoid multiple consecutive blank lines in code; keep the ones needed for readability.
-        Indents on empty lines should not be maintained.
-        Spaces after commas are required.
-        Ensure spaces are present around all operators.
-        Avoid space before comma.
-        Leftover TODOs in the code should be handled.
-        Remove any console.log statements.
-        Docstring coverage is not tracked in this repository. Do not request or enforce docstring coverage metrics in reviews.
-        Name Test Files Descriptively: Adopt the .spec.ts extension and maintain a corresponding filename to the source file being tested, and place the test files in the same directory as your source code to ensure that new code is being tested promptly.
-        Describe what Your Test Cases Cover: Use understandable and clear language for both the describe and it blocks to specify what function is being tested and what the expected outcome is.
-        Cover One Aspect in Each Test: While writing tests, make sure each test covers only one aspect of the functionality. Multiple assertions can be made but they should be testing the same thing.
-        Ensure Test Cases Are Independent: Write tests that are independent and can be executed in any order. Each test should not rely on other tests.
-        Avoid Duplication of Logic in Tests: Keep your tests DRY (Don't Repeat Yourself) but don't over abstract that it makes the tests hard to understand or follow.
-        Perform Testing for Edge Cases: Write separate tests for edge cases where the function behaves differently.
-        Focus on Functionality, not Implementation: Verify the functionality provided by the code, not its internal implementation, while testing.
-        Mock External Dependencies: Mock out external modules and dependencies to ensure each test is isolated
-        Use beforeEach and afterEach for test Setup and Cleanup.
-        Ensure Self-Documenting Code: Aim to make your code self-explanatory through clear naming and structure. The less time a developer has to spend understanding the code, the better.
-        Follow the YAGNI Principle: 'You aren't gonna need it' is a principle that prevents developers from adding functionality until it is necessary. This can help keep your codebase lean and simple.
-        Externalizing User-visible Strings: Ensuring all user-facing texts (such as messages, labels, and instructions) are sourced from external resource files. This makes it easier to update or translate them without having to modify the codebase.
-        Avoiding Concatenation of Translated Strings: Concatenation might change the meaning of a sentence when it is translated to another language due to differences in grammar or sentence structure. Instead, use  templates or positional parameters.
-    - path: "**/*.ts"
-      instructions: |
-        In Typescript files, continuation indent size needs to be 4 spaces.
-        Multiline array initializer expressions in Typescript must not be aligned.
-        Binary operations in Typescript across multiple lines should not be aligned.
-        Multiline chained methods in Typescript should not be aligned.
-        Extends lists in Typescript across multiple lines should not be aligned.
-        For loops in Typescript across multiple lines should be aligned.
-        Parameters in Typescript across multiple lines should be aligned.
-        Calls in Typescript across multiple lines should not be aligned.
-        Multiline ternary operations in Typescript should not be aligned.
-        Object properties and var statements in Typescript should not be aligned.
-        Binary operation signs in Typescript need to be placed on the next line.
-        Insert blank lines after imports and around classes, functions, and methods in Typescript.
-        For 'if' and 'for loops' in Typescript, always use braces.
-        Avoid placing 'catch' parentheses on a new line in Typescript.
-        In Typescript, place the chained call dot on a new line.
-        Remove trailing comma in Typescript.
-        Union types, binary operations, ternary operations, and var declarations in Typescript need to be wrapped on every item.
-        Binary operations, call parameters, for statements, imports, method parameters, object literals, object types, and union types need to be split into lines when wrapped in Typescript.
-        Spaces after colons, optional parameters, and generator mults are required in Typescript.
-        Spaces should not be utilized within parentheses but should be utilized within object literal braces in Typescript.
-        Spaces need to be utilized within array initializer brackets in Typescript.
-        Explicit types for vars fields, function returns, and function expression returns in TypeScript need to be set.
-        Space before async arrow left parentheses in TypeScript is required.
-        Space before function left parentheses and class left brace in Typescript is desirable.
-        Prefer 'AS' for type casting in TypeScript.
-        Space is required before method call parentheses in TypeScript.
-        Space before Method Left Brace needs to be utilized in Typescript.
-        Space before Switch Parentheses is necessary in Typescript.
-        Space before Catch Left Brace is required in Typescript.
-        Utilize space before Catch Parentheses in Typescript.
-        Space before Catch Keyword is necessary in Typescript.
-        Make sure to use space before ASync Arrow LeftParen in TypeScript.
-        Make sure to use space before Type Colon in TypeScript.
-        Avoid space before Property Colon in TypeScript.
-        Utilize the space before Colon in TypeScript.
-        Always prefer 'import type' over 'import' when importing in TypeScript.
-        Always use 'public' modifier in TypeScript.
-        Always use property prefix.
-        Adopt the camelCase convention for naming functions. Ensure the names are clear and descriptive of the function's purpose.
-        Enforce Single Responsibility Principle for every function. Make sure each function performs one task only.
-        Maintain brevity for functions. Limit each function to about 10-20 lines.
-        Avoid using too many input parameters for functions. Try to limit input arguments to 3-4. If there are more, consider passing an object.
-        Apply early exits in functions. If a function fails to meet its purpose due to unsatisfied inputs, ensure it returns or throws an error early.
-        Avoid side effects within functions. Don't let a function modify any states or objects beyond its scope, it should only depend on input arguments to produce its output.
-        Implement descriptive variable names within functions.
-        Address potential errors with measures such as try/catch blocks, error returns, or error callback functions.
-        If you observe any repeated code, create a new function. If a function becomes too complex, decompose it into smaller ones.
-        Use PascalCase convention for naming classes. Make sure that the names are clear, relevant, and communicate the object's purpose.
-        Adhere to the Single Responsibility Principle. Each class should have one responsibility or task.
-        Encapsulate data that changes for the same reasons. Variables that are often changed together should be placed in the same class to improve data hiding and cohesion.
-        Implement encapsulation and data hiding. Keep instance variables protected and expose a minimal necessary interface to the outside world.
-        Write methods that operate on an instance's variables. Try to minimize the number of methods that access instance variables of other classes.
-        Ensure classes are immutable wherever possible. An immutable object remains the same across its entire lifecycle, improving readability and runtime efficiency.
-        Use meaningful, descriptive variable and method names. This makes your classes more readable and self-explanatory.
-        Provide a clear, public API for your classes. It should be clear what methods can be called, what parameters they require, and what they will return.
-        Prefer composition over inheritance. Composition provides better flexibility over inheritance. Avoid deep inheritance trees.
-        Prefer explicit types over implicit types: Wherever possible, explicitly define the type of variables. This makes the code more readable and robust to changes.
-        Use PascalCase for type names: Conventional in many programming communities, PascalCase ensures your types are easily distinguished.
-        Avoid using any type: The any type is a powerful tool in TypeScript for working with dynamic content, but regular use can undermine the benefits of type safety.
-        Use the unknown type for truly unknown types: If you're not sure what type a variable will be, use unknown rather than any. This forces you to do type-checking before performing any actions on the variable.
-        Use type guards for runtime type-checking: Type guards are a way to check the type of an object within a conditional statement. Use these to ensure your code is working with the correct types.
-        Create reusable type definitions: If the same type structure is used in multiple places, create a type definition for it.
-        Use interface to describe object structure: TypeScript's interface keyword allows for powerful OOP techniques.
-        Use type aliases for complex or compound types: If a type involves unions, intersections, or other complex structures, use a type alias to simplify.
-        Arrays and objects should have types defined: Array items and Object properties must have their types clearly defined.
-    - path: "**/*.json"
-      instructions: |
-        Indent size for JSON files needs to be 2.
-        In JSON, an array wrapping needs to be split into lines.
-        Trailing commas in JSON need to be removed.
-        Object wrapping in JSON needs to be split into lines.
-        Avoid alignment of properties in JSON.
-        Space needs to be introduced after colon and comma in JSON.
-        Do not introduce space before colon or comma in JSON.
+    profile: assertive
+    request_changes_workflow: true
+    high_level_summary: true
+    poem: false
+    review_status: false
+    sequence_diagrams: false
+    collapse_walkthrough: false
+    finishing_touches:
+        docstrings:
+            enabled: false
+        unit_tests:
+            enabled: false
+    auto_review:
+        enabled: true
+        ignore_title_keywords:
+            - 'WIP'
+            - 'DO NOT MERGE'
+            - 'SWEEP'
+        drafts: false
+        base_branches:
+            - main
+            - '^release/.*$'
+            - develop
+    path_instructions:
+        - path: '*'
+          instructions: |
+              All character sets need to be in UTF-8.
+              Lines need to end with LF (line feed).
+              Spaces need to be utilized for indentation instead of tabs.
+              A newline must be inserted at the end of the file.
+              Trim all trailing whitespaces.
+              Ensure that lines align visually.
+              Maximum line length must be 120 characters.
+              Avoid multiple consecutive blank lines in code; keep the ones needed for readability.
+              Indents on empty lines should not be maintained.
+              Spaces after commas are required.
+              Ensure spaces are present around all operators.
+              Avoid space before comma.
+              Leftover TODOs in the code should be handled.
+              Remove any console.log statements.
+              Docstring coverage is not tracked in this repository. Do not request or enforce docstring coverage metrics in reviews.
+              Name Test Files Descriptively: Adopt the .spec.ts extension and maintain a corresponding filename to the source file being tested, and place the test files in the same directory as your source code to ensure that new code is being tested promptly.
+              Describe what Your Test Cases Cover: Use understandable and clear language for both the describe and it blocks to specify what function is being tested and what the expected outcome is.
+              Cover One Aspect in Each Test: While writing tests, make sure each test covers only one aspect of the functionality. Multiple assertions can be made but they should be testing the same thing.
+              Ensure Test Cases Are Independent: Write tests that are independent and can be executed in any order. Each test should not rely on other tests.
+              Avoid Duplication of Logic in Tests: Keep your tests DRY (Don't Repeat Yourself) but don't over abstract that it makes the tests hard to understand or follow.
+              Perform Testing for Edge Cases: Write separate tests for edge cases where the function behaves differently.
+              Focus on Functionality, not Implementation: Verify the functionality provided by the code, not its internal implementation, while testing.
+              Mock External Dependencies: Mock out external modules and dependencies to ensure each test is isolated
+              Use beforeEach and afterEach for test Setup and Cleanup.
+              Ensure Self-Documenting Code: Aim to make your code self-explanatory through clear naming and structure. The less time a developer has to spend understanding the code, the better.
+              Follow the YAGNI Principle: 'You aren't gonna need it' is a principle that prevents developers from adding functionality until it is necessary. This can help keep your codebase lean and simple.
+              Externalizing User-visible Strings: Ensuring all user-facing texts (such as messages, labels, and instructions) are sourced from external resource files. This makes it easier to update or translate them without having to modify the codebase.
+              Avoiding Concatenation of Translated Strings: Concatenation might change the meaning of a sentence when it is translated to another language due to differences in grammar or sentence structure. Instead, use  templates or positional parameters.
+        - path: '**/*.ts'
+          instructions: |
+              In Typescript files, continuation indent size needs to be 4 spaces.
+              Multiline array initializer expressions in Typescript must not be aligned.
+              Binary operations in Typescript across multiple lines should not be aligned.
+              Multiline chained methods in Typescript should not be aligned.
+              Extends lists in Typescript across multiple lines should not be aligned.
+              For loops in Typescript across multiple lines should be aligned.
+              Parameters in Typescript across multiple lines should be aligned.
+              Calls in Typescript across multiple lines should not be aligned.
+              Multiline ternary operations in Typescript should not be aligned.
+              Object properties and var statements in Typescript should not be aligned.
+              Binary operation signs in Typescript need to be placed on the next line.
+              Insert blank lines after imports and around classes, functions, and methods in Typescript.
+              For 'if' and 'for loops' in Typescript, always use braces.
+              Avoid placing 'catch' parentheses on a new line in Typescript.
+              In Typescript, place the chained call dot on a new line.
+              Remove trailing comma in Typescript.
+              Union types, binary operations, ternary operations, and var declarations in Typescript need to be wrapped on every item.
+              Binary operations, call parameters, for statements, imports, method parameters, object literals, object types, and union types need to be split into lines when wrapped in Typescript.
+              Spaces after colons, optional parameters, and generator mults are required in Typescript.
+              Spaces should not be utilized within parentheses but should be utilized within object literal braces in Typescript.
+              Spaces need to be utilized within array initializer brackets in Typescript.
+              Explicit types for vars fields, function returns, and function expression returns in TypeScript need to be set.
+              Space before async arrow left parentheses in TypeScript is required.
+              Space before function left parentheses and class left brace in Typescript is desirable.
+              Prefer 'AS' for type casting in TypeScript.
+              Space is required before method call parentheses in TypeScript.
+              Space before Method Left Brace needs to be utilized in Typescript.
+              Space before Switch Parentheses is necessary in Typescript.
+              Space before Catch Left Brace is required in Typescript.
+              Utilize space before Catch Parentheses in Typescript.
+              Space before Catch Keyword is necessary in Typescript.
+              Make sure to use space before ASync Arrow LeftParen in TypeScript.
+              Make sure to use space before Type Colon in TypeScript.
+              Avoid space before Property Colon in TypeScript.
+              Utilize the space before Colon in TypeScript.
+              Always prefer 'import type' over 'import' when importing in TypeScript.
+              Always use 'public' modifier in TypeScript.
+              Always use property prefix.
+              Adopt the camelCase convention for naming functions. Ensure the names are clear and descriptive of the function's purpose.
+              Enforce Single Responsibility Principle for every function. Make sure each function performs one task only.
+              Maintain brevity for functions. Limit each function to about 10-20 lines.
+              Avoid using too many input parameters for functions. Try to limit input arguments to 3-4. If there are more, consider passing an object.
+              Apply early exits in functions. If a function fails to meet its purpose due to unsatisfied inputs, ensure it returns or throws an error early.
+              Avoid side effects within functions. Don't let a function modify any states or objects beyond its scope, it should only depend on input arguments to produce its output.
+              Implement descriptive variable names within functions.
+              Address potential errors with measures such as try/catch blocks, error returns, or error callback functions.
+              If you observe any repeated code, create a new function. If a function becomes too complex, decompose it into smaller ones.
+              Use PascalCase convention for naming classes. Make sure that the names are clear, relevant, and communicate the object's purpose.
+              Adhere to the Single Responsibility Principle. Each class should have one responsibility or task.
+              Encapsulate data that changes for the same reasons. Variables that are often changed together should be placed in the same class to improve data hiding and cohesion.
+              Implement encapsulation and data hiding. Keep instance variables protected and expose a minimal necessary interface to the outside world.
+              Write methods that operate on an instance's variables. Try to minimize the number of methods that access instance variables of other classes.
+              Ensure classes are immutable wherever possible. An immutable object remains the same across its entire lifecycle, improving readability and runtime efficiency.
+              Use meaningful, descriptive variable and method names. This makes your classes more readable and self-explanatory.
+              Provide a clear, public API for your classes. It should be clear what methods can be called, what parameters they require, and what they will return.
+              Prefer composition over inheritance. Composition provides better flexibility over inheritance. Avoid deep inheritance trees.
+              Prefer explicit types over implicit types: Wherever possible, explicitly define the type of variables. This makes the code more readable and robust to changes.
+              Use PascalCase for type names: Conventional in many programming communities, PascalCase ensures your types are easily distinguished.
+              Avoid using any type: The any type is a powerful tool in TypeScript for working with dynamic content, but regular use can undermine the benefits of type safety.
+              Use the unknown type for truly unknown types: If you're not sure what type a variable will be, use unknown rather than any. This forces you to do type-checking before performing any actions on the variable.
+              Use type guards for runtime type-checking: Type guards are a way to check the type of an object within a conditional statement. Use these to ensure your code is working with the correct types.
+              Create reusable type definitions: If the same type structure is used in multiple places, create a type definition for it.
+              Use interface to describe object structure: TypeScript's interface keyword allows for powerful OOP techniques.
+              Use type aliases for complex or compound types: If a type involves unions, intersections, or other complex structures, use a type alias to simplify.
+              Arrays and objects should have types defined: Array items and Object properties must have their types clearly defined.
+        - path: '**/*.json'
+          instructions: |
+              Indent size for JSON files needs to be 2.
+              In JSON, an array wrapping needs to be split into lines.
+              Trailing commas in JSON need to be removed.
+              Object wrapping in JSON needs to be split into lines.
+              Avoid alignment of properties in JSON.
+              Space needs to be introduced after colon and comma in JSON.
+              Do not introduce space before colon or comma in JSON.
 chat:
-  auto_reply: true
+    auto_reply: true
 knowledge_base:
-  code_guidelines:
-    enabled: true
-    filePatterns:
-      - "**/AGENTS.md"
-      - "CONTRIBUTING.md"
+    code_guidelines:
+        enabled: true
+        filePatterns:
+            - '**/AGENTS.md'
+            - 'CONTRIBUTING.md'

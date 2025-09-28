@@ -4,8 +4,8 @@
 
 - `src/index.ts` initialises the CLI, ensures the application data directory exists, and registers command modules.
 - Global options:
-  - `--config` allows an alternative TOML configuration path.
-  - `--logLevel` controls the `Logger` verbosity (0-3).
+    - `--config` allows an alternative TOML configuration path.
+    - `--logLevel` controls the `Logger` verbosity (0-3).
 - The parser uses `.fail()` to surface yargs validation errors as real `Error` instances. Preserve this behaviour when adding new options.
 
 ## Command modules (`src/commands/`)
@@ -24,10 +24,10 @@
 - Require at least one Actual server in the configuration and surface missing server/budget filters with explicit errors.
 - Before importing, call `checkDatabaseUnlocked()` from `moneymoney` and fail fast if the database is locked.
 - For each selected server/budget combination:
-  - Create an `ActualApi` instance, call `init()`, then `loadBudget()` before performing any work, and always `shutdown()` inside a `finally` block.
-  - Build an `AccountMap` and load it up front via `loadFromConfig()`.
-  - Instantiate `Importer` with the resolved config, budget, API, logger, account map, and optional `PayeeTransformer` (only when `config.payeeTransformation.enabled` is true).
-  - Pass `isDryRun` through to `Importer.importTransactions()`; the importer is responsible for enforcing the dry-run logic.
+    - Create an `ActualApi` instance, call `init()`, then `loadBudget()` before performing any work, and always `shutdown()` inside a `finally` block.
+    - Build an `AccountMap` and load it up front via `loadFromConfig()`.
+    - Instantiate `Importer` with the resolved config, budget, API, logger, account map, and optional `PayeeTransformer` (only when `config.payeeTransformation.enabled` is true).
+    - Pass `isDryRun` through to `Importer.importTransactions()`; the importer is responsible for enforcing the dry-run logic.
 
 ### `validate.command.ts`
 
@@ -47,9 +47,9 @@
 ### `shared.ts`
 
 - Exposes reusable constants:
-  - `DATE_FORMAT` (`yyyy-MM-dd`) used by commands and importer.
-  - `APPLICATION_DIRECTORY`, `DEFAULT_DATA_DIR`, and `DEFAULT_CONFIG_FILE` for filesystem paths.
-  - `EXAMPLE_CONFIG` string used by the `validate` command. Update it whenever the configuration schema evolves.
+    - `DATE_FORMAT` (`yyyy-MM-dd`) used by commands and importer.
+    - `APPLICATION_DIRECTORY`, `DEFAULT_DATA_DIR`, and `DEFAULT_CONFIG_FILE` for filesystem paths.
+    - `EXAMPLE_CONFIG` string used by the `validate` command. Update it whenever the configuration schema evolves.
 
 ### `Logger.ts`
 
@@ -74,9 +74,9 @@
 
 - Orchestrates fetching MoneyMoney transactions, filtering them, and pushing new entries into Actual.
 - Respect budget-level settings:
-  - `earliestImportDate` acts as a floor for import range.
-  - `config.import.importUncheckedTransactions` and `synchronizeClearedStatus` govern which transactions are processed and how clear flags are handled.
-  - `config.import.ignorePatterns` contains optional regex lists for comments, payees, and purposes; cache compiled regexes in `patternCache`.
+    - `earliestImportDate` acts as a floor for import range.
+    - `config.import.importUncheckedTransactions` and `synchronizeClearedStatus` govern which transactions are processed and how clear flags are handled.
+    - `config.import.ignorePatterns` contains optional regex lists for comments, payees, and purposes; cache compiled regexes in `patternCache`.
 - Build Actual transactions with the correct identifiers so duplicates can be detected (`imported_id` is derived from MoneyMoney data). A synthetic starting balance transaction is created when the Actual account has no history; preserve this behaviour.
 - Honour dry-run mode by skipping `ActualApi.importTransactions()` and logging that no changes were made.
 
@@ -102,4 +102,3 @@
 
 - Add or update Vitest coverage in `tests/` whenever changing behaviour, prioritising the most important execution paths. There is no requirement to chase 100% coverage—lean suites that guard critical flows are preferred over exhaustive maintenance burdens.
 - Use `vi.mock()` to isolate external services (`@actual-app/api`, `moneymoney`, `openai`) and prefer per-test resets via `beforeEach`/`afterEach`.
-

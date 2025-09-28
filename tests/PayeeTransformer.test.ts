@@ -20,7 +20,9 @@ class MockOpenAI {
         },
     };
 
-    constructor(public readonly options: { apiKey: string; timeout?: number }) {}
+    constructor(
+        public readonly options: { apiKey: string; timeout?: number }
+    ) {}
 }
 
 vi.mock('openai', () => ({
@@ -30,9 +32,9 @@ vi.mock('openai', () => ({
 let dataDir: string;
 
 vi.mock('../src/utils/shared.js', async () => {
-    const actual = await vi.importActual<typeof import('../src/utils/shared.js')>(
-        '../src/utils/shared.js'
-    );
+    const actual = await vi.importActual<
+        typeof import('../src/utils/shared.js')
+    >('../src/utils/shared.js');
 
     return {
         ...actual,
@@ -49,7 +51,7 @@ const createLogger = () =>
         warn: vi.fn(),
         error: vi.fn(),
         getLevel: () => LogLevel.DEBUG,
-    } as unknown as Logger);
+    }) as unknown as Logger;
 
 const importTransformer = async () => {
     const module = await import('../src/utils/PayeeTransformer.js');
@@ -60,33 +62,32 @@ beforeEach(async () => {
     listMock.mockReset();
     createMock.mockReset();
 
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actual-moneymoney-test-'));
+    dataDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'actual-moneymoney-test-')
+    );
 
-    createMock.mockImplementation(async (config: {
-        messages: Array<{ content: string }>;
-    }) => {
-        const userMessage = config.messages[1]?.content ?? '';
-        const payees = userMessage.split('\n').filter(Boolean);
-        const result = Object.fromEntries(
-            payees.map((payee) => [payee, `${payee}-normalized`])
-        );
+    createMock.mockImplementation(
+        async (config: { messages: Array<{ content: string }> }) => {
+            const userMessage = config.messages[1]?.content ?? '';
+            const payees = userMessage.split('\n').filter(Boolean);
+            const result = Object.fromEntries(
+                payees.map((payee) => [payee, `${payee}-normalized`])
+            );
 
-        return {
-            choices: [
-                {
-                    message: {
-                        content: JSON.stringify(result),
+            return {
+                choices: [
+                    {
+                        message: {
+                            content: JSON.stringify(result),
+                        },
                     },
-                },
-            ],
-        };
-    });
+                ],
+            };
+        }
+    );
 
     listMock.mockResolvedValue({
-        data: [
-            { id: 'gpt-3.5-turbo' },
-            { id: 'gpt-4o-mini' },
-        ],
+        data: [{ id: 'gpt-3.5-turbo' }, { id: 'gpt-4o-mini' }],
     });
 });
 
@@ -111,7 +112,9 @@ describe('PayeeTransformer', () => {
 
         const result = await transformer.transformPayees(['Example Vendor']);
 
-        expect(result).toEqual({ 'Example Vendor': 'Example Vendor-normalized' });
+        expect(result).toEqual({
+            'Example Vendor': 'Example Vendor-normalized',
+        });
         expect(listMock).not.toHaveBeenCalled();
         expect(createMock).toHaveBeenCalledTimes(1);
     });

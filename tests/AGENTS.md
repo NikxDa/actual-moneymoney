@@ -4,10 +4,10 @@
 
 - Vitest powers the automated tests. Run the full suite with `npm test` (configured as `vitest run`).
 - Tests live under `tests/` and mirror the structure of `src/`:
-  - `ActualApi.test.ts` covers timeout handling, console suppression, and the lifecycle of the Actual API wrapper.
-  - `Importer.test.ts` verifies MoneyMoney transaction filtering, deduplication, and dry-run behaviour.
-  - `PayeeTransformer.test.ts` exercises OpenAI integration, caching, and logging safeguards.
-  - `config.test.ts` validates the Zod schema, earliest import date parsing, and encryption requirements.
+    - `ActualApi.test.ts` covers timeout handling, console suppression, and the lifecycle of the Actual API wrapper.
+    - `Importer.test.ts` verifies MoneyMoney transaction filtering, deduplication, and dry-run behaviour.
+    - `PayeeTransformer.test.ts` exercises OpenAI integration, caching, and logging safeguards.
+    - `config.test.ts` validates the Zod schema, earliest import date parsing, and encryption requirements.
 
 ## Writing and maintaining tests
 

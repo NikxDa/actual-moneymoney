@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 type ResolveContext = {
     readonly conditions?: readonly string[];
     readonly parentURL?: string;
@@ -15,7 +12,7 @@ type ResolveResult = {
 type ResolveHook = (
     specifier: string,
     context: ResolveContext,
-    defaultResolve: ResolveHook,
+    defaultResolve: ResolveHook
 ) => Promise<ResolveResult>;
 
 type LoadContext = {
@@ -32,7 +29,7 @@ type LoadResult = {
 type LoadHook = (
     url: string,
     context: LoadContext,
-    defaultLoad: LoadHook,
+    defaultLoad: LoadHook
 ) => Promise<LoadResult>;
 
 const MOCK_URL_PREFIX = 'cli-mock://';
@@ -375,7 +372,7 @@ export async function checkDatabaseUnlocked() {
 export const resolve: ResolveHook = async (
     specifier,
     context,
-    defaultResolve,
+    defaultResolve
 ) => {
     if (specifier === 'moneymoney') {
         return { url: moneyMoneyUrl, shortCircuit: true };
