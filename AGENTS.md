@@ -76,3 +76,6 @@ surprises.
 - Start messages with a valid **type** (e.g., `feat`, `fix`, `docs`, `chore`)
   followed by an imperative subject (e.g., `fix: add budget syncing retries`).
 - Keep the subject under 72 characters and avoid ending it with a period.
+- Husky runs `npx --no commitlint --edit "$1"` via the `commit-msg` hook to
+  enforce the format locally. If the hook blocks a commit, fix the message and
+  recommit rather than bypassing the hook.
