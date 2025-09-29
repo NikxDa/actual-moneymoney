@@ -490,7 +490,13 @@ password = ""
             expect(debugSpy).toHaveBeenCalledTimes(1);
             expect(debugSpy).toHaveBeenCalledWith(
                 'Using default configuration values for 2 entries.',
-                ['first.path: true', 'second.path: value', '  extra context']
+                [
+                    'Path: first.path',
+                    'Value: true',
+                    'Path: second.path',
+                    'Value: value',
+                    '  extra context',
+                ]
             );
         } finally {
             debugSpy.mockRestore();

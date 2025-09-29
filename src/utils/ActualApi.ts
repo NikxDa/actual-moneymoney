@@ -567,6 +567,13 @@ class ActualApi {
                         downloadRootDir
                     ));
 
+                if (initialResolution) {
+                    this.logResolvedBudgetDirectory(
+                        initialResolution,
+                        budgetConfig.syncId
+                    );
+                }
+
                 const finalRootDir = path.dirname(resolvedBudget.directory);
 
                 await this.ensureBudgetDirectoryAccessible(
@@ -640,7 +647,9 @@ class ActualApi {
         rootDir: string
     ): Promise<BudgetDirectoryResolution | null> {
         try {
-            return await this.resolveBudgetDataDir(syncId, rootDir);
+            return await this.resolveBudgetDataDir(syncId, rootDir, {
+                logResolution: false,
+            });
         } catch (error) {
             if (this.shouldRetryBudgetLoad(error)) {
                 return null;
@@ -902,10 +911,28 @@ class ActualApi {
         };
     }
 
+    private logResolvedBudgetDirectory(
+        resolution: BudgetDirectoryResolution,
+        syncId: string
+    ): void {
+        const directoryName = path.basename(resolution.directory);
+        const hints = [
+            `Metadata path: ${resolution.metadataPath}`,
+            `Local budget ID: ${resolution.metadata.id}`,
+        ];
+
+        this.logger.debug(
+            `Using budget directory: ${directoryName} for syncId ${syncId}`,
+            hints
+        );
+    }
+
     private async resolveBudgetDataDir(
         syncId: string,
-        rootDir?: string
+        rootDir?: string,
+        options?: { logResolution?: boolean }
     ): Promise<BudgetDirectoryResolution> {
+        const { logResolution = true } = options ?? {};
         const actualDataDir =
             rootDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
 
@@ -990,15 +1017,15 @@ class ActualApi {
                     id,
                     groupId,
                 };
-                this.logger.debug(
-                    `Using budget directory: ${entry.name} for syncId ${syncId}`,
-                    [`Metadata path: ${metadataPath}`, `Local budget ID: ${id}`]
-                );
-                return {
+                const resolution: BudgetDirectoryResolution = {
                     directory: resolvedDir,
                     metadata,
                     metadataPath,
                 };
+                if (logResolution) {
+                    this.logResolvedBudgetDirectory(resolution, syncId);
+                }
+                return resolution;
             } catch (error) {
                 const maybeErrno = error as NodeJS.ErrnoException | undefined;
                 if (

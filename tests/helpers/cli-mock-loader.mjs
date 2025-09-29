@@ -161,8 +161,9 @@ export function logDefaultedConfigDecisions(logger, decisions) {
             decision && typeof decision.path === 'string'
                 ? decision.path
                 : String(decision?.path ?? '<unknown>');
+        aggregatedHints.push('Path: ' + pathValue);
         aggregatedHints.push(
-            pathValue + ': ' + formatMockDefaultValue(decision?.value)
+            'Value: ' + formatMockDefaultValue(decision?.value)
         );
         const hintLines = normaliseHints(decision?.hints).map((hint) =>
             '  ' + String(hint)

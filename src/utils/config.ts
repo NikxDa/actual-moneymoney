@@ -258,9 +258,12 @@ export const logDefaultedConfigDecisions = (
 
     const aggregatedHints: string[] = [];
     for (const decision of decisions) {
-        aggregatedHints.push(
-            `${decision.path}: ${formatDefaultValue(decision.value)}`
-        );
+        const pathValue =
+            typeof decision.path === 'string'
+                ? decision.path
+                : String(decision.path ?? '<unknown>');
+        aggregatedHints.push(`Path: ${pathValue}`);
+        aggregatedHints.push(`Value: ${formatDefaultValue(decision.value)}`);
         for (const hint of decision.hints ?? []) {
             aggregatedHints.push(`  ${hint}`);
         }
