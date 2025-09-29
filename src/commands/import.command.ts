@@ -121,8 +121,12 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                 await actualApi.loadBudget(budgetConfig.syncId);
 
                 logger.debug(`Loading accounts...`);
-                const accountMap = new AccountMap(budgetConfig, logger, actualApi);
-                await accountMap.loadFromConfig();
+                const accountMap = new AccountMap(
+                    budgetConfig,
+                    logger,
+                    actualApi
+                );
+                await accountMap.loadFromConfig({ accountRefs });
 
                 const importer = new Importer(config, budgetConfig, actualApi, logger, accountMap, payeeTransformer);
 

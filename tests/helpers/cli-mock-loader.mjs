@@ -207,10 +207,13 @@ export class AccountMap {
         });
     }
 
-    async loadFromConfig() {
+    async loadFromConfig(options = {}) {
         recordEvent({
             type: 'AccountMap#loadFromConfig',
             budgetSyncId: this.budgetConfig.syncId,
+            accountRefs: Array.isArray(options.accountRefs)
+                ? [...options.accountRefs]
+                : options.accountRefs ?? null,
         });
         const context = readContext();
         const failure = context.accountMap?.failures?.[this.budgetConfig.syncId];

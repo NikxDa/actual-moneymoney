@@ -334,6 +334,82 @@ describe('import command (CLI)', () => {
     );
 
     it(
+        'fails with an actionable error when account mapping cannot be resolved',
+        async () => {
+            const failureMessage =
+                "Failed to resolve account mapping for budget 'budget-broken'. MoneyMoney account reference 'missing-account' did not match any MoneyMoney accounts.";
+            const config = {
+                ...createBaseConfig(),
+                actualServers: [
+                    {
+                        serverUrl: 'https://server-broken.example.com',
+                        serverPassword: 'secret-broken',
+                        requestTimeoutMs: 45000,
+                        budgets: [
+                            {
+                                syncId: 'budget-broken',
+                                e2eEncryption: { enabled: false, password: '' },
+                                accountMapping: {
+                                    'missing-account': 'actual-present',
+                                },
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const { contextDir, eventsFile } = await createContextDir({
+                config,
+                accountMap: {
+                    failures: {
+                        'budget-broken': failureMessage,
+                    },
+                },
+            });
+
+            const result = await runCli(['import'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+            });
+
+            expect(result.exitCode).toBe(1);
+            expect(result.stderr).toContain(failureMessage);
+
+            const events = await readEvents(eventsFile);
+            const accountMapEvents = events.filter(
+                (event) => event.type === 'AccountMap#loadFromConfig'
+            );
+            expect(accountMapEvents).toEqual([
+                {
+                    type: 'AccountMap#loadFromConfig',
+                    budgetSyncId: 'budget-broken',
+                    accountRefs: null,
+                },
+            ]);
+
+            const importerEvents = events.filter(
+                (event) => event.type === 'Importer#importTransactions'
+            );
+            expect(importerEvents).toHaveLength(0);
+
+            const shutdownEvents = events.filter(
+                (event) => event.type === 'ActualApi#shutdown'
+            );
+            expect(shutdownEvents).toEqual([
+                {
+                    type: 'ActualApi#shutdown',
+                    serverUrl: 'https://server-broken.example.com',
+                },
+            ]);
+        },
+        CLI_TIMEOUT_MS
+    );
+
+    it(
         'fails with a helpful error when account filters are unknown',
         async () => {
             const config = {

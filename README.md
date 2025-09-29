@@ -328,8 +328,10 @@ Account mapping connects MoneyMoney accounts to Actual Budget accounts:
 1. UUID (from browser URL)
 1. Account name
 
-If multiple accounts have the same name, the first match will be used. Invalid
-mappings or additional accounts are ignored.
+If multiple accounts have the same name, the first match will be used. When an
+import runs without account filters, any mapping that cannot be resolved will
+fail the run so you can fix the configuration instead of importing a partial
+set of accounts.
 
 ## Troubleshooting
 
@@ -340,7 +342,9 @@ mappings or additional accounts are ignored.
 1. **Import failures**: Check your server URLs, passwords, and sync IDs
 1. **Payee transformation not working**: Verify your OpenAI API key and model
    settings
-1. **Account mapping issues**: Ensure account names/IDs match exactly
+1. **Account mapping issues**: Ensure account names/IDs match exactly. The
+   importer fails fast when a configured mapping cannot be resolved during an
+   unconstrained import.
 
 ### Getting Help
 

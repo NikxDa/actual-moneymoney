@@ -13,6 +13,10 @@ interface ActualAccount {
     closed: boolean;
 }
 
+interface LoadFromConfigOptions {
+    readonly accountRefs?: ReadonlyArray<string>;
+}
+
 export class AccountMap {
     constructor(
         private budgetConfig: ActualBudgetConfig,
@@ -94,11 +98,17 @@ export class AccountMap {
         return matchingAccounts[0];
     }
 
-    public async loadFromConfig() {
+    public async loadFromConfig(options: LoadFromConfigOptions = {}) {
         if (this.mapping) return;
 
         const accountMapping = this.budgetConfig.accountMapping;
         const parsedAccountMapping: Map<MonMonAccount, ActualAccount> = new Map();
+
+        const accountRefsFilter =
+            options.accountRefs && options.accountRefs.length > 0
+                ? new Set(options.accountRefs)
+                : null;
+        const unresolvedErrors: string[] = [];
 
         this.moneyMoneyAccounts = await getAccounts();
         this.logger.debug(`Found ${this.moneyMoneyAccounts.length} accounts in MoneyMoney.`);
@@ -113,11 +123,37 @@ export class AccountMap {
 
             const actualAccount = this.getActualAccountByRef(actualRef);
 
+            const requiresResolution =
+                accountRefsFilter === null ||
+                accountRefsFilter.has(moneyMoneyRef);
+
+            if (!moneyMoneyAccount) {
+                const message = `MoneyMoney account reference '${moneyMoneyRef}' did not match any MoneyMoney accounts.`;
+
+                if (requiresResolution) {
+                    this.logger.error(message);
+                    unresolvedErrors.push(message);
+                } else {
+                    this.logger.debug(
+                        `Skipping account mapping for MoneyMoney reference '${moneyMoneyRef}' because it is not part of the import filter.`
+                    );
+                }
+            }
+
             if (!actualAccount) {
-                this.logger.debug(`No Actual account found for reference '${actualRef}'. Skipping...`);
-                continue;
-            } else if (!moneyMoneyAccount) {
-                this.logger.debug(`No MoneyMoney account found for reference '${moneyMoneyRef}'. Skipping...`);
+                const message = `Actual account reference '${actualRef}' did not match any Actual accounts.`;
+
+                if (requiresResolution) {
+                    this.logger.error(message);
+                    unresolvedErrors.push(message);
+                } else {
+                    this.logger.debug(
+                        `Skipping account mapping for Actual reference '${actualRef}' because it is not part of the import filter.`
+                    );
+                }
+            }
+
+            if (!moneyMoneyAccount || !actualAccount) {
                 continue;
             }
 
@@ -126,6 +162,15 @@ export class AccountMap {
             );
 
             parsedAccountMapping.set(moneyMoneyAccount, actualAccount);
+        }
+
+        if (unresolvedErrors.length > 0) {
+            const header = `Failed to resolve account mapping for budget '${this.budgetConfig.syncId}'.`;
+            const details =
+                unresolvedErrors.length === 1
+                    ? ` ${unresolvedErrors[0]}`
+                    : `\n - ${unresolvedErrors.join('\n - ')}`;
+            throw new Error(`${header}${details}`);
         }
 
         this.logger.info('Parsed account mapping', [
