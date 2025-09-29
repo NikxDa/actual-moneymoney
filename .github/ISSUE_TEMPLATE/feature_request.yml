@@ -1,0 +1,66 @@
+name: 'Feature request'
+description: 'Request an enhancement or a new capability.'
+title: 'feat: <short summary>'
+labels:
+    - enhancement
+    - needs-triage
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Help the CodeRabbit maintainers understand why this idea matters by completing the prompts below.
+    - type: checkboxes
+      id: vetting
+      attributes:
+          label: Pre-flight checklist
+          description: Before you submit, please confirm the following.
+          options:
+              - label: I have searched existing issues (including closed ones) to avoid duplicates.
+                required: true
+              - label: I have validated that the request aligns with Actual MoneyMoney's scope and the CodeRabbit roadmap notes.
+                required: true
+    - type: textarea
+      id: summary
+      attributes:
+          label: Summary
+          description: Provide a concise description of the problem you want to solve.
+          placeholder: 'As a user importing multiple accounts, I want...'
+      validations:
+          required: true
+    - type: textarea
+      id: motivation
+      attributes:
+          label: Motivation
+          description: What pain point or workflow gap does this feature address? Why now? Share any CodeRabbit triage notes if you have them.
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed solution
+          description: Describe the behaviour you would like to see. Include CLI syntax, configuration, or UX ideas if applicable so CodeRabbit can evaluate effort.
+          placeholder: |-
+              - New command `actual-moneymoney sync --watch`
+              - Configuration toggle `watch = true`
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: List other approaches you evaluated and why they are not sufficient.
+    - type: textarea
+      id: scope
+      attributes:
+          label: Definition of done
+          description: What observable outcomes should signal that this request is complete? This helps the maintainers craft better plans.
+    - type: textarea
+      id: risks
+      attributes:
+          label: Risks or open questions
+          description: Call out any uncertainty, technical risks, or dependencies we should consider. Mention anything CodeRabbit reviewers should watch for during implementation.
+    - type: textarea
+      id: extra
+      attributes:
+          label: Additional context
+          description: Add mock-ups, metrics, or references that support your request.
