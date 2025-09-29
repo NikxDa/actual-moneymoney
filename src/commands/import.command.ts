@@ -1,4 +1,4 @@
-import { parse } from 'date-fns';
+import { parse, startOfDay, endOfDay } from 'date-fns';
 import { checkDatabaseUnlocked } from 'moneymoney';
 import type { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { AccountMap } from '../utils/AccountMap.js';
@@ -31,8 +31,12 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const isDryRun = Boolean(argv['dry-run'] ?? argv.dryRun);
-    const fromDate = argv.from ? parse(argv.from as string, DATE_FORMAT, new Date()) : undefined;
-    const toDate = argv.to ? parse(argv.to as string, DATE_FORMAT, new Date()) : undefined;
+    const fromDate = argv.from
+        ? startOfDay(parse(argv.from as string, DATE_FORMAT, new Date(0)))
+        : undefined;
+    const toDate = argv.to
+        ? endOfDay(parse(argv.to as string, DATE_FORMAT, new Date(0)))
+        : undefined;
     const server = argv.server as string | Array<string> | undefined;
     const account = argv.account as string | Array<string> | undefined;
     const budget = argv.budget as string | Array<string> | undefined;

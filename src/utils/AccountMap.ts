@@ -60,8 +60,13 @@ export class AccountMap {
         return customMap;
     }
 
-    private checkMoneyMoneyAccountRef(account: MonMonAccount, ref: string) {
-        return account.uuid === ref || account.accountNumber === ref || account.name === ref;
+    private checkMoneyMoneyAccountRef(account: MonMonAccount, ref: string): boolean {
+        const r = String(ref).trim();
+        return (
+            String(account.uuid ?? '').trim() === r ||
+            String(account.accountNumber ?? '').trim() === r ||
+            String(account.name ?? '').trim() === r
+        );
     }
 
     public getMoneyMoneyAccountByRef(ref: string) {
@@ -101,22 +106,31 @@ export class AccountMap {
     public async loadFromConfig(options: LoadFromConfigOptions = {}) {
         if (this.mapping) return;
 
-        const accountMapping = this.budgetConfig.accountMapping;
+        const accountMapping = this.budgetConfig.accountMapping ?? {};
+        if (typeof accountMapping !== 'object' || accountMapping === null) {
+            throw new Error(
+                'Invalid budget configuration: accountMapping must be an object like { moneyMoneyRef: actualRef }.'
+            );
+        }
         const parsedAccountMapping: Map<MonMonAccount, ActualAccount> = new Map();
 
         const accountRefsFilter =
             options.accountRefs && options.accountRefs.length > 0 ? new Set(options.accountRefs) : null;
         const unresolvedErrors: string[] = [];
 
-        this.moneyMoneyAccounts = await getAccounts();
+        const [moneyMoneyAccounts, actualAccounts] = await Promise.all([
+            getAccounts(),
+            this.actualApi.getAccounts(),
+        ]);
+        this.moneyMoneyAccounts = moneyMoneyAccounts;
         this.logger.debug(`Found ${this.moneyMoneyAccounts.length} accounts in MoneyMoney.`);
-
-        this.actualAccounts = await this.actualApi.getAccounts();
+        this.actualAccounts = actualAccounts as Array<ActualAccount>;
         this.logger.debug(`Found ${this.actualAccounts.length} accounts in Actual.`);
 
-        this.logger.debug(`Account mapping contains ${Object.entries(accountMapping).length} entries.`);
+        const entries = Object.entries(accountMapping as Record<string, string>);
+        this.logger.debug(`Account mapping contains ${entries.length} entries.`);
 
-        for (const [moneyMoneyRef, actualRef] of Object.entries(accountMapping)) {
+        for (const [moneyMoneyRef, actualRef] of entries) {
             const moneyMoneyAccount = this.getMoneyMoneyAccountByRef(moneyMoneyRef);
 
             const actualAccount = this.getActualAccountByRef(actualRef);

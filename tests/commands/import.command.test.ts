@@ -70,6 +70,10 @@ async function readEvents(eventsFile: string): Promise<RecordedEvent[]> {
         .map((line) => JSON.parse(line) as RecordedEvent);
 }
 
+function byType(type: string) {
+    return (event: RecordedEvent) => event.type === type;
+}
+
 function createBaseConfig() {
     return {
         payeeTransformation: {
@@ -164,7 +168,7 @@ describe('import command (CLI)', () => {
             );
 
             const events = await readEvents(eventsFile);
-            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
+            const importerEvents = events.filter(byType('Importer#importTransactions'));
             expect(importerEvents).toEqual([
                 {
                     type: 'Importer#importTransactions',
@@ -172,7 +176,7 @@ describe('import command (CLI)', () => {
                     options: {
                         accountRefs: ['acct-a2'],
                         from: '2024-01-01T00:00:00.000Z',
-                        to: '2024-01-31T00:00:00.000Z',
+                        to: '2024-01-31T23:59:59.999Z',
                         isDryRun: true,
                     },
                 },
@@ -307,7 +311,7 @@ describe('import command (CLI)', () => {
             expect(result.stderr).toContain(failureMessage);
 
             const events = await readEvents(eventsFile);
-            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
+            const importerEvents = events.filter(byType('Importer#importTransactions'));
             expect(importerEvents).toEqual([
                 {
                     type: 'Importer#importTransactions',
@@ -322,7 +326,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
+            const shutdownEvents = events.filter(byType('ActualApi#shutdown'));
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',
@@ -389,10 +393,10 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
+            const importerEvents = events.filter(byType('Importer#importTransactions'));
             expect(importerEvents).toHaveLength(0);
 
-            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
+            const shutdownEvents = events.filter(byType('ActualApi#shutdown'));
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',
@@ -445,7 +449,7 @@ describe('import command (CLI)', () => {
             expect(result.stderr).toContain('Unknown account reference: unknown-account');
 
             const events = await readEvents(eventsFile);
-            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
+            const shutdownEvents = events.filter(byType('ActualApi#shutdown'));
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',
@@ -453,7 +457,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
+            const importerEvents = events.filter(byType('Importer#importTransactions'));
             expect(importerEvents).toHaveLength(1);
             expect(importerEvents[0]).toMatchObject({
                 error: 'Unknown account reference: unknown-account',
