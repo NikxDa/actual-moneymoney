@@ -20,7 +20,7 @@
 | Order | Epic | State | Notes |
 | --- | --- | --- | --- |
 | 1 | **Epic 4 – CLI usability and coverage** | ✅ Done | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
-| 2 | **Epic 2 – Importer determinism and guard rails** | 🚧 In progress (Story 2.3) | CLI coverage is in place and Stories 2.1–2.2 shipped; finishing the mapping failure guards in Story 2.3 will give downstream refactors a predictable foundation. |
+| 2 | **Epic 2 – Importer determinism and guard rails** | ✅ Done | CLI coverage and mapping failure guards ship together, so imports now fail fast when configuration drifts instead of proceeding with partial coverage. |
 | 3 | **Epic 6 – Testing & reliability** | ✅ Done | Error-path fixtures, malformed export guards, and structured logging are complete, keeping the CLI observable and resilient under test. |
 | 4 | **Epic 8 – Code quality and maintainability** | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
 | 5 | **Epic 5 – Observability and developer experience** | ✅ Done | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
@@ -116,19 +116,19 @@
 ### Story 2.3 – Fail imports when account mapping resolution breaks
 
 - **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `AccountMap.loadFromConfig` logs and skips unresolved
-  mappings rather than failing fast, so `import` can proceed silently with
-  partial coverage.
-- **Next Steps:**
-  - Make `loadFromConfig` throw when either side of a configured mapping cannot
-    be resolved during an unconstrained import.
-  - Add CLI-level tests (`tests/commands`) to assert the surfaced error message
-    when mappings fail.
-  - Document the failure mode in the README/backlog so operators know to fix
-    configuration.
-- **Key Files:** `src/utils/AccountMap.ts`,
-  `tests/commands/import.command.test.ts` (new).
+- **Status:** ✅ Done
+- **Outcome:** `AccountMap.loadFromConfig` now fails fast when configured
+  MoneyMoney or Actual references cannot be resolved during an unconstrained
+  import, while filtered runs can still skip unrelated mappings without
+  aborting work.
+- **Evidence:** Unit coverage in `tests/AccountMap.test.ts` asserts the failure
+  messaging and filtered behaviour; CLI integration coverage in
+  `tests/commands/import.command.test.ts` verifies the surfaced error message
+  and shutdown flow.
+- **Key Files:** `src/utils/AccountMap.ts`, `tests/AccountMap.test.ts`,
+  `tests/commands/import.command.test.ts`, `README.md`.
+- **Future Work:** None; configuration drift now halts imports with actionable
+  guidance.
 
 ## Epic 3: Payee transformer resilience
 

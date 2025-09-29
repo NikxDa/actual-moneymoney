@@ -165,7 +165,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                     logger,
                     actualApi
                 );
-                await accountMap.loadFromConfig();
+                await accountMap.loadFromConfig({ accountRefs });
 
                 const importer = new Importer(
                     config,
