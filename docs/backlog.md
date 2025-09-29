@@ -413,206 +413,192 @@ end-to-end CLI tests being available.
 
 ## Epic 8: Code quality and maintainability
 
-- **Epic Assessment:** 🚧 Not started. High-complexity hotspots like
-  `Importer.importTransactions` and `ActualApi.runActualRequest` remain brittle;
-  executing these refactors will reduce risk before layering roadmap features.
+- **Epic Assessment:** 🚧 Not started. Analysis reveals several high-complexity hotspots that need refactoring:
+  - `Importer.importTransactions` (298 lines) mixes multiple concerns in a monolithic method
+  - `ActualApi.runActualRequest` (94 lines) handles timeout orchestration, console patching, and error handling
+  - `import.command.ts` (91 lines) tightly couples CLI parsing, validation, and orchestration
+  - Error handling is fragmented across modules with inconsistent patterns
+  - Budget resolution logic is well-implemented but not reusable
+  Executing these refactors will significantly improve maintainability and reduce risk before adding roadmap features.
 
 ### Story 8.1 – Refactor retry/resolution logic into reusable helpers
 
 - **Complexity:** 8 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** Budget directory resolution and retry logic live inline
-  within `ActualApi`, making reuse difficult across commands.
+- **Current Behaviour:** Budget directory resolution logic is implemented in `ActualApi.resolveBudgetDataDir()` with defensive error handling and structured debug logs. The resolver scans `metadata.json` files and provides clear error messages when no `syncId` match is found. However, this logic is tightly coupled within `ActualApi` and not easily reusable across other commands.
+- **Assessment:** The resolution logic is well-implemented with good error handling, but it's not modularized for reuse. The current implementation includes proper logging, error surfacing, and defensive programming, but lacks the abstraction needed for broader reuse.
 - **Next Steps:**
-  - Audit resolution touchpoints and design a helper API (likely in
-    `src/utils/`) with strong typings.
-  - Update importer/CLI callers to use the helper, adding regression tests for
-    success and failure flows.
-  - Document helper usage and update ADR/backlog notes accordingly.
-- **Key Files:** `src/utils/ActualApi.ts`, `src/utils/shared.ts`,
-  `tests/ActualApi.test.ts`, docs.
+  - Extract `resolveBudgetDataDir` logic into a standalone utility in `src/utils/`
+  - Create a reusable `BudgetResolver` class with dependency injection for logger
+  - Update `ActualApi` to use the new resolver while maintaining current behavior
+  - Add unit tests for the resolver independent of `ActualApi`
+- **Key Files:** `src/utils/ActualApi.ts` (lines 128-200), `tests/ActualApi.test.ts`, future `src/utils/BudgetResolver.ts`
 
 #### Task 8.1a – Draft helper API
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Capture configuration inputs/outputs and edge cases before
-  refactoring existing code.
+- **Notes:** Design `BudgetResolver` interface with clear inputs/outputs and error handling patterns.
 
 #### Task 8.1b – Adopt helper across callers
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Update importer and CLI modules, ensuring tests cover the
-  refactored logic.
+- **Notes:** Refactor `ActualApi` to use `BudgetResolver` and ensure CLI commands can use it directly.
 
 #### Task 8.1c – Document helper usage
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Update documentation/ADR once helper is established.
+- **Notes:** Document the resolver API and usage patterns for future commands.
 
 ### Story 8.2 – Consolidate API error handling into a single class
 
 - **Complexity:** 8 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** PostError and HTTP errors are handled ad hoc across
-  modules, producing inconsistent messaging.
+- **Current Behaviour:** Error handling is implemented across multiple modules with different patterns:
+  - `ActualApi` has `getFriendlyErrorMessage()` for HTTP status mapping and `createErrorWithCause()` for error wrapping
+  - `PayeeTransformer` has specific OpenAI API error handling with status code mapping (401, 403, 429, 500, 502, 503, 504)
+  - `config.ts` has Zod validation error formatting with path-based error messages
+  - `validate.command.ts` has TOML parsing and Zod error handling
+- **Assessment:** Error handling is functional but fragmented. Each module implements its own error formatting and user-friendly messaging. There's no unified error hierarchy, making it difficult to maintain consistent error experiences across the application.
 - **Next Steps:**
-  - Define a unified error class encapsulating HTTP status, Actual error
-    metadata, and user-facing messages.
-  - Migrate CLI and logger usage to consume the new class, updating tests
-    accordingly.
-  - Document the hierarchy for future contributors.
-- **Key Files:** `src/utils/ActualApi.ts`, `src/commands/import.command.ts`,
-  `tests/ActualApi.test.ts`.
+  - Design a unified `ApiError` class that encapsulates HTTP status, error metadata, and user-facing messages
+  - Create error factories for common scenarios (network errors, validation errors, API errors)
+  - Migrate existing error handling to use the unified class while preserving current user experience
+  - Add structured error logging with consistent metadata
+- **Key Files:** `src/utils/ActualApi.ts` (lines 222-263), `src/utils/PayeeTransformer.ts` (lines 432-467), `src/utils/config.ts` (lines 242-266), `tests/ActualApi.test.ts`
 
 #### Task 8.2a – Define consolidated error shape
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Capture required fields (status code, reason, hint) and provide
-  helper constructors.
+- **Notes:** Create `ApiError` base class with HTTP status, error codes, user messages, and debug metadata.
 
 #### Task 8.2b – Update consumers to use the new error class
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Refactor command modules, logger, and tests to leverage the unified
-  error handling.
+- **Notes:** Refactor `ActualApi`, `PayeeTransformer`, and config modules to use unified error handling.
 
 #### Task 8.2c – Document the new error hierarchy
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Add guidance to README/CONTRIBUTING for extending the error
-  handling pattern.
+- **Notes:** Document error handling patterns and provide examples for future contributors.
 
 ### Story 8.3 – Decompose `Importer.importTransactions` into staged pipelines
 
 - **Complexity:** 13 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** `Importer.importTransactions` orchestrates fetching,
-  filtering, mapping, and reconciliation in a single ~200 line method. The mix
-  of async calls, logging, and state mutation makes it hard to reason about edge
-  cases (e.g., dry-run, unchecked filters, synthetic balances) and increases
-  regression risk when adding features like off-budget sync.
+- **Current Behaviour:** `Importer.importTransactions` is a monolithic 298-line method that orchestrates the entire import process:
+  - Date resolution and earliest import date handling
+  - MoneyMoney API fetching with timing metrics
+  - Transaction sorting by `valueDate` with deterministic tie-breaker
+  - Unchecked transaction filtering and ignore pattern matching
+  - Account grouping and transaction conversion
+  - Starting balance calculation and deduplication
+  - Payee transformation with AI integration
+  - Dry-run vs live mode handling
+- **Assessment:** The method is well-tested (14 comprehensive test cases) but has high complexity due to mixing concerns. The current implementation handles edge cases well but is difficult to extend for new features like category translation or off-budget sync. The method has good logging and error handling but lacks modularity.
 - **Next Steps:**
-  - Map the responsibilities into discrete stages (fetch, filter, transform,
-    reconcile, persist) and design composable helpers to isolate concerns.
-  - Move pattern matching and transaction conversion into reusable modules with
-    targeted unit tests so future changes (e.g., category translation) have
-    narrow blast radius.
-  - Add high-level integration coverage to ensure stage ordering remains correct
-    and dry-run/real modes share behaviour except for side effects.
-- **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`, future CLI
-  integration tests.
+  - Design a pipeline architecture with discrete stages: Fetch → Filter → Group → Transform → Reconcile → Persist
+  - Extract each stage into focused modules with clear interfaces and unit tests
+  - Create a `TransactionImportPipeline` orchestrator that composes stages
+  - Maintain existing behavior while enabling easier testing and extension
+- **Key Files:** `src/utils/Importer.ts` (lines 25-298), `tests/Importer.test.ts` (14 test cases), future pipeline modules
 
 #### Task 8.3a – Define importer stage interfaces
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Document inputs/outputs for each stage and capture sequencing
-  requirements (e.g., filtering before conversion) to guide refactor.
+- **Notes:** Design TypeScript interfaces for each pipeline stage with clear input/output contracts.
 
 #### Task 8.3b – Extract filtering and transformation helpers
 
 - **Complexity:** 5 pts
 - **Status:** ⬜ Not started
-- **Notes:** Implement new modules/functions for ignore pattern filtering and
-  MoneyMoney → Actual transformation with focussed tests.
+- **Notes:** Create `TransactionFetcher`, `TransactionFilter`, `TransactionConverter`, and `TransactionReconciler` modules.
 
 #### Task 8.3c – Introduce orchestration tests for dry-run vs. live modes
 
 - **Complexity:** 5 pts
 - **Status:** ⬜ Not started
-- **Notes:** Add Vitest suites (and future CLI harness coverage) asserting both
-  modes pass identical transaction batches to the API while only live mode
-  mutates data.
+- **Notes:** Add integration tests ensuring both modes produce identical transaction batches while only live mode persists data.
 
 ### Story 8.4 – Simplify `ActualApi.runActualRequest` timeout handling
 
 - **Complexity:** 8 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** The request wrapper coordinates timeouts, console
-  patching, shutdown recovery, and friendly errors within one function. Nested
-  promises and manual state resets are difficult to test, and regressions could
-  leave the Actual client initialised incorrectly after timeouts.
+- **Current Behaviour:** `runActualRequest` is a complex 94-line method that handles multiple concerns:
+  - Timeout orchestration with configurable timeouts and fallback values
+  - Console patching to suppress Actual SDK noise with depth tracking
+  - Shutdown recovery with recursive timeout handling
+  - Error translation and friendly messaging
+  - State management for initialization flags and data directory tracking
+- **Assessment:** The method is functional but has high complexity due to mixing timeout logic, console management, and error handling. The current implementation includes good error recovery and console noise suppression, but the nested promises and manual state management make it difficult to test and maintain.
 - **Next Steps:**
-  - Break timeout orchestration, console suppression, and error translation into
-    dedicated utilities with deterministic unit tests.
-  - Add targeted tests that simulate slow responses and thrown errors to confirm
-    data dir state and logger output stay consistent.
-  - Document extension points so new API operations reuse the simplified flow
-    without duplicating timeout logic.
-- **Key Files:** `src/utils/ActualApi.ts`, `tests/ActualApi.test.ts`.
+  - Extract `ConsolePatcher` utility for noise suppression with clear lifecycle management
+  - Create `TimeoutManager` for timeout orchestration and shutdown recovery
+  - Simplify `runActualRequest` to compose these utilities with clear error boundaries
+  - Add comprehensive tests for timeout scenarios and state management
+- **Key Files:** `src/utils/ActualApi.ts` (lines 265-358), `tests/ActualApi.test.ts`, future utility modules
 
 #### Task 8.4a – Extract console patching & logging utilities
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Provide a helper that installs/removes console shims with
-  predictable lifecycle hooks for tests.
+- **Notes:** Create `ConsolePatcher` class with `patch()` and `unpatch()` methods and depth tracking.
 
 #### Task 8.4b – Add timeout and shutdown resilience tests
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Use fake timers/mocks to assert that timeouts clear, shutdown is
-  attempted once, and state flags reset on failure.
+- **Notes:** Add tests for timeout scenarios, shutdown recovery, and state consistency using fake timers.
 
 #### Task 8.4c – Refactor run wrapper to compose helpers
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Replace inline logic with the new helpers and update call sites to
-  simplify future maintenance.
+- **Notes:** Simplify `runActualRequest` to use the new utilities while maintaining current behavior.
 
 ### Story 8.5 – Modularise CLI import orchestration
 
 - **Complexity:** 8 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** `handleCommand` inside `src/commands/import.command.ts`
-  wires configuration parsing, validation, MoneyMoney checks, Actual session
-  lifecycle, and nested server/budget loops in one function. The mixture of data
-  shaping, error messaging, and control-flow flags (`dry-run`, filters) makes it
-  brittle to extend (e.g., adding multi-budget sync telemetry) and difficult to
-  test without duplicating setup in each scenario.
+- **Current Behaviour:** `handleCommand` in `import.command.ts` is a 91-line function that orchestrates the entire CLI import process:
+  - Configuration loading with default decision logging
+  - PayeeTransformer initialization based on config
+  - MoneyMoney database access validation
+  - Server and budget filtering with validation
+  - Nested server/budget processing loops
+  - Date parsing and validation
+  - Error handling and logging coordination
+- **Assessment:** The CLI orchestration is functional but tightly coupled. The current implementation has good error handling and validation, but the mixed concerns (parsing, validation, orchestration) make it difficult to test individual components and extend with new features like telemetry or multi-budget sync.
 - **Next Steps:**
-  - Extract pure helpers for parsing CLI filters, validating configuration
-    selections, and iterating over servers/budgets so they can be unit tested
-    independently.
-  - Introduce higher-level orchestration that composes the helpers and
-    coordinates lifecycle logging, keeping the command handler thin.
-  - Backfill Vitest coverage for the new helpers plus CLI harness tests (after
-    Story 4.1) to confirm dry-run, filter, and failure messaging remain
-    unchanged.
-- **Key Files:** `src/commands/import.command.ts`,
-  `tests/commands/import.command.test.ts` (new helpers), `tests/helpers/cli.ts`
-  (once harness exists).
+  - Extract `CliFilterParser` for server/budget/account/date parsing with validation
+  - Create `ImportOrchestrator` for server/budget iteration and lifecycle management
+  - Simplify `handleCommand` to focus on CLI concerns while delegating to orchestrator
+  - Add unit tests for parsing helpers and integration tests for orchestration
+- **Key Files:** `src/commands/import.command.ts` (lines 157-225), `tests/commands/import.command.test.ts` (5 CLI tests), future orchestration modules
 
 #### Task 8.5a – Extract filter parsing & validation helpers
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Move server/budget/account/date parsing into dedicated utilities
-  with explicit error messages and add unit tests covering invalid inputs.
+- **Notes:** Create `CliFilterParser` with methods for date parsing, server filtering, and budget validation.
 
 #### Task 8.5b – Introduce lifecycle orchestration wrapper
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Implement a coordinator that iterates servers/budgets, instantiates
-  dependencies, and handles shutdown with structured logging so the command
-  handler delegates to it.
+- **Notes:** Create `ImportOrchestrator` that handles server/budget iteration, dependency injection, and lifecycle logging.
 
 #### Task 8.5c – Cover CLI flows with new helpers
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Add targeted Vitest suites (and future CLI harness tests) verifying
-  dry-run messaging, filter combinations, and shutdown resilience using the
-  refactored helpers.
+- **Notes:** Add unit tests for parsing helpers and integration tests for orchestration scenarios.
 
 ## Epic 9: Integration and tooling
 
