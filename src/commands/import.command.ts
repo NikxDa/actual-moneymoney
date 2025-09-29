@@ -113,7 +113,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             continue;
         }
 
-        logger.debug('Creating Actual API instance...', { serverUrl: serverConfig.serverUrl });
+        logger.debug(`Creating Actual API instance... Server: ${serverConfig.serverUrl}`);
         const actualApi = new ActualApi(serverConfig, logger);
 
         try {
@@ -121,7 +121,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             await actualApi.init();
 
             for (const budgetConfig of budgetsToProcess) {
-                logger.debug('Loading budget...', { budget: budgetConfig.syncId });
+                logger.debug(`Loading budget... Budget: ${budgetConfig.syncId}`);
                 await actualApi.loadBudget(budgetConfig.syncId);
 
                 logger.debug(`Loading accounts...`);
@@ -131,11 +131,11 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                 const importer = new Importer(config, budgetConfig, actualApi, logger, accountMap, payeeTransformer);
 
                 if (isDryRun) {
-                    logger.info('DRY RUN MODE - Importing transactions (no changes will be made)...', {
-                        budget: budgetConfig.syncId,
-                    });
+                    logger.info(
+                        `DRY RUN MODE - Importing transactions (no changes will be made)... Budget: ${budgetConfig.syncId}`
+                    );
                 } else {
-                    logger.info('Importing transactions...', { budget: budgetConfig.syncId });
+                    logger.info(`Importing transactions... Budget: ${budgetConfig.syncId}`);
                 }
 
                 await importer.importTransactions({
@@ -147,7 +147,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             }
         } finally {
             try {
-                logger.debug('Shutting down Actual API instance...', { serverUrl: serverConfig.serverUrl });
+                logger.debug(`Shutting down Actual API instance... Server: ${serverConfig.serverUrl}`);
                 await actualApi.shutdown();
             } catch (error) {
                 logger.warn(

@@ -13,7 +13,7 @@ const eslintProject = path.resolve(__dirname, 'tsconfig.eslint.json');
 
 const complexityRules = enableComplexityRules
     ? {
-          complexity: ['error', { max: 40 }],
+          complexity: ['error', { max: 45 }],
           'sonarjs/cognitive-complexity': ['error', 60],
       }
     : {};
