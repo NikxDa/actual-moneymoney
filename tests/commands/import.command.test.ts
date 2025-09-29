@@ -182,7 +182,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const loadEvents = events.filter((event) => event.type === 'ActualApi#loadBudget');
+            const loadEvents = events.filter(byType('ActualApi#loadBudget'));
             expect(loadEvents).toEqual([
                 {
                     type: 'ActualApi#loadBudget',
@@ -384,7 +384,7 @@ describe('import command (CLI)', () => {
             expect(result.stderr).toContain(failureMessage);
 
             const events = await readEvents(eventsFile);
-            const accountMapEvents = events.filter((event) => event.type === 'AccountMap#loadFromConfig');
+            const accountMapEvents = events.filter(byType('AccountMap#loadFromConfig'));
             expect(accountMapEvents).toEqual([
                 {
                     type: 'AccountMap#loadFromConfig',

@@ -118,10 +118,7 @@ export class AccountMap {
             options.accountRefs && options.accountRefs.length > 0 ? new Set(options.accountRefs) : null;
         const unresolvedErrors: string[] = [];
 
-        const [moneyMoneyAccounts, actualAccounts] = await Promise.all([
-            getAccounts(),
-            this.actualApi.getAccounts(),
-        ]);
+        const [moneyMoneyAccounts, actualAccounts] = await Promise.all([getAccounts(), this.actualApi.getAccounts()]);
         this.moneyMoneyAccounts = moneyMoneyAccounts;
         this.logger.debug(`Found ${this.moneyMoneyAccounts.length} accounts in MoneyMoney.`);
         this.actualAccounts = actualAccounts as Array<ActualAccount>;

@@ -31,12 +31,8 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const isDryRun = Boolean(argv['dry-run'] ?? argv.dryRun);
-    const fromDate = argv.from
-        ? startOfDay(parse(argv.from as string, DATE_FORMAT, new Date(0)))
-        : undefined;
-    const toDate = argv.to
-        ? endOfDay(parse(argv.to as string, DATE_FORMAT, new Date(0)))
-        : undefined;
+    const fromDate = argv.from ? startOfDay(parse(argv.from as string, DATE_FORMAT, new Date(0))) : undefined;
+    const toDate = argv.to ? endOfDay(parse(argv.to as string, DATE_FORMAT, new Date(0))) : undefined;
     const server = argv.server as string | Array<string> | undefined;
     const account = argv.account as string | Array<string> | undefined;
     const budget = argv.budget as string | Array<string> | undefined;
