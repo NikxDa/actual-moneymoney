@@ -261,7 +261,8 @@ export const loadConfig = async (argv: ArgumentsCamelCase): Promise<LoadedConfig
             throw new Error(`Invalid configuration: ${formattedIssues}`);
         }
 
-        throw new Error(`Invalid configuration file format. Run 'validate' to see errors.`);
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(`Invalid configuration file format: ${msg}. Run 'validate' to see errors.`);
     }
 };
 

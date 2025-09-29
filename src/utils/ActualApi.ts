@@ -602,7 +602,11 @@ class ActualApi {
         }
 
         if (!metadata.id || metadata.groupId !== syncId) {
-            throw new Error(`Budget metadata for syncId '${syncId}' is invalid or mismatched`);
+            const observedGroup = metadata.groupId ?? '(missing)';
+            const observedId = metadata.id ?? '(missing)';
+            throw new Error(
+                `Budget metadata mismatch: expected groupId '${syncId}', got '${observedGroup}' (id='${observedId}').`
+            );
         }
     }
 

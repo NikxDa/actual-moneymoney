@@ -208,9 +208,10 @@ class Importer {
                 );
 
                 const startTime = Date.now();
-                const transactionPayees = createTransactions.map((t) => t.imported_payee as string);
+                const transactionPayees = createTransactions.map((t) => String(t.imported_payee ?? ''));
+                const uniquePayees = Array.from(new Set(transactionPayees));
 
-                const transformedPayees = await this.payeeTransformer.transformPayees(transactionPayees);
+                const transformedPayees = await this.payeeTransformer.transformPayees(uniquePayees);
 
                 const endTime = Date.now();
                 this.logger.debug(`Payee transformation completed in ${endTime - startTime}ms`);
@@ -222,7 +223,7 @@ class Importer {
                         const newPayee = transformedPayees[originalPayee];
 
                         // Use original payee name if transformation is undefined, null, or "Unknown"
-                        t.payee_name = newPayee && newPayee !== 'Unknown' ? newPayee : originalPayee;
+                        t.payee_name = newPayee && newPayee.toLowerCase() !== 'unknown' ? newPayee : originalPayee;
                     });
                     this.logger.debug(`Payee transformation completed successfully.`);
                 } else {

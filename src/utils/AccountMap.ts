@@ -4,14 +4,8 @@ import ActualApi from './ActualApi.js';
 import type { ActualBudgetConfig } from './config.js';
 import Logger from './Logger.js';
 
-// Define the Actual Account interface based on the types
-interface ActualAccount {
-    id: string;
-    name: string;
-    type: 'checking' | 'savings' | 'credit' | 'investment' | 'mortgage' | 'debt' | 'other';
-    offbudget: boolean;
-    closed: boolean;
-}
+// Use the return type of ActualApi.getAccounts() to get the canonical Account type
+type ActualAccount = Awaited<ReturnType<ActualApi['getAccounts']>>[number];
 
 interface LoadFromConfigOptions {
     readonly accountRefs?: ReadonlyArray<string>;

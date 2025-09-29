@@ -60,8 +60,11 @@ beforeEach(async () => {
 
     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actual-moneymoney-test-'));
 
-    createMock.mockImplementation(async (config: { messages: Array<{ content: string }> }) => {
-        const userMessage = config.messages[1]?.content ?? '';
+    createMock.mockImplementation(async (config: { messages: Array<{ role?: string; content: string }> }) => {
+        const userMessage =
+            [...config.messages].reverse().find((m) => (m as { role?: string }).role === 'user')?.content ??
+            config.messages.at(-1)?.content ??
+            '';
         const payees = userMessage.split('\n').filter(Boolean);
         const result = Object.fromEntries(payees.map((payee) => [payee, `${payee}-normalized`]));
 

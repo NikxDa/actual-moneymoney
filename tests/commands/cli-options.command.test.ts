@@ -28,6 +28,19 @@ const expectedInvalidLogLevelMessage = `--logLevel must be a finite number. Valu
 
 const tmpPrefix = path.join(os.tmpdir(), 'actual-monmon-cli-options-');
 
+// Helper function to reduce boilerplate in CLI tests
+const buildRunCliOptions = (contextDir: string, eventsFile: string, overrides: Record<string, unknown> = {}) => ({
+    env: {
+        CLI_TEST_CONTEXT_DIR: contextDir,
+        CLI_TEST_EVENTS_FILE: eventsFile,
+        NODE_NO_WARNINGS: '1',
+        ...overrides.env,
+    },
+    nodeOptions: loaderNodeOptions,
+    timeoutMs: CLI_TIMEOUT_MS,
+    ...overrides,
+});
+
 const activeTempDirs: string[] = [];
 
 afterEach(async () => {
@@ -103,15 +116,10 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(['import', '--dry-run', '--logLevel', '99'], {
-                env: {
-                    CLI_TEST_CONTEXT_DIR: contextDir,
-                    CLI_TEST_EVENTS_FILE: eventsFile,
-                    NODE_NO_WARNINGS: '1',
-                },
-                nodeOptions: loaderNodeOptions,
-                timeoutMs: CLI_TIMEOUT_MS,
-            });
+            const result = await runCli(
+                ['import', '--dry-run', '--logLevel', '99'],
+                buildRunCliOptions(contextDir, eventsFile)
+            );
 
             expect(result.exitCode).toBe(0);
 

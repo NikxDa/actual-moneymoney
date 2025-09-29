@@ -54,6 +54,10 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         throw new Error(`Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`);
     }
 
+    if (fromDate && toDate && fromDate > toDate) {
+        throw new Error(`The 'from' date must be on or before the 'to' date.`);
+    }
+
     try {
         logger.debug(`Checking MoneyMoney database access...`);
         const isUnlocked = await checkDatabaseUnlocked();
@@ -109,7 +113,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             continue;
         }
 
-        logger.debug(`Creating Actual API instance...`, [`Server URL: ${serverConfig.serverUrl}`]);
+        logger.debug('Creating Actual API instance...', { serverUrl: serverConfig.serverUrl });
         const actualApi = new ActualApi(serverConfig, logger);
 
         try {
@@ -117,7 +121,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             await actualApi.init();
 
             for (const budgetConfig of budgetsToProcess) {
-                logger.debug(`Loading budget...`, `Budget: ${budgetConfig.syncId}`);
+                logger.debug('Loading budget...', { budget: budgetConfig.syncId });
                 await actualApi.loadBudget(budgetConfig.syncId);
 
                 logger.debug(`Loading accounts...`);
@@ -127,12 +131,11 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                 const importer = new Importer(config, budgetConfig, actualApi, logger, accountMap, payeeTransformer);
 
                 if (isDryRun) {
-                    logger.info(
-                        `DRY RUN MODE - Importing transactions (no changes will be made)...`,
-                        `Budget: ${budgetConfig.syncId}`
-                    );
+                    logger.info('DRY RUN MODE - Importing transactions (no changes will be made)...', {
+                        budget: budgetConfig.syncId,
+                    });
                 } else {
-                    logger.info(`Importing transactions...`, `Budget: ${budgetConfig.syncId}`);
+                    logger.info('Importing transactions...', { budget: budgetConfig.syncId });
                 }
 
                 await importer.importTransactions({
@@ -144,7 +147,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             }
         } finally {
             try {
-                logger.debug(`Shutting down Actual API instance...`, `Server URL: ${serverConfig.serverUrl}`);
+                logger.debug('Shutting down Actual API instance...', { serverUrl: serverConfig.serverUrl });
                 await actualApi.shutdown();
             } catch (error) {
                 logger.warn(
@@ -169,11 +172,11 @@ export default {
                 describe: 'Do not import data',
             })
             .alias('dry-run', 'dryRun')
-            .string('server')
+            .array('server')
             .describe('server', 'Import only budgets configured for the specified Actual server URL')
-            .string('account')
+            .array('account')
             .describe('account', 'Import only transactions from the specified MoneyMoney account identifier')
-            .string('budget')
+            .array('budget')
             .describe('budget', 'Import only to the specified Actual budget identifier')
             .string('from')
             .describe('from', `Import transactions on or after this date (${DATE_FORMAT})`)

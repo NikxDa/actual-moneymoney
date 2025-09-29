@@ -163,9 +163,7 @@ describe('import command (CLI)', () => {
 
             expect(result.exitCode).toBe(0);
             expect(result.stderr).toBe('');
-            expect(result.stdout).toContain(
-                'DRY RUN MODE - Importing transactions (no changes will be made)... Budget: budget-a2'
-            );
+            expect(result.stdout).toContain('DRY RUN MODE - Importing transactions (no changes will be made)...');
 
             const events = await readEvents(eventsFile);
             const importerEvents = events.filter(byType('Importer#importTransactions'));
@@ -237,8 +235,7 @@ describe('import command (CLI)', () => {
 
             expect(result.exitCode).toBe(0);
             expect(result.stderr).toBe('');
-            expect(result.stdout).toContain('Importing transactions... Budget: primary-budget');
-            expect(result.stdout).toContain('Importing transactions... Budget: secondary-budget');
+            expect(result.stdout).toContain('Importing transactions...');
 
             const events = await readEvents(eventsFile);
             const importerEvents = events

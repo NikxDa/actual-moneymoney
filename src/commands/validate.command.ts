@@ -77,10 +77,17 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                 logger.error(`Code ${issue.code} at path [${issuePath}]: ${issue.message}`);
             }
         } else if (e instanceof Error && e.name === 'SyntaxError') {
-            const line = 'line' in e ? e.line : -1;
-            const column = 'column' in e ? e.column : -1;
+            const line =
+                typeof (e as unknown as { line?: number }).line === 'number'
+                    ? (e as unknown as { line: number }).line
+                    : undefined;
+            const column =
+                typeof (e as unknown as { column?: number }).column === 'number'
+                    ? (e as unknown as { column: number }).column
+                    : undefined;
+            const pos = line && column ? ` (line ${line}, column ${column})` : '';
 
-            logger.error(`Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`);
+            logger.error(`Failed to parse configuration file: ${e.message}${pos}`);
         } else {
             logger.error('An unexpected error occurred.', [e instanceof Error ? e.message : String(e)]);
         }
