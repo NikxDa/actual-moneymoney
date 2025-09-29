@@ -12,6 +12,7 @@ export interface ConfigDecisionLogEntry {
 export interface ConfigDecisionLogOptions {
     maxHints?: number;
     redactor?: (path: string, value: unknown) => string;
+    maxValueChars?: number;
 }
 
 const clampToNonNegativeInteger = (value: unknown): number => {
@@ -103,9 +104,13 @@ export const createDefaultDecisionLog = (
             }
         }
 
+        const formatted = formatDefaultValue(safeValue);
+        const maxChars = clampToNonNegativeInteger(options.maxValueChars ?? 4096);
+        const trimmed = formatted.length > maxChars ? formatted.slice(0, maxChars) + '…[truncated]' : formatted;
+
         return {
             path: normalisePath(decision.path),
-            value: formatDefaultValue(safeValue),
+            value: trimmed,
             hints: normaliseHints(decision.hints),
         };
     });
