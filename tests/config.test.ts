@@ -502,4 +502,39 @@ password = ""
             debugSpy.mockRestore();
         }
     });
+
+    it('does not emit debug logs when no default decisions exist', () => {
+        const logger = new Logger(LogLevel.DEBUG);
+        const debugSpy = vi
+            .spyOn(logger, 'debug')
+            .mockImplementation(() => undefined);
+
+        try {
+            logDefaultedConfigDecisions(logger, []);
+            expect(debugSpy).not.toHaveBeenCalled();
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
+
+    it('logs a single default decision with concise formatting', () => {
+        const logger = new Logger(LogLevel.DEBUG);
+        const debugSpy = vi
+            .spyOn(logger, 'debug')
+            .mockImplementation(() => undefined);
+
+        try {
+            logDefaultedConfigDecisions(logger, [
+                { path: 'only.path', value: 1, hints: ['single hint'] },
+            ]);
+
+            expect(debugSpy).toHaveBeenCalledTimes(1);
+            expect(debugSpy).toHaveBeenCalledWith(
+                'Using default configuration value.',
+                ['Path: only.path', 'Value: 1', 'single hint']
+            );
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
 });

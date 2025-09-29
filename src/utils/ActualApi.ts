@@ -560,19 +560,36 @@ class ActualApi {
                     downloadHints
                 );
 
-                const resolvedBudget =
-                    initialResolution ??
-                    (await this.resolveBudgetDataDir(
-                        budgetConfig.syncId,
-                        downloadRootDir
-                    ));
-
+                let resolvedBudget: BudgetDirectoryResolution;
                 if (initialResolution) {
-                    this.logResolvedBudgetDirectory(
-                        initialResolution,
-                        budgetConfig.syncId
+                    try {
+                        const refreshedMetadata =
+                            await this.readBudgetMetadataByPath(
+                                initialResolution.metadataPath
+                            );
+                        resolvedBudget = {
+                            ...initialResolution,
+                            metadata: refreshedMetadata,
+                        };
+                    } catch (_refreshError) {
+                        resolvedBudget = await this.resolveBudgetDataDir(
+                            budgetConfig.syncId,
+                            downloadRootDir,
+                            { logResolution: false }
+                        );
+                    }
+                } else {
+                    resolvedBudget = await this.resolveBudgetDataDir(
+                        budgetConfig.syncId,
+                        downloadRootDir,
+                        { logResolution: false }
                     );
                 }
+
+                this.logResolvedBudgetDirectory(
+                    resolvedBudget,
+                    budgetConfig.syncId
+                );
 
                 const finalRootDir = path.dirname(resolvedBudget.directory);
 
@@ -664,6 +681,45 @@ class ActualApi {
 
             throw error;
         }
+    }
+
+    private async readBudgetMetadataByPath(
+        metadataPath: string
+    ): Promise<BudgetMetadata> {
+        const metadataRaw = await fs.readFile(metadataPath, 'utf8');
+        const parsed = JSON.parse(metadataRaw);
+
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error(
+                `Budget metadata at '${metadataPath}' is not an object`
+            );
+        }
+
+        const record = parsed as Record<string, unknown>;
+        const directoryName = path.basename(path.dirname(metadataPath));
+        const idRaw = record.id;
+        const id =
+            typeof idRaw === 'string' && idRaw.trim().length > 0
+                ? idRaw.trim()
+                : directoryName;
+        const groupIdRaw = record.groupId;
+        const groupId =
+            typeof groupIdRaw === 'string' && groupIdRaw.trim().length > 0
+                ? groupIdRaw.trim()
+                : undefined;
+
+        const metadata: BudgetMetadata = {
+            ...(record as BudgetMetadata),
+            id,
+        };
+
+        if (groupId) {
+            metadata.groupId = groupId;
+        } else {
+            delete metadata.groupId;
+        }
+
+        return metadata;
     }
 
     private async ensureBudgetDirectoryAccessible(

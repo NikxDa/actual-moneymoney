@@ -5,7 +5,14 @@ import type { ArgumentsCamelCase } from 'yargs';
 import { formatISO, isValid as isValidDate, parseISO } from 'date-fns';
 import { ZodError, ZodIssueCode, z } from 'zod';
 import Logger from './Logger.js';
+import {
+    DEFAULT_DECISION_LOG_MAX_HINTS,
+    createDefaultDecisionLog,
+    type ConfigDefaultDecision,
+} from './config-format.js';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
+
+export type { ConfigDefaultDecision } from './config-format.js';
 
 const trimmedNonEmptyString = (message: string) =>
     z.string().trim().min(1, message);
@@ -131,12 +138,6 @@ export type ActualServerConfig = z.infer<typeof actualServerSchema>;
 export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
 export type Config = z.infer<typeof configSchema>;
 
-export interface ConfigDefaultDecision {
-    path: string;
-    value: unknown;
-    hints?: string[];
-}
-
 export interface LoadedConfig {
     config: Config;
     defaultDecisions: ConfigDefaultDecision[];
@@ -147,22 +148,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const hasOwn = (value: Record<string, unknown>, key: string) =>
     Object.prototype.hasOwnProperty.call(value, key);
-
-const formatDefaultValue = (value: unknown): string => {
-    if (typeof value === 'string') {
-        return value;
-    }
-
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        return String(value);
-    }
-
-    try {
-        return JSON.stringify(value);
-    } catch (_error) {
-        return String(value);
-    }
-};
 
 export const collectDefaultedConfigDecisions = (
     rawConfig: unknown,
@@ -234,45 +219,21 @@ export const collectDefaultedConfigDecisions = (
     return decisions;
 };
 
+const MAX_AGGREGATED_DECISION_HINTS = DEFAULT_DECISION_LOG_MAX_HINTS;
+
 export const logDefaultedConfigDecisions = (
     logger: Logger,
     decisions: ConfigDefaultDecision[]
 ) => {
-    if (decisions.length === 0) {
+    const entry = createDefaultDecisionLog(decisions, {
+        maxHints: MAX_AGGREGATED_DECISION_HINTS,
+    });
+
+    if (!entry) {
         return;
     }
 
-    if (decisions.length === 1) {
-        const decision = decisions[0];
-        if (!decision) {
-            return;
-        }
-        const hints = [
-            `Path: ${decision.path}`,
-            `Value: ${formatDefaultValue(decision.value)}`,
-            ...(decision.hints ?? []),
-        ];
-        logger.debug('Using default configuration value.', hints);
-        return;
-    }
-
-    const aggregatedHints: string[] = [];
-    for (const decision of decisions) {
-        const pathValue =
-            typeof decision.path === 'string'
-                ? decision.path
-                : String(decision.path ?? '<unknown>');
-        aggregatedHints.push(`Path: ${pathValue}`);
-        aggregatedHints.push(`Value: ${formatDefaultValue(decision.value)}`);
-        for (const hint of decision.hints ?? []) {
-            aggregatedHints.push(`  ${hint}`);
-        }
-    }
-
-    logger.debug(
-        `Using default configuration values for ${decisions.length} entries.`,
-        aggregatedHints
-    );
+    logger.debug(entry.message, entry.hints);
 };
 
 export const getConfigFile = (argv: ArgumentsCamelCase): string => {
