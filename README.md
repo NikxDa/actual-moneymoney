@@ -77,10 +77,10 @@ ready:
    ```bash
    npm install
    ```
-1. Run the local smoke test to ensure linting, type checks, the build, and tests
+1. Run the quality gates to ensure linting, type checks, the build, and tests
    all pass:
    ```bash
-   npm run ci:local
+   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
    ```
 1. Read through the detailed [contributor guide](./CONTRIBUTING.md) for workflow
    expectations, helpful scripts, and documentation requirements.
@@ -289,8 +289,7 @@ scripts when working on the project:
 - `npm run typecheck` – perform a strict TypeScript type check without emitting
   files.
 - `npm run build` – compile the CLI for distribution.
-- `npm test` – execute the Vitest suite.
-- `npm run ci:local` – chain the same lint/type/build/test steps used in CI.
+- `npm test` – execute the Vitest suite (includes build step).
 
 Markdown files are formatted with `mdformat` (CodeRabbit runs it during review).
 Run `mdformat <files>` locally when updating docs to keep diffs clean.
@@ -299,7 +298,7 @@ The repository includes Husky hooks to keep the working tree clean:
 
 - `pre-commit` runs `npm run lint:prettier`, `npm run lint:eslint`, and
   `npm run lint:complexity` to block formatting, lint, or complexity violations.
-- `pre-push` runs `npm run ci:local` so that pushes only succeed when the entire
+- `pre-push` runs the quality gates so that pushes only succeed when the entire
   local CI suite is green.
 
 Tests exist to guard the most important scenarios. Keep the high-value suites

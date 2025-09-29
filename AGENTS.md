@@ -32,12 +32,9 @@
 
 1. Run the quality gates from the repository root:
 
-   - `npm run lint:eslint`
-   - `npm run lint:complexity`
-   - `npm run lint:prettier`
-   - `npm run typecheck`
-   - `npm run build`
-   - `npm test`
+   ```bash
+   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
+   ```
 
    Tests are meant to cover the most important paths; we do not require or aim
    for 100% coverage. Keep the critical scenarios healthy and feel free to trim

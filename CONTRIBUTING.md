@@ -22,11 +22,11 @@ up, run the quality checks, and collaborate smoothly with the team.
 1. Copy or create a configuration file as needed (see
    [`example-config-advanced.toml`](./example-config-advanced.toml) for
    reference).
-1. Run the smoke checks to confirm your environment is ready:
+1. Run the quality gates to confirm your environment is ready:
    ```bash
-   npm run ci:local
+   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
    ```
-   This chains the linting, type checking, build, and test scripts that run in
+   This runs the same linting, type checking, build, and test scripts that run in
    CI. Keep the suite green before pushing.
 
 ## Daily Development Workflow
@@ -36,8 +36,10 @@ up, run the quality checks, and collaborate smoothly with the team.
 - Implement your changes and keep commits focused. Follow
   [Conventional Commits](https://www.conventionalcommits.org/) so commitlint
   accepts the history (e.g., `feat: add importer telemetry`).
-- Re-run the smoke checks (`npm run ci:local`) to verify linting, formatting,
-  type safety, builds, and tests.
+- Re-run the quality gates to verify linting, formatting, type safety, builds, and tests:
+  ```bash
+  npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
+  ```
 - Update documentation alongside behaviour changes. Configuration updates
   usually involve:
   - [`src/utils/config.ts`](./src/utils/config.ts)
@@ -59,8 +61,7 @@ up, run the quality checks, and collaborate smoothly with the team.
 | `npm run lint:prettier:fix` | Automatically format files with Prettier using the shared rules.                      |
 | `npm run typecheck`         | Perform a strict TypeScript type check without emitting files.                        |
 | `npm run build`             | Compile the CLI for distribution.                                                     |
-| `npm test`                  | Execute the Vitest suite.                                                             |
-| `npm run ci:local`          | Run the complete smoke test locally (linting, formatting, type checks, build, tests). |
+| `npm test`                  | Execute the Vitest suite (includes build step).                                       |
 
 ## Style and Tooling Notes
 

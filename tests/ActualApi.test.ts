@@ -1024,6 +1024,7 @@ describe('ActualApi', () => {
         );
 
         const logger = createLogger();
+        const debugSpy = vi.spyOn(logger, 'debug');
         const serverConfig = makeServerConfig('retry-budget');
         const api = new ActualApi(serverConfig, logger);
 
@@ -1054,6 +1055,7 @@ describe('ActualApi', () => {
 
         await expect(api.loadBudget('retry-budget')).resolves.toBeUndefined();
 
+        expect(downloadBudgetMock).toHaveBeenCalledTimes(2);
         expect(loadBudgetMock).toHaveBeenCalledTimes(2);
         expect(shutdownMock).toHaveBeenCalledTimes(1);
 
@@ -1073,7 +1075,7 @@ describe('ActualApi', () => {
             ])
         );
 
-        const debugMessages = logger.debug.mock.calls.map((call) => call[0]);
+        const debugMessages = debugSpy.mock.calls.map((call) => call[0]);
         const firstDownloadIndex = debugMessages.findIndex(
             (message) =>
                 typeof message === 'string' &&
@@ -1088,7 +1090,7 @@ describe('ActualApi', () => {
                     "Downloading budget with syncId 'retry-budget' (attempt 2/2)"
                 )
         );
-        const directoryLogIndexes = logger.debug.mock.calls
+        const directoryLogIndexes = debugSpy.mock.calls
             .map((call, index) => ({ index, message: call[0], hints: call[1] }))
             .filter(
                 ({ message }) =>
@@ -1116,6 +1118,7 @@ describe('ActualApi', () => {
         );
 
         const logger = createLogger();
+        const debugSpy = vi.spyOn(logger, 'debug');
         const serverConfig = makeServerConfig('rotating-id');
         const api = new ActualApi(serverConfig, logger);
 
@@ -1154,11 +1157,12 @@ describe('ActualApi', () => {
 
         await expect(api.loadBudget('rotating-id')).resolves.toBeUndefined();
 
+        expect(downloadBudgetMock).toHaveBeenCalledTimes(1);
         expect(readFileMock).toHaveBeenCalledTimes(2);
         expect(loadBudgetMock).toHaveBeenCalledTimes(1);
         expect(loadBudgetMock).toHaveBeenCalledWith('fresh-id');
 
-        const directoryLogs = logger.debug.mock.calls.filter(
+        const directoryLogs = debugSpy.mock.calls.filter(
             ([message]) =>
                 typeof message === 'string' &&
                 message.startsWith('Using budget directory:')
@@ -1169,7 +1173,7 @@ describe('ActualApi', () => {
             'Local budget ID: fresh-id',
         ]);
 
-        const loadLogs = logger.debug.mock.calls.filter(
+        const loadLogs = debugSpy.mock.calls.filter(
             ([message]) =>
                 typeof message === 'string' &&
                 message.startsWith(

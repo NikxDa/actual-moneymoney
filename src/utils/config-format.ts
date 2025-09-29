@@ -83,6 +83,7 @@ const normalisePath = (pathValue: unknown): string => {
 };
 
 export const DEFAULT_DECISION_LOG_MAX_HINTS = 200;
+export const MAX_HINTS_HARD_CAP = Number.MAX_SAFE_INTEGER;
 
 export const createDefaultDecisionLog = (
     decisions: readonly ConfigDefaultDecision[],
@@ -93,14 +94,18 @@ export const createDefaultDecisionLog = (
     }
 
     const normalisedDecisions = decisions.map((decision) => {
-        const redactedValue =
-            typeof options.redactor === 'function'
-                ? options.redactor(decision.path, decision.value)
-                : decision.value;
+        let safeValue = decision.value;
+        if (options.redactor !== undefined) {
+            try {
+                safeValue = options.redactor(decision.path, decision.value);
+            } catch {
+                safeValue = '[REDACTED]';
+            }
+        }
 
         return {
             path: normalisePath(decision.path),
-            value: formatDefaultValue(redactedValue),
+            value: formatDefaultValue(safeValue),
             hints: normaliseHints(decision.hints),
         };
     });
@@ -118,9 +123,13 @@ export const createDefaultDecisionLog = (
         };
     }
 
-    const maxHints = clampToNonNegativeInteger(
-        options.maxHints ?? DEFAULT_DECISION_LOG_MAX_HINTS
-    );
+    const provided = options.maxHints;
+    const maxHints =
+        provided === Infinity
+            ? MAX_HINTS_HARD_CAP
+            : clampToNonNegativeInteger(
+                  provided ?? DEFAULT_DECISION_LOG_MAX_HINTS
+              );
     const aggregatedHints: string[] = [];
     let appended = 0;
     let omitted = 0;

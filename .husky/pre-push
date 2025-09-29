@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -e
 
-npm run ci:local
+npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test

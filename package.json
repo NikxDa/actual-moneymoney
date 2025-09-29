@@ -5,9 +5,7 @@
     "exports": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "build": "npx tsc",
-        "pretest": "npm run build",
-        "ci:local": "npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm run build && npm test",
+        "build": "tsc",
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "start": "node dist/index.js",
         "lint:eslint": "eslint .",
@@ -15,7 +13,7 @@
         "lint:prettier": "prettier --check .",
         "lint:prettier:fix": "prettier --write .",
         "prepare": "husky",
-        "test": "vitest run"
+        "test": "npm run build && vitest run"
     },
     "type": "module",
     "keywords": [
