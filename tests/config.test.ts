@@ -448,7 +448,7 @@ password = ""
 
         const argv = { config: configPath } as unknown as ArgumentsCamelCase;
         const logger = new Logger(LogLevel.INFO);
-
+        const debugSpy = vi.spyOn(logger, 'debug');
         const consoleSpy = vi
             .spyOn(console, 'log')
             .mockImplementation(() => undefined);
@@ -460,22 +460,23 @@ password = ""
             logDefaultedConfigDecisions(logger, defaultDecisions);
             expect(consoleSpy).not.toHaveBeenCalled();
 
+            debugSpy.mockClear();
             consoleSpy.mockClear();
             logger.setLogLevel(LogLevel.DEBUG);
 
             logDefaultedConfigDecisions(logger, defaultDecisions);
 
+            expect(debugSpy).toHaveBeenCalledTimes(1);
             expect(consoleSpy).toHaveBeenCalled();
         } finally {
             consoleSpy.mockRestore();
+            debugSpy.mockRestore();
         }
     });
 
     it('aggregates multiple default decisions into a single debug entry', () => {
         const logger = new Logger(LogLevel.DEBUG);
-        const debugSpy = vi
-            .spyOn(logger, 'debug')
-            .mockImplementation(() => undefined);
+        const debugSpy = vi.spyOn(logger, 'debug');
 
         try {
             logDefaultedConfigDecisions(logger, [
@@ -494,7 +495,7 @@ password = ""
                     'Path: first.path',
                     'Value: true',
                     'Path: second.path',
-                    'Value: value',
+                    'Value: "value"',
                     '  extra context',
                 ]
             );
@@ -505,9 +506,7 @@ password = ""
 
     it('does not emit debug logs when no default decisions exist', () => {
         const logger = new Logger(LogLevel.DEBUG);
-        const debugSpy = vi
-            .spyOn(logger, 'debug')
-            .mockImplementation(() => undefined);
+        const debugSpy = vi.spyOn(logger, 'debug');
 
         try {
             logDefaultedConfigDecisions(logger, []);
@@ -531,7 +530,7 @@ password = ""
             expect(debugSpy).toHaveBeenCalledTimes(1);
             expect(debugSpy).toHaveBeenCalledWith(
                 'Using default configuration value.',
-                ['Path: only.path', 'Value: 1', 'single hint']
+                ['Path: only.path', 'Value: 1', '  single hint']
             );
         } finally {
             debugSpy.mockRestore();

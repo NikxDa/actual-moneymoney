@@ -11,30 +11,67 @@ export interface ConfigDecisionLogEntry {
 
 export interface ConfigDecisionLogOptions {
     maxHints?: number;
+    redactor?: (path: string, value: unknown) => string;
 }
 
+const clampToNonNegativeInteger = (value: unknown): number => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return 0;
+    }
+
+    return Math.max(0, Math.floor(numeric));
+};
+
 const formatDefaultValue = (value: unknown): string => {
-    if (typeof value === 'string') {
-        return value;
-    }
-
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        return String(value);
-    }
-
     try {
-        return JSON.stringify(value);
-    } catch {
+        if (typeof value === 'string') {
+            return JSON.stringify(value);
+        }
+
+        const seen = new Set<unknown>();
+        const json = JSON.stringify(value, (_, currentValue) => {
+            if (typeof currentValue === 'object' && currentValue !== null) {
+                if (seen.has(currentValue)) {
+                    return '[Circular]';
+                }
+                seen.add(currentValue);
+            }
+
+            return currentValue;
+        });
+
+        if (typeof json === 'string') {
+            return json;
+        }
+
         return String(value);
+    } catch {
+        try {
+            return JSON.stringify(String(value));
+        } catch {
+            return String(value);
+        }
     }
 };
 
 const normaliseHints = (hints?: readonly string[]): string[] => {
-    if (!hints) {
+    if (hints === undefined) {
         return [];
     }
 
-    return hints.map((hint) => String(hint));
+    const lines: string[] = [];
+    for (const hint of hints) {
+        const source = String(hint);
+        for (const rawLine of source.split('\n')) {
+            const trimmed = rawLine.trim();
+            if (trimmed.length > 0) {
+                lines.push(trimmed);
+            }
+        }
+    }
+
+    return lines;
 };
 
 const normalisePath = (pathValue: unknown): string => {
@@ -55,29 +92,35 @@ export const createDefaultDecisionLog = (
         return null;
     }
 
-    const normalisedDecisions = decisions.map((decision) => ({
-        path: normalisePath(decision.path),
-        value: formatDefaultValue(decision.value),
-        hints: normaliseHints(decision.hints),
-    }));
+    const normalisedDecisions = decisions.map((decision) => {
+        const redactedValue =
+            typeof options.redactor === 'function'
+                ? options.redactor(decision.path, decision.value)
+                : decision.value;
+
+        return {
+            path: normalisePath(decision.path),
+            value: formatDefaultValue(redactedValue),
+            hints: normaliseHints(decision.hints),
+        };
+    });
 
     if (normalisedDecisions.length === 1) {
-        const decision = normalisedDecisions[0];
-        if (!decision) {
-            return null;
-        }
+        const decision = normalisedDecisions[0]!;
 
         return {
             message: 'Using default configuration value.',
             hints: [
                 `Path: ${decision.path}`,
                 `Value: ${decision.value}`,
-                ...decision.hints,
+                ...decision.hints.map((hint) => `  ${hint}`),
             ],
         };
     }
 
-    const maxHints = options.maxHints ?? Infinity;
+    const maxHints = clampToNonNegativeInteger(
+        options.maxHints ?? DEFAULT_DECISION_LOG_MAX_HINTS
+    );
     const aggregatedHints: string[] = [];
     let appended = 0;
     let omitted = 0;

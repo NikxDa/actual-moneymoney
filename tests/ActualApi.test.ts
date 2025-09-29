@@ -1018,6 +1018,168 @@ describe('ActualApi', () => {
         expect(shutdownMock).toHaveBeenCalledTimes(1);
     });
 
+    it('retries loading a budget after a failure without duplicating resolution logs', async () => {
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const logger = createLogger();
+        const serverConfig = makeServerConfig('retry-budget');
+        const api = new ActualApi(serverConfig, logger);
+
+        const directoryName = 'retry-budget-dir';
+        const metadataPath = path.join(
+            DEFAULT_DATA_DIR,
+            directoryName,
+            'metadata.json'
+        );
+
+        readdirMock.mockResolvedValue([createDirent(directoryName)]);
+        readFileMock.mockImplementation(async (filePath: string) => {
+            if (filePath === metadataPath) {
+                return JSON.stringify({
+                    id: directoryName,
+                    groupId: 'retry-budget',
+                });
+            }
+
+            throw new Error(`Unexpected read for ${filePath}`);
+        });
+
+        downloadBudgetMock.mockResolvedValue(undefined);
+        loadBudgetMock
+            .mockRejectedValueOnce(new Error('budget directory does not exist'))
+            .mockResolvedValueOnce(undefined);
+        syncMock.mockResolvedValue(undefined);
+
+        await expect(api.loadBudget('retry-budget')).resolves.toBeUndefined();
+
+        expect(loadBudgetMock).toHaveBeenCalledTimes(2);
+        expect(shutdownMock).toHaveBeenCalledTimes(1);
+
+        const [firstLoadOrder, secondLoadOrder] =
+            loadBudgetMock.mock.invocationCallOrder;
+        const [shutdownOrder] = shutdownMock.mock.invocationCallOrder;
+        expect(firstLoadOrder).toBeLessThan(shutdownOrder);
+        expect(shutdownOrder).toBeLessThan(secondLoadOrder);
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            expect.stringContaining('Budget load attempt 1 failed'),
+            expect.arrayContaining([
+                `Server URL: ${serverConfig.serverUrl}`,
+                'Budget sync ID: retry-budget',
+                'Attempt 1/2',
+                expect.any(Error),
+            ])
+        );
+
+        const debugMessages = logger.debug.mock.calls.map((call) => call[0]);
+        const firstDownloadIndex = debugMessages.findIndex(
+            (message) =>
+                typeof message === 'string' &&
+                message.includes(
+                    "Downloading budget with syncId 'retry-budget' (attempt 1/2)"
+                )
+        );
+        const secondDownloadIndex = debugMessages.findIndex(
+            (message) =>
+                typeof message === 'string' &&
+                message.includes(
+                    "Downloading budget with syncId 'retry-budget' (attempt 2/2)"
+                )
+        );
+        const directoryLogIndexes = logger.debug.mock.calls
+            .map((call, index) => ({ index, message: call[0], hints: call[1] }))
+            .filter(
+                ({ message }) =>
+                    typeof message === 'string' &&
+                    message.startsWith('Using budget directory:')
+            )
+            .map(({ index, hints }) => {
+                expect(hints).toEqual([
+                    `Metadata path: ${metadataPath}`,
+                    `Local budget ID: ${directoryName}`,
+                ]);
+                return index;
+            });
+
+        expect(directoryLogIndexes).toHaveLength(2);
+        expect(firstDownloadIndex).toBeGreaterThanOrEqual(0);
+        expect(secondDownloadIndex).toBeGreaterThan(firstDownloadIndex);
+        expect(directoryLogIndexes[0]).toBeGreaterThan(firstDownloadIndex);
+        expect(directoryLogIndexes[1]).toBeGreaterThan(secondDownloadIndex);
+    });
+
+    it('refreshes metadata after downloading a budget before loading it', async () => {
+        const { default: ActualApi } = await import(
+            '../src/utils/ActualApi.js'
+        );
+
+        const logger = createLogger();
+        const serverConfig = makeServerConfig('rotating-id');
+        const api = new ActualApi(serverConfig, logger);
+
+        const directoryName = 'rotating-budget-dir';
+        const metadataPath = path.join(
+            DEFAULT_DATA_DIR,
+            directoryName,
+            'metadata.json'
+        );
+
+        readdirMock.mockResolvedValue([createDirent(directoryName)]);
+
+        let readCount = 0;
+        readFileMock.mockImplementation(async (filePath: string) => {
+            if (filePath !== metadataPath) {
+                throw new Error(`Unexpected metadata path ${filePath}`);
+            }
+
+            readCount += 1;
+            if (readCount === 1) {
+                return JSON.stringify({
+                    id: 'stale-id',
+                    groupId: 'rotating-id',
+                });
+            }
+
+            return JSON.stringify({
+                id: 'fresh-id',
+                groupId: 'rotating-id',
+            });
+        });
+
+        downloadBudgetMock.mockResolvedValue(undefined);
+        loadBudgetMock.mockResolvedValue(undefined);
+        syncMock.mockResolvedValue(undefined);
+
+        await expect(api.loadBudget('rotating-id')).resolves.toBeUndefined();
+
+        expect(readFileMock).toHaveBeenCalledTimes(2);
+        expect(loadBudgetMock).toHaveBeenCalledTimes(1);
+        expect(loadBudgetMock).toHaveBeenCalledWith('fresh-id');
+
+        const directoryLogs = logger.debug.mock.calls.filter(
+            ([message]) =>
+                typeof message === 'string' &&
+                message.startsWith('Using budget directory:')
+        );
+        expect(directoryLogs).toHaveLength(1);
+        expect(directoryLogs[0][1]).toEqual([
+            `Metadata path: ${metadataPath}`,
+            'Local budget ID: fresh-id',
+        ]);
+
+        const loadLogs = logger.debug.mock.calls.filter(
+            ([message]) =>
+                typeof message === 'string' &&
+                message.startsWith(
+                    "Loading budget with syncId 'rotating-id' from local id"
+                )
+        );
+        expect(loadLogs).toHaveLength(1);
+        expect(loadLogs[0][0]).toContain("local id 'fresh-id'");
+    });
+
     it('passes the e2e encryption password through to the download request', async () => {
         const { default: ActualApi } = await import(
             '../src/utils/ActualApi.js'

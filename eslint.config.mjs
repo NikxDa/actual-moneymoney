@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import eslint from '@eslint/js';
 import globals from 'globals';
 import sonarjs from 'eslint-plugin-sonarjs';
@@ -6,6 +8,8 @@ import tseslint from 'typescript-eslint';
 const { config: defineConfig, configs: tsConfigs } = tseslint;
 
 const enableComplexityRules = process.env.ENABLE_COMPLEXITY_RULES === 'true';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const eslintProject = path.resolve(__dirname, 'tsconfig.eslint.json');
 
 const complexityRules = enableComplexityRules
     ? {
@@ -23,6 +27,7 @@ const sharedRules = {
             caughtErrorsIgnorePattern: '^_',
         },
     ],
+    'no-unreachable': 'error',
 };
 
 export default defineConfig(
@@ -46,6 +51,10 @@ export default defineConfig(
         ],
         languageOptions: {
             globals: globals.node,
+            parserOptions: {
+                project: eslintProject,
+                tsconfigRootDir: __dirname,
+            },
         },
         plugins: {
             sonarjs,
@@ -56,11 +65,36 @@ export default defineConfig(
         },
     }),
     defineConfig({
+        files: ['src/utils/config-format.ts'],
+        rules: {
+            '@typescript-eslint/no-unnecessary-condition': [
+                'error',
+                { allowConstantLoopConditions: false },
+            ],
+            '@typescript-eslint/strict-boolean-expressions': [
+                'warn',
+                {
+                    allowString: false,
+                    allowNumber: false,
+                    allowNullableObject: false,
+                    allowNullableBoolean: false,
+                    allowNullableString: false,
+                    allowNullableNumber: false,
+                    allowAny: false,
+                },
+            ],
+        },
+    }),
+    defineConfig({
         files: ['tests/**/*.ts'],
         languageOptions: {
             globals: {
                 ...globals.node,
                 ...globals.vitest,
+            },
+            parserOptions: {
+                project: eslintProject,
+                tsconfigRootDir: __dirname,
             },
         },
         plugins: {
