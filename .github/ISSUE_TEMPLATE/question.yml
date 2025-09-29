@@ -1,0 +1,33 @@
+name: 'Question'
+description: 'Ask for guidance or help with Actual MoneyMoney.'
+title: 'question: <short summary>'
+labels:
+    - question
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Need assistance? Fill out this form so the maintainers can triage your request quickly.
+    - type: textarea
+      id: question
+      attributes:
+          label: What do you need help with?
+          description: Describe your question or the problem you are trying to solve.
+          placeholder: 'How do I configure the importer for multiple Actual Budget servers?'
+      validations:
+          required: true
+    - type: textarea
+      id: details
+      attributes:
+          label: Additional details
+          description: Share any relevant context, configuration snippets, or screenshots.
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Mention your OS, Node.js version, Actual MoneyMoney version, and anything else that could help.
+          placeholder: |-
+              - OS: macOS 14.3 (Apple Silicon)
+              - Node.js: 20.11.1
+              - Actual MoneyMoney: v0.7.0
+              - Other details: ...

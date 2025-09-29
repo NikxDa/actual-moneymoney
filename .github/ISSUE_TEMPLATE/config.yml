@@ -1,8 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
     - name: Security vulnerabilities
       url: https://github.com/1cu/actual-moneymoney/security/advisories/new
       about: Please report security issues privately so we can coordinate a fix before disclosure.
     - name: Questions & support
-      url: https://github.com/1cu/actual-moneymoney/issues/new
-      about: Open an issue with the "question" label if you need help deciding which template to use.
+      url: https://github.com/1cu/actual-moneymoney/issues/new?template=question.yml
+      about: Use the question form to open a pre-labeled issue for help from the maintainers.
