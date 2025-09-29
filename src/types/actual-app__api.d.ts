@@ -153,8 +153,8 @@ declare module '@actual-app/api' {
 
     type InitResult = object;
 
-    export async function init(params: InitParams): Promise<undefined | InitResult>;
-    export async function shutdown(): Promise<void>;
+    export function init(params: InitParams): Promise<undefined | InitResult>;
+    export function shutdown(): Promise<void>;
 
     export const internal: {
         send: (message: string) => Promise<void>;
@@ -276,7 +276,8 @@ Get all accounts. Returns an array of Account objects.
 createAccount
 createAccount(Accountaccount, amount?initialBalance = 0) → Promise<id>
 
-Create an account with an initial balance of initialBalance (defaults to 0). Remember that amount has no decimal places. Returns the id of the new account.
+Create an account with an initial balance of initialBalance (defaults to 0).
+Remember that amount has no decimal places. Returns the id of the new account.
 
 updateAccount
 updateAccount(idid, objectfields) → Promise<null>
@@ -286,11 +287,15 @@ Update fields of an account. fields can specify any field described in Account.
 closeAccount
 closeAccount(idid, id?transferAccountId, id?transferCategoryId) → Promise<null>
 
-Close an account. transferAccountId and transferCategoryId are optional if the balance of the account is 0, otherwise see next paragraph.
+Close an account. transferAccountId and transferCategoryId are optional if the balance of the account is 0,
+otherwise see next paragraph.
 
-If the account has a non-zero balance, you need to specify an account with transferAccountId to transfer the money into. If you are transferring from an on-budget account to an off-budget account, you can optionally specify a category with transferCategoryId to categorize the transfer transaction.
+If the account has a non-zero balance, you need to specify an account with transferAccountId to transfer the money into.
+If you are transferring from an on-budget account to an off-budget account, you can optionally specify a category with
+transferCategoryId to categorize the transfer transaction.
 
-Tranferring money to an off-budget account needs a category because money is taken out of the budget, so it needs to come from somewhere.
+Tranferring money to an off-budget account needs a category because money is taken out of the budget,
+so it needs to come from somewhere.
 
 If you want to simply delete an account, see deleteAccount.
 

@@ -256,7 +256,8 @@ class PayeeTransformer {
                     const status = (error as { status?: number }).status;
                     if (status && (status === 429 || status >= 500)) {
                         this.logger.debug(`Attempt ${attempt} failed, retrying... (${status})`);
-                        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1))); // Exponential backoff
+                        // Exponential backoff
+                        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
                         continue;
                     }
                 }

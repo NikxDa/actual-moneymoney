@@ -19,6 +19,7 @@ const complexityRules = enableComplexityRules
     : {};
 
 const sharedRules = {
+    'max-len': ['error', { code: 120, ignoreUrls: true, ignoreStrings: true, ignoreTemplateLiterals: true }],
     '@typescript-eslint/no-unused-vars': [
         'error',
         {

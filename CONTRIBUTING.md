@@ -23,6 +23,7 @@ up, run the quality checks, and collaborate smoothly with the team.
    [`example-config-advanced.toml`](./example-config-advanced.toml) for
    reference).
 1. Run the quality gates to confirm your environment is ready:
+
    ```bash
    npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
    ```
@@ -37,6 +38,7 @@ up, run the quality checks, and collaborate smoothly with the team.
   [Conventional Commits](https://www.conventionalcommits.org/) so commitlint
   accepts the history (e.g., `feat: add importer telemetry`).
 - Re-run the quality gates to verify linting, formatting, type safety, builds, and tests:
+
   ```bash
   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
   ```
