@@ -75,7 +75,7 @@ reviews:
               For 'if' and 'for loops' in Typescript, always use braces.
               Avoid placing 'catch' parentheses on a new line in Typescript.
               In Typescript, place the chained call dot on a new line.
-              Remove trailing comma in Typescript.
+              Allow trailing commas in TypeScript (consistent with Prettier configuration).
               Union types, binary operations, ternary operations, and var declarations in Typescript need to be wrapped on every item.
               Binary operations, call parameters, for statements, imports, method parameters, object literals, object types, and union types need to be split into lines when wrapped in Typescript.
               Spaces after colons, optional parameters, and generator mults are required in Typescript.
