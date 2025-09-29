@@ -134,8 +134,8 @@ synchronizeClearedStatus = true
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
 # requestTimeoutMs = 45000  # Optional: Override the Actual server request
-# timeout (milliseconds)
-# max 300000
+# timeout in milliseconds (e.g., 45000 = 45 seconds, 300000 = 5 minutes)
+# max 300000 ms (5 minutes)
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]
