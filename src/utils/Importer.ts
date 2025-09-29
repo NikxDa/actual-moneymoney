@@ -362,7 +362,8 @@ class Importer {
             issues.push('amount is missing or invalid');
         }
 
-        if (typeof (transaction as any).name !== 'string' || (transaction as any).name.trim().length === 0) {
+        const transactionName = transaction.name;
+        if (typeof transactionName !== 'string' || transactionName.trim().length === 0) {
             issues.push('name is missing or invalid');
         }
 

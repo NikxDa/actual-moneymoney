@@ -14,6 +14,7 @@ up, run the quality checks, and collaborate smoothly with the team.
 ## Local Setup
 
 1. Clone the repository and install dependencies:
+
    ```bash
    git clone https://github.com/1cu/actual-moneymoney.git
    cd actual-moneymoney
@@ -33,7 +34,7 @@ up, run the quality checks, and collaborate smoothly with the team.
 
 ## Daily Development Workflow
 
-- Create a feature branch from `develop` (or the requested base branch) before
+- Create a feature branch from `main` (or the requested base branch) before
   making changes.
 - Implement your changes and keep commits focused. Follow
   [Conventional Commits](https://www.conventionalcommits.org/) so commitlint
@@ -81,7 +82,7 @@ up, run the quality checks, and collaborate smoothly with the team.
   add new directories that should participate in linting or formatting.
 - Husky hooks guard the commit and push flows:
   - `pre-commit` runs the linting, complexity, and formatting checks.
-  - `pre-push` runs the full smoke test. Fix issues locally before retrying the
+  - `pre-push` runs the full quality gates suite. Fix issues locally before retrying the
     push.
 - When a function approaches the 40/60 complexity limits, break the logic into
   smaller helpers or extract pure utilities so the check stays green.

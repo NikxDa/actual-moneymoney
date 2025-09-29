@@ -214,7 +214,7 @@ class PayeeTransformer {
         model: string,
         retries = 3
     ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
-        const capabilities = await this.getModelCapabilities(model);
+        const capabilities = this.getModelCapabilities(model);
 
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
@@ -268,7 +268,7 @@ class PayeeTransformer {
         throw new Error('Failed to complete OpenAI request');
     }
 
-    private async getModelCapabilities(model: string): Promise<ModelCapabilities> {
+    private getModelCapabilities(model: string): ModelCapabilities {
         if (this.modelCapabilities.has(model)) {
             return this.modelCapabilities.get(model)!;
         }
