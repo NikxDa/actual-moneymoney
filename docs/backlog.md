@@ -91,9 +91,9 @@ The roadmap table only lists epics that still require planning or delivery work.
 
 ## Epic 2: Importer determinism and guard rails
 
-- **Epic Assessment:** 🚧 In progress. Stories 2.1 and 2.2 landed, but mapping
-  validation in Story 2.3 still needs to fail fast so importer refactors in
-  Epics 8 and 10 have a deterministic foundation.
+- **Epic Assessment:** ✅ Done. Stories 2.1–2.3 landed together, so importer
+  refactors in Epics 8 and 10 can assume deterministic ordering, guarded start
+  balances, and fast-fail account mapping validation.
 
 ### Story 2.1 – Normalize MoneyMoney transactions before conversion
 
