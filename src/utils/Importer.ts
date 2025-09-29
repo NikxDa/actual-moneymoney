@@ -336,7 +336,7 @@ class Importer {
         this.assertValidTransaction(transaction);
 
         return {
-            date: format(transaction.valueDate, 'yyyy-MM-dd'),
+            date: format(transaction.valueDate, DATE_FORMAT),
             amount: Math.round(transaction.amount * 100),
             imported_id: this.getIdForMoneyMoneyTransaction(transaction),
             imported_payee: transaction.name,
@@ -360,6 +360,10 @@ class Importer {
             !Number.isFinite(transaction.amount)
         ) {
             issues.push('amount is missing or invalid');
+        }
+
+        if (typeof (transaction as any).name !== 'string' || (transaction as any).name.trim().length === 0) {
+            issues.push('name is missing or invalid');
         }
 
         if (!transaction.id) {

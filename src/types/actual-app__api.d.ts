@@ -176,35 +176,39 @@ declare module '@actual-app/api' {
 
     export type CreateTransaction = CreateTransactionPayload;
 
-    const addTransactions: (accountId: ID, transactions: CreateTransactionPayload[]) => Promise<ID[]>;
-    const importTransactions: (
+    export const addTransactions: (accountId: ID, transactions: CreateTransactionPayload[]) => Promise<ID[]>;
+    export const importTransactions: (
         accountId: ID,
         transactions: CreateTransactionPayload[],
         opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
-    const getTransactions: (accountId: ID, startDate: DateString, endDate?: DateString) => Promise<ReadTransaction[]>;
-    const updateTransaction: (transactionId: ID, fields: UpdateFields<UpdateTransaction>) => Promise<ID>;
-    const deleteTransaction: (transactionId: ID) => Promise<void>;
+    export const getTransactions: (
+        accountId: ID,
+        startDate: DateString,
+        endDate?: DateString
+    ) => Promise<ReadTransaction[]>;
+    export const updateTransaction: (transactionId: ID, fields: UpdateFields<UpdateTransaction>) => Promise<ID>;
+    export const deleteTransaction: (transactionId: ID) => Promise<void>;
 
     // Accounts
-    const getAccounts: (includeOffBudget?: boolean, includeClosed?: boolean) => Promise<Account[]>;
-    const createAccount: (account: CreateAccount, initialBalance?: number) => Promise<ID>;
-    const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
-    const deleteAccount: (accountId: ID) => Promise<void>;
-    const closeAccount: (accountId: ID, transferAccountId?: ID, transferCategoryId?: ID) => Promise<void>;
-    const reopenAccount: (accountId: ID) => Promise<void>;
+    export const getAccounts: (includeOffBudget?: boolean, includeClosed?: boolean) => Promise<Account[]>;
+    export const createAccount: (account: CreateAccount, initialBalance?: number) => Promise<ID>;
+    export const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
+    export const deleteAccount: (accountId: ID) => Promise<void>;
+    export const closeAccount: (accountId: ID, transferAccountId?: ID, transferCategoryId?: ID) => Promise<void>;
+    export const reopenAccount: (accountId: ID) => Promise<void>;
 
     // Categories
-    const getCategories: () => Promise<Category[]>;
-    const createCategory: (category: Category) => Promise<ID>;
-    const updateCategory: (categoryId: ID, fields: UpdateFields<Category>) => Promise<ID>;
-    const deleteCategory: (categoryId: ID) => Promise<void>;
+    export const getCategories: () => Promise<Category[]>;
+    export const createCategory: (category: Category) => Promise<ID>;
+    export const updateCategory: (categoryId: ID, fields: UpdateFields<Category>) => Promise<ID>;
+    export const deleteCategory: (categoryId: ID) => Promise<void>;
 
     // Category groups
-    const getCategoryGroups: () => Promise<CategoryGroup[]>;
-    const createCategoryGroup: (categoryGroup: CategoryGroupPayload) => Promise<ID>;
-    const updateCategoryGroup: (categoryGroupId: ID, fields: UpdateFields<CategoryGroupPayload>) => Promise<ID>;
-    const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
+    export const getCategoryGroups: () => Promise<CategoryGroup[]>;
+    export const createCategoryGroup: (categoryGroup: CategoryGroupPayload) => Promise<ID>;
+    export const updateCategoryGroup: (categoryGroupId: ID, fields: UpdateFields<CategoryGroupPayload>) => Promise<ID>;
+    export const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
 }
 
 type UpdateFields<T> = Partial<Omit<T, 'id'>>;
@@ -265,7 +269,7 @@ type Account = {
 
 type ReadAccount = Account;
 type CreateAccount = Modify<Account, 'offbudget' | 'closed', 'id'>;
-type UpdateAccount = Modify<Account, void, 'id'>;
+type UpdateAccount = Modify<Account, never, 'id'>;
 
 /*
 getAccounts
@@ -294,7 +298,7 @@ If the account has a non-zero balance, you need to specify an account with trans
 If you are transferring from an on-budget account to an off-budget account, you can optionally specify a category with
 transferCategoryId to categorize the transfer transaction.
 
-Tranferring money to an off-budget account needs a category because money is taken out of the budget,
+Transferring money to an off-budget account needs a category because money is taken out of the budget,
 so it needs to come from somewhere.
 
 If you want to simply delete an account, see deleteAccount.

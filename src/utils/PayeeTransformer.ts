@@ -435,6 +435,9 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
                 }
             } else {
                 this.logger.error(`Error in payee transformation: ${error.message}`);
+                if (error.stack) {
+                    this.logger.debug(error.stack);
+                }
             }
         } else {
             this.logger.error('Unknown error in payee transformation');

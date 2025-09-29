@@ -27,6 +27,7 @@ up, run the quality checks, and collaborate smoothly with the team.
    ```bash
    npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
    ```
+
    This runs the same linting, type checking, build, and test scripts that run in
    CI. Keep the suite green before pushing.
 
@@ -42,6 +43,7 @@ up, run the quality checks, and collaborate smoothly with the team.
   ```bash
   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
   ```
+
 - Update documentation alongside behaviour changes. Configuration updates
   usually involve:
   - [`src/utils/config.ts`](./src/utils/config.ts)
