@@ -53,15 +53,15 @@ up, run the quality checks, and collaborate smoothly with the team.
 
 ## Helpful npm Scripts
 
-| Script                      | Purpose                                                                               |
+| Script | Purpose |
 | --------------------------- | ------------------------------------------------------------------------------------- |
-| `npm run lint:eslint`       | Run ESLint across `src/`, `tests/`, and TypeScript config files.                      |
-| `npm run lint:complexity`   | Enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets.            |
-| `npm run lint:prettier`     | Check formatting with Prettier across the repository (excluding generated artifacts). |
-| `npm run lint:prettier:fix` | Automatically format files with Prettier using the shared rules.                      |
-| `npm run typecheck`         | Perform a strict TypeScript type check without emitting files.                        |
-| `npm run build`             | Compile the CLI for distribution.                                                     |
-| `npm test`                  | Execute the Vitest suite (includes build step).                                       |
+| `npm run lint:eslint` | Run ESLint across `src/`, `tests/`, and TypeScript config files. |
+| `npm run lint:complexity` | Enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets. |
+| `npm run lint:prettier` | Check formatting with Prettier across the repository (excluding generated artifacts). |
+| `npm run lint:prettier:fix` | Automatically format files with Prettier using the shared rules. |
+| `npm run typecheck` | Perform a strict TypeScript type check without emitting files. |
+| `npm run build` | Compile the CLI for distribution. |
+| `npm test` | Execute the Vitest suite (includes build step). |
 
 ## Style and Tooling Notes
 

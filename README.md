@@ -73,15 +73,21 @@ New to the project? Follow these steps to get your development environment
 ready:
 
 1. Confirm you are running Node.js **v20.9.0 or newer**.
+
 1. Install dependencies after cloning the repository:
+
    ```bash
    npm install
    ```
+
 1. Run the quality gates to ensure linting, type checks, the build, and tests
    all pass:
+
    ```bash
-   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
+   npm run lint:eslint && npm run lint:complexity && \
+   npm run lint:prettier && npm run typecheck && npm test
    ```
+
 1. Read through the detailed [contributor guide](./CONTRIBUTING.md) for workflow
    expectations, helpful scripts, and documentation requirements.
 
@@ -113,19 +119,22 @@ A basic configuration document looks like this:
 enabled = false
 openAiApiKey = "<openAiKey>"  # Your OpenAI API key
 openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
-# maskPayeeNamesInLogs = true     # Optional: keep payee names obfuscated in payee transformation debug logs
+# maskPayeeNamesInLogs = true     # Optional: keep payee names obfuscated in
+# payee transformation debug logs
 
 # Import settings
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
-# maskPayeeNamesInLogs = true  # Optional: replace payee names in import logs with deterministic placeholders
+# maskPayeeNamesInLogs = true  # Optional: replace payee names in import logs
+# with deterministic placeholders
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
-# requestTimeoutMs = 45000  # Optional: Override the Actual server request timeout (milliseconds)
+# requestTimeoutMs = 45000  # Optional: Override the Actual server request
+# timeout (milliseconds)
 # max 300000
 
 # Budgets for the server, you can add multiple budgets
