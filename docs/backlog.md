@@ -23,7 +23,10 @@ The roadmap table only lists epics that still require planning or delivery work.
 | --- | --- | --- | --- |
 | 1 | [**Epic 8 – Code quality and maintainability**](#epic-8-code-quality-and-maintainability) | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
 | 2 | [**Epic 7 – CLI UX**](#epic-7-cli-ux) | 🚧 Not started | Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented. |
-| 3 | [**Epic 10 – Roadmap features**](#epic-10-roadmap-features) | 🧭 Discovery mode | Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk. |
+| 3 | [**Epic 10 – Multi-budget support with observability**](#epic-10-multi-budget-support-with-observability) | 🧭 Discovery mode | Prototype configuration ergonomics, cache invalidation, and logging before attempting multi-budget imports so we do not regress the session lifecycle work. |
+| 4 | [**Epic 11 – Configurable data directory override**](#epic-11-configurable-data-directory-override) | 🧭 Discovery mode | Align schema, CLI parsing, and docs around a data-directory override once importer refactors land, keeping diagnostics trustworthy. |
+| 5 | [**Epic 12 – Off-budget balance synchronisation**](#epic-12-off-budget-balance-synchronisation) | 🧭 Discovery mode | Model reconciliation workflows that update off-budget accounts without spamming Actual, coordinating with importer refactors for determinism. |
+| 6 | [**Epic 13 – MoneyMoney category translation**](#epic-13-moneymoney-category-translation) | 🧭 Discovery mode | Validate identifier stability and config ergonomics before translating categories so imports remain auditable. |
 
 ### Epic archive
 
@@ -695,172 +698,153 @@ end-to-end CLI tests being available.
 - **Future Work:** None—add directories to the lint/format scope by updating
   `eslint.config.mjs` and `.prettierignore` when new code paths are introduced.
 
-## Epic 10: Roadmap features
+## Epic 10: Multi-budget support with observability
 
-- **Epic Assessment:** These roadmap ideas align with user requests but each
-  hinges on earlier refactors (Epics 2, 4, and 8) to reduce implementation risk.
-  They should stay in discovery mode until we prototype configuration ergonomics
-  and CLI harness coverage so we can prove the UX end-to-end without regressing
-  existing stability work.
+- **Epic Assessment:** Ambitious but plausible once Epic 8 refactors land.
+  Actual’s Node bindings support switching sync IDs, yet we must prove cache
+  invalidation, credential reuse, and logging expectations so we do not regress
+  the session lifecycle work in Epic 1.
 
-### Story 10.1 – Deliver multi-budget support with observability
+### Story 10.1 – Model configuration and persistence
 
-- **Complexity:** 13 pts
+- **Complexity:** 5 pts
 - **Status:** ⬜ Not started
-- **Current Behaviour:** The importer processes one budget at a time per server.
-  There is no persistence for multi-budget state beyond the existing
-  configuration schema.
-- **Assessment:** Ambitious but plausible once Epic 8 refactors land. Actual’s
-  Node bindings support switching sync IDs, yet we would need design spikes to
-  confirm cache invalidation, credential reuse, and logging expectations so we
-  do not regress the session lifecycle work in Epic 1. High discovery risk
-  remains around how operators expect to configure multiple budgets per server
-  and how we surface partial failures in CLI output.
-- **Next Steps:**
-  - Model multi-budget configuration requirements and capture design notes
-    covering edge cases.
-  - Implement runtime support for switching budgets with tests across session
-    lifecycles and logging enhancements.
-  - Document multi-budget workflows for operators.
+- **Outcome:** Draft ADR/design doc covering configuration schema updates and
+  storage of per-budget metadata, including edge-case handling for credential
+  reuse and partial failures.
+- **Next Steps:** Capture configuration proposals, review them with operators,
+  and document open questions around state persistence between runs.
+- **Key Files:** docs, design docs.
+
+### Story 10.2 – Implement runtime support and tests
+
+- **Complexity:** 5 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Update importer/CLI flows with regression tests ensuring session
+  resets between budgets while preserving logging clarity and failure
+  propagation.
+- **Next Steps:** Extend `ActualApi` helpers, add CLI integration tests, and
+  verify sequential budget imports remain deterministic.
 - **Key Files:** `src/commands/import.command.ts`, `src/utils/ActualApi.ts`,
+  `tests/commands/import.command.test.ts`.
+
+### Story 10.3 – Add telemetry and documentation
+
+- **Complexity:** 3 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Enhance logging/metrics and write user-facing docs explaining how
+  budget switching works, including troubleshooting guidance for partial
+  failures.
+- **Next Steps:** Define structured log schemas, add CLI surfacing, and expand
+  README/backlog sections covering multi-budget workflows.
+- **Key Files:** `src/utils/Logger.ts`, docs.
+
+## Epic 11: Configurable data directory override
+
+- **Epic Assessment:** Clear operator ask with manageable scope. We must audit
+  touchpoints that assume the default path and document how overrides interact
+  with existing auto-discovery so diagnostics remain accurate.
+
+### Story 11.1 – Extend configuration and CLI parsing
+
+- **Complexity:** 3 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Update the Zod schema, CLI options, and default resolution logic
+  to accept a data-directory override with validation and descriptive errors.
+- **Next Steps:** Align configuration parsing with CLI flags/environment
+  variables and capture migration notes.
+- **Key Files:** `src/index.ts`, `src/utils/shared.ts`, `src/utils/config.ts`.
+
+### Story 11.2 – Update tests and documentation
+
+- **Complexity:** 3 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Add coverage in config and CLI tests plus README/backlog updates
+  showing how the override behaves alongside auto-discovery.
+- **Next Steps:** Exercise positive/negative override scenarios in tests and
+  document expected directory resolution order.
+- **Key Files:** `tests/config.test.ts`, `tests/commands/import.command.test.ts`,
   docs.
 
-#### Task 10.1a – Model configuration and persistence
-
-- **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Notes:** Draft ADR/design doc covering configuration schema updates and
-  storage of per-budget metadata.
-
-#### Task 10.1b – Implement runtime support and tests
-
-- **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Notes:** Update importer/CLI flows with regression tests ensuring session
-  resets between budgets.
-
-#### Task 10.1c – Add telemetry and documentation
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Enhance logging and write user-facing docs explaining budget
-  switching.
-
-### Story 10.2 – Provide a configurable data directory override
-
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `DEFAULT_DATA_DIR` is fixed; there is no CLI flag or
-  environment variable to override the data directory.
-- **Assessment:** Clear operator ask with manageable scope. We must audit all
-  touchpoints that assume the default path (tests, docs, resolver helpers) and
-  document how overrides interact with existing auto-discovery so that
-  diagnostics (e.g., Story 1.2 error messages) remain accurate. Expect churn in
-  onboarding docs but low technical risk once schema validation is in place.
-- **Next Steps:**
-  - Extend the configuration schema and CLI parsing to accept an override (via
-    env var or flag) with validation.
-  - Update integration tests/documentation to cover the new option and ensure
-    backward compatibility.
-  - Emit migration guidance for existing setups that rely on the default path.
-- **Key Files:** `src/index.ts`, `src/utils/shared.ts`, `src/utils/config.ts`,
-  docs, tests.
-
-#### Task 10.2a – Extend configuration/CLI parsing
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Update Zod schema, CLI options, and default resolution logic.
-
-#### Task 10.2b – Update tests and documentation
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Add coverage in config and CLI tests plus README/backlog updates.
-
-#### Task 10.2c – Maintain backward compatibility guidance
+### Story 11.3 – Maintain backward compatibility guidance
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Document migration steps and ensure defaults remain unchanged
-  unless overrides are provided.
+- **Outcome:** Document migration steps and ensure defaults remain unchanged
+  unless overrides are provided so operators can adopt the feature safely.
+- **Next Steps:** Draft release notes/backlog guidance and review messaging with
+  stakeholders.
+- **Key Files:** docs.
 
-### Story 10.3 – Sync off-budget account balances automatically
+## Epic 12: Off-budget balance synchronisation
 
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Off-budget accounts (e.g., investment portfolios) are
-  ignored after initial import, so Actual balances drift as market values change
-  in MoneyMoney.
-- **Assessment:** Valuable for parity with MoneyMoney but requires careful
+- **Epic Assessment:** Valuable for parity with MoneyMoney but requires careful
   design. MoneyMoney’s API only exposes point-in-time balances, so we must
-  guarantee idempotent reconciliation entries and ensure we do not spam Actual
-  with noise when markets fluctuate daily. Coordination with Story 8.3’s
-  importer refactor feels mandatory to keep the pipeline understandable.
-- **Next Steps:**
-  - Expand the importer to fetch current balance snapshots for off-budget
-    accounts and compare them with Actual’s recorded totals.
-  - Generate reconciliation transactions that capture gains/losses with clear
-    memos (`Off-budget balance sync`) and attach them to a configurable
-    reconciliation category.
-  - Expose CLI/config toggles to opt-in per account and document how the
-    synthetic entries appear in Actual.
-- **Key Files:** `src/utils/Importer.ts`, `src/utils/config.ts`,
-  `src/commands/import.command.ts`, `tests/Importer.test.ts`, docs.
+  guarantee idempotent reconciliation entries and avoid noisy updates.
 
-#### Task 10.3a – Model configuration for off-budget balance sync
+### Story 12.1 – Model configuration for off-budget balance sync
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Allow accounts to opt into reconciliation, including category
-  mapping and memo defaults.
+- **Outcome:** Allow accounts to opt into reconciliation, including category
+  mapping and memo defaults with validation for unsupported account types.
+- **Next Steps:** Extend configuration schema, capture operator expectations,
+  and document guard rails.
+- **Key Files:** `src/utils/config.ts`, docs.
 
-#### Task 10.3b – Implement reconciliation transaction generation
+### Story 12.2 – Implement reconciliation transaction generation
 
 - **Complexity:** 3 pts
 - **Status:** ⬜ Not started
-- **Notes:** Extend importer logic to compute deltas, emit transactions, and
-  ensure idempotency across runs.
-
-#### Task 10.3c – Add tests and documentation for off-budget sync
-
-- **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Cover positive/negative delta cases in unit tests and update
-  README/backlog guidance for operators.
-
-### Story 10.4 – Map MoneyMoney categories to Actual budget categories
-
-- **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Imports preserve MoneyMoney category names verbatim,
-  leaving users to manually remap transactions in Actual even when MoneyMoney
-  already applied rules.
-- **Assessment:** Reasonable stretch goal once configuration ergonomics improve.
-  Requires confirmation that we can reliably address Actual categories by stable
-  IDs (not display names) and that MoneyMoney exports carry sufficient
-  identifiers. We should prototype config ergonomics alongside Story 2.1’s
-  normalisation so category lookups happen in a deterministic order.
-- **Next Steps:**
-  - Introduce an optional category translation table that resolves MoneyMoney
-    category identifiers to Actual category IDs or names.
-  - Update importer flows to apply translations with validation for unmapped
-    categories and clear logging when fallbacks are used.
-  - Provide configuration and CLI documentation showing how to enable, seed, and
-    test the mapping.
-- **Key Files:** `src/utils/Importer.ts`, `src/utils/config.ts`, `README.md`,
+- **Outcome:** Extend importer logic to compute deltas, emit reconciliation
+  transactions, and ensure idempotency across runs.
+- **Next Steps:** Add importer helpers, update CLI flows, and create regression
+  coverage for positive/negative delta cases.
+- **Key Files:** `src/utils/Importer.ts`, `src/commands/import.command.ts`,
   `tests/Importer.test.ts`.
 
-#### Task 10.4a – Define category translation configuration
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Extend the config schema with optional mapping blocks and surface
-  validation errors when categories are missing.
-
-#### Task 10.4b – Apply translations and add coverage
+### Story 12.3 – Document and test off-budget reconciliation
 
 - **Complexity:** 2 pts
 - **Status:** ⬜ Not started
-- **Notes:** Update importer logic/tests to apply mappings, ensuring unlisted
-  categories fall back gracefully with warnings.
+- **Outcome:** Cover positive/negative delta cases in unit tests and update
+  README/backlog guidance describing how synthetic entries appear in Actual.
+- **Next Steps:** Expand docs with troubleshooting tips and ensure examples show
+  reconciliation categories.
+- **Key Files:** `tests/Importer.test.ts`, docs.
+
+## Epic 13: MoneyMoney category translation
+
+- **Epic Assessment:** Reasonable stretch goal once configuration ergonomics
+  improve. Requires confirmation that we can reliably address Actual categories
+  by stable IDs and that MoneyMoney exports carry sufficient identifiers.
+
+### Story 13.1 – Define category translation configuration
+
+- **Complexity:** 3 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Extend the config schema with optional mapping blocks and surface
+  validation errors when categories are missing or ambiguous.
+- **Next Steps:** Prototype mapping ergonomics, gather operator feedback, and
+  document fallback behaviour.
+- **Key Files:** `src/utils/config.ts`, docs.
+
+### Story 13.2 – Apply translations with importer coverage
+
+- **Complexity:** 2 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Update importer logic/tests to apply mappings, ensuring unlisted
+  categories fall back gracefully with warnings and structured logs.
+- **Next Steps:** Implement translation helpers, add regression tests, and keep
+  CLI output clear about fallback scenarios.
+- **Key Files:** `src/utils/Importer.ts`, `tests/Importer.test.ts`.
+
+### Story 13.3 – Document category translation workflows
+
+- **Complexity:** 2 pts
+- **Status:** ⬜ Not started
+- **Outcome:** Provide configuration and CLI documentation showing how to
+  enable, seed, and test the mapping while highlighting audit considerations.
+- **Next Steps:** Update README/backlog sections with examples and ensure
+  release notes call out migration expectations.
+- **Key Files:** docs.
