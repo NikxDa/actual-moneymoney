@@ -12,7 +12,7 @@ interface LoadFromConfigOptions {
 }
 
 export class AccountMap {
-    constructor(
+    public constructor(
         private budgetConfig: ActualBudgetConfig,
         private logger: Logger,
         private actualApi: ActualApi
@@ -22,6 +22,7 @@ export class AccountMap {
     private actualAccounts: Array<ActualAccount> = [];
 
     private mapping: Map<MonMonAccount, ActualAccount> | null = null;
+    private _isLoading = false;
 
     public getMap(moneyMoneyAccountRefs?: Array<string>): Map<MonMonAccount, ActualAccount> {
         if (!this.mapping) {
@@ -83,7 +84,7 @@ export class AccountMap {
         return account.id === ref || account.name === ref;
     }
 
-    public getActualAccountByRef(ref: string) {
+    public getActualAccountByRef(ref: string): ActualAccount | null {
         const matchingAccounts = this.actualAccounts.filter((acc) => this.checkActualAccountRef(acc, ref));
 
         if (matchingAccounts.length === 0) {
@@ -94,11 +95,16 @@ export class AccountMap {
             this.logger.warn(`Found multiple Actual accounts matching the reference '${ref}'. Using the first one.`);
         }
 
-        return matchingAccounts[0];
+        return matchingAccounts[0] ?? null;
     }
 
-    public async loadFromConfig(options: LoadFromConfigOptions = {}) {
+    public async loadFromConfig(options: LoadFromConfigOptions = {}): Promise<void> {
         if (this.mapping) return;
+        if (this._isLoading) {
+            this.logger.debug('Account mapping is already being loaded, skipping concurrent request.');
+            return;
+        }
+        this._isLoading = true;
 
         const accountMapping = this.budgetConfig.accountMapping ?? {};
         if (typeof accountMapping !== 'object' || accountMapping === null) {
@@ -175,10 +181,12 @@ export class AccountMap {
         this.logger.info('Parsed account mapping', [
             '[MoneyMoney Account] → [Actual Account]',
             ...Array.from(parsedAccountMapping.entries()).map(
-                ([monMonAccount, actualAccount]) => `${monMonAccount.name} → ${actualAccount.name}`
+                ([monMonAccount, actualAccount]) =>
+                    `${monMonAccount.name} (${monMonAccount.uuid ?? 'unknown'}) → ${actualAccount.name} (${actualAccount.id})`
             ),
         ]);
 
         this.mapping = parsedAccountMapping;
+        this._isLoading = false;
     }
 }

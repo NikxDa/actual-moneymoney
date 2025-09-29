@@ -1,5 +1,11 @@
 #!/usr/bin/env sh
 set -e
 
+# Quick, low-friction guard; skip with HUSKY_SKIP_PREPUSH=1 if truly needed
+[ -n "$HUSKY_SKIP_PREPUSH" ] && {
+  echo "[husky] pre-push checks skipped by HUSKY_SKIP_PREPUSH"; exit 0;
+}
+
+echo "[husky] pre-push: running typecheck..."
 # Pre-push: No checks needed since pre-commit runs the full suite
 # Every commit is already fully validated

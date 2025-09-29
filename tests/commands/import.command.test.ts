@@ -231,6 +231,7 @@ describe('import command (CLI)', () => {
                     NODE_NO_WARNINGS: '1',
                 },
                 nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
             });
 
             expect(result.exitCode).toBe(0);
@@ -301,6 +302,7 @@ describe('import command (CLI)', () => {
                         NODE_NO_WARNINGS: '1',
                     },
                     nodeOptions: loaderNodeOptions,
+                    timeoutMs: CLI_TIMEOUT_MS,
                 }
             );
 
@@ -440,6 +442,7 @@ describe('import command (CLI)', () => {
                     NODE_NO_WARNINGS: '1',
                 },
                 nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
             });
 
             expect(result.exitCode).toBe(1);

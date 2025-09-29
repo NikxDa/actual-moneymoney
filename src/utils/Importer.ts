@@ -11,7 +11,7 @@ import PayeeTransformer from './PayeeTransformer.js';
 import { DATE_FORMAT } from './shared.js';
 
 class Importer {
-    constructor(
+    public constructor(
         private config: Config,
         private budgetConfig: ActualBudgetConfig,
         private actualApi: ActualApi,
@@ -118,10 +118,9 @@ class Importer {
             const accountStartTime = Date.now();
             const accountTransactions = monMonTransactionMap[monMonAccount.uuid] ?? [];
 
-            let createTransactions: CreateTransaction[] = [];
-            for (const monMonTransaction of accountTransactions) {
-                createTransactions.push(await this.convertToActualTransaction(monMonTransaction));
-            }
+            const createTransactions: CreateTransaction[] = await Promise.all(
+                accountTransactions.map((t) => this.convertToActualTransaction(t))
+            );
 
             const hasMoneyMoneyTransactionsForAccount = createTransactions.length > 0;
 
@@ -142,12 +141,11 @@ class Importer {
                         ['Extend the date range or review ignore patterns if a starting balance is expected.']
                     );
                 } else {
-                    const lastTransaction =
-                        accountTransactions.length > 0
-                            ? accountTransactions[accountTransactions.length - 1]
-                            : undefined;
+                    // Use the latest transaction (or importDate) as the starting‐balance date
+                    const lastTransaction = accountTransactions[accountTransactions.length - 1];
+                    const startDate = lastTransaction?.valueDate ?? importDate;
                     const startTransaction: CreateTransaction = {
-                        date: format(lastTransaction?.valueDate ?? new Date(), DATE_FORMAT),
+                        date: format(startDate, DATE_FORMAT),
                         amount: this.getStartingBalanceForAccount(monMonAccount, accountTransactions),
                         imported_id: `${monMonAccount.uuid}-start`,
                         cleared: true,
@@ -171,7 +169,7 @@ class Importer {
             );
             const newImportedIds = new Set<string>();
 
-            createTransactions = createTransactions.filter((transaction) => {
+            const filteredTransactions = createTransactions.filter((transaction) => {
                 const importedId = transaction.imported_id;
 
                 if (!importedId) {
@@ -191,24 +189,24 @@ class Importer {
                 return true;
             });
 
-            if (createTransactions.length === 0) {
+            if (filteredTransactions.length === 0) {
                 this.logger.debug(`No new transactions found for Actual account '${actualAccount.name}'. Skipping...`);
                 continue;
             }
 
             this.logger.debug(
-                `Considering ${createTransactions.length} transactions for Actual account '${actualAccount.name}'...`
+                `Considering ${filteredTransactions.length} transactions for Actual account '${actualAccount.name}'...`
             );
 
             hasNewTransactions = true;
 
             if (this.payeeTransformer && !isDryRun) {
                 this.logger.debug(
-                    `Cleaning up payee names for ${createTransactions.length} transaction/s using OpenAI...`
+                    `Cleaning up payee names for ${filteredTransactions.length} transaction/s using OpenAI...`
                 );
 
                 const startTime = Date.now();
-                const transactionPayees = createTransactions.map((t) => String(t.imported_payee ?? ''));
+                const transactionPayees = filteredTransactions.map((t) => String(t.imported_payee ?? ''));
                 const uniquePayees = Array.from(new Set(transactionPayees));
 
                 const transformedPayees = await this.payeeTransformer.transformPayees(uniquePayees);
@@ -218,7 +216,7 @@ class Importer {
 
                 if (transformedPayees !== null) {
                     this.logger.debug(`Applying transformed payee names to transactions...`);
-                    createTransactions.forEach((t) => {
+                    filteredTransactions.forEach((t) => {
                         const originalPayee = t.imported_payee as string;
                         const newPayee = transformedPayees[originalPayee];
 
@@ -229,7 +227,7 @@ class Importer {
                 } else {
                     this.logger.warn('Payee transformation failed. Using default payee names...');
 
-                    createTransactions.forEach((t) => {
+                    filteredTransactions.forEach((t) => {
                         t.payee_name = t.imported_payee;
                     });
                 }
@@ -240,14 +238,14 @@ class Importer {
                     this.logger.debug(`Payee transformation is disabled. Using default payee names...`);
                 }
 
-                createTransactions.forEach((t) => {
+                filteredTransactions.forEach((t) => {
                     t.payee_name = t.imported_payee;
                 });
             }
 
             // Log final payee names being used for import
             const shouldMaskPayees = this.config.import.maskPayeeNamesInLogs === true;
-            const payeeNamesForLog = createTransactions.map((t) => {
+            const payeeNamesForLog = filteredTransactions.map((t) => {
                 const payeeName = String(t.payee_name ?? '');
                 const value = shouldMaskPayees ? this.obfuscatePayeeName(payeeName) : payeeName;
                 return `"${value}"`;
@@ -260,11 +258,11 @@ class Importer {
 
             if (isDryRun) {
                 this.logger.info(`DRY RUN - Would import to account '${actualAccount.name}'`, [
-                    `Would add ${createTransactions.length} new transaction(s).`,
+                    `Would add ${filteredTransactions.length} new transaction(s).`,
                     `No changes made.`,
                 ]);
             } else {
-                const result = await this.actualApi.importTransactions(actualAccount.id, createTransactions);
+                const result = await this.actualApi.importTransactions(actualAccount.id, filteredTransactions);
 
                 const errors = result.errors ?? [];
                 if (errors.length > 0) {
@@ -280,8 +278,8 @@ class Importer {
                 const updatedCount = result.updated.length;
 
                 this.logger.info(`Transaction import to account '${actualAccount.name}' successful`, [
-                    `Added ${addedCount} new transaction.`,
-                    `Updated ${updatedCount} existing transaction.`,
+                    `Added ${addedCount} new transaction${addedCount === 1 ? '' : 's'}.`,
+                    `Updated ${updatedCount} existing transaction${updatedCount === 1 ? '' : 's'}.`,
                 ]);
             }
 
@@ -400,7 +398,7 @@ class Importer {
     }
 
     private getStartingBalanceForAccount(account: MonMonAccount, transactions: MonMonTransaction[]) {
-        const firstBalanceRow = account.balance[0];
+        const firstBalanceRow = account.balance[0]; // VERIFY this is the latest/current balance
         const monMonAccountBalance = firstBalanceRow?.[0];
 
         if (monMonAccountBalance === undefined) {
@@ -410,12 +408,12 @@ class Importer {
             );
             return 0;
         }
-        const totalExpenses = transactions.reduce(
+        const netChange = transactions.reduce(
             (acc, transaction) => acc + (transaction.booked ? transaction.amount : 0),
             0
         );
 
-        const startingBalance = Math.round((monMonAccountBalance - totalExpenses) * 100);
+        const startingBalance = Math.round((monMonAccountBalance - netChange) * 100);
 
         return startingBalance;
     }

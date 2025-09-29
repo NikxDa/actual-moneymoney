@@ -20,7 +20,7 @@ class MockOpenAI {
         },
     };
 
-    constructor(public readonly options: { apiKey: string; timeout?: number }) {}
+    public constructor(public readonly options: { apiKey: string; timeout?: number }) {}
 }
 
 vi.mock('openai', () => ({
@@ -352,7 +352,7 @@ describe('PayeeTransformer', () => {
         );
 
         // Mock OpenAI to return payload with duplicate keys
-        // Note: This is technically invalid JSON, but we want to test the duplicate key detection
+        // Note: This contains duplicate keys; typical parsers keep the last value. We test duplicate-key detection.
         createMock.mockImplementation(async () => ({
             choices: [
                 {

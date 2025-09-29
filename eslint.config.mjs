@@ -13,7 +13,7 @@ const eslintProject = path.resolve(__dirname, 'tsconfig.eslint.json');
 
 const complexityRules = enableComplexityRules
     ? {
-          complexity: ['error', { max: 45 }],
+          complexity: ['error', { max: 40 }],
           'sonarjs/cognitive-complexity': ['error', 60],
       }
     : {};
@@ -34,7 +34,7 @@ const sharedRules = {
             accessibility: 'explicit',
             overrides: {
                 accessors: 'explicit',
-                constructors: 'no-public',
+                constructors: 'explicit',
                 methods: 'explicit',
                 properties: 'explicit',
                 parameterProperties: 'explicit',

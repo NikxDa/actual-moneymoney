@@ -81,14 +81,14 @@ class PayeeTransformer {
             await PayeeTransformer.ensureCacheDirExists();
             const cacheFile = PayeeTransformer.getCacheFilePath();
             const tmpFile = `${cacheFile}.tmp`;
-            await fs.writeFile(tmpFile, JSON.stringify(cache, null, 2), 'utf-8');
+            await fs.writeFile(tmpFile, JSON.stringify(cache, null, 2), { encoding: 'utf-8', mode: 0o600 });
             await fs.rename(tmpFile, cacheFile);
         } catch (_error) {
             // Ignore cache write errors but log in debug environments if needed
         }
     }
 
-    constructor(
+    public constructor(
         private config: PayeeTransformationConfig,
         private logger: Logger
     ) {
@@ -143,7 +143,14 @@ class PayeeTransformer {
             if (finishReason && finishReason !== 'stop') {
                 this.logger.error(`OpenAI response ended prematurely (finish_reason: ${finishReason}).`);
                 if (!this.shouldMaskPayeeLogs()) {
-                    this.logger.debug(`Raw response content may be truncated: ${response.choices[0].message.content}`);
+                    const raw = response.choices[0].message.content ?? '';
+                    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+                    const hex = Array.from(new Uint8Array(hash))
+                        .map((b) => b.toString(16).padStart(2, '0'))
+                        .join('');
+                    this.logger.debug(
+                        `Raw response content may be truncated. contentSHA256=${hex}, length=${raw.length}`
+                    );
                 }
                 return null;
             }
@@ -179,8 +186,16 @@ class PayeeTransformer {
                     return this.buildResponse(uniquePayees);
                 }
 
+                const MAX_CACHE_ENTRIES = 5000; // tune as needed
                 for (const [original, transformed] of Object.entries(transformedPayees)) {
                     if (typeof transformed === 'string') {
+                        if (this.transformationCache.size >= MAX_CACHE_ENTRIES) {
+                            // Evict the oldest entry (Map preserves insertion order)
+                            const oldestKey = this.transformationCache.keys().next().value as string | undefined;
+                            if (oldestKey) {
+                                this.transformationCache.delete(oldestKey);
+                            }
+                        }
                         this.transformationCache.set(original, transformed);
                     }
                 }
@@ -230,9 +245,9 @@ class PayeeTransformer {
                 };
 
                 // Add model-specific parameters based on capabilities
-                if (capabilities.supportsTemperature && this.config.modelConfig?.temperature !== undefined) {
-                    const requestedTemperature = this.config.modelConfig.temperature;
-                    requestConfig.temperature = Math.min(2, Math.max(0, requestedTemperature));
+                if (capabilities.supportsTemperature) {
+                    const t = this.config.modelConfig?.temperature ?? capabilities.defaultTemperature;
+                    requestConfig.temperature = Math.min(2, Math.max(0, t));
                 }
 
                 if (capabilities.supportsMaxTokens && this.config.modelConfig?.maxTokens !== undefined) {
@@ -256,8 +271,10 @@ class PayeeTransformer {
                     const status = (error as { status?: number }).status;
                     if (status && (status === 429 || status >= 500)) {
                         this.logger.debug(`Attempt ${attempt} failed, retrying... (${status})`);
-                        // Exponential backoff
-                        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+                        // Exponential backoff with jitter
+                        const base = 1000 * 2 ** (attempt - 1);
+                        const delay = Math.floor(base * (0.5 + Math.random())); // 50–150% jitter
+                        await new Promise((resolve) => setTimeout(resolve, delay));
                         continue;
                     }
                 }
@@ -346,7 +363,12 @@ class PayeeTransformer {
             const response = await this.openai.models.list();
             models = response.data.map((m) => m.id);
         } catch (err) {
-            this.logger.error('Failed to fetch OpenAI model list', err instanceof Error ? err.message : String(err));
+            const e = err as { name?: string; message?: string; stack?: string };
+            this.logger.error('Failed to fetch OpenAI model list', [
+                `name: ${e?.name ?? 'Unknown'}`,
+                `message: ${e?.message ?? String(err)}`,
+                ...(e?.stack ? [`stack: ${e.stack.split('\n')[0]}`] : []),
+            ]);
             throw err;
         }
         const cache: ModelCache = {

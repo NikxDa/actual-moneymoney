@@ -96,7 +96,7 @@ type BudgetDirectoryResolution = {
 };
 
 export class ActualApiTimeoutError extends Error {
-    constructor(operation: string, timeoutMs: number) {
+    public constructor(operation: string, timeoutMs: number) {
         super(`Actual API operation '${operation}' timed out after ${timeoutMs}ms`);
         this.name = 'ActualApiTimeoutError';
     }
@@ -106,7 +106,7 @@ class ActualApi {
     protected isInitialized = false;
     private currentDataDir: string | null = null;
 
-    constructor(
+    public constructor(
         private readonly serverConfig: ActualServerConfig,
         private readonly logger: Logger
     ) {}
