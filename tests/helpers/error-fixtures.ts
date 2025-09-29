@@ -34,10 +34,7 @@ export const makeNetworkDisconnectError = (overrides: ErrorOverrides = {}) => {
 };
 
 export const makeInvalidCredentialsError = (overrides: ErrorOverrides = {}) =>
-    Object.assign(
-        new Error('Failed to login: Invalid password provided'),
-        overrides
-    );
+    Object.assign(new Error('Failed to login: Invalid password provided'), overrides);
 
 export type ErrorFixture =
     | ReturnType<typeof makeNetworkDisconnectError>

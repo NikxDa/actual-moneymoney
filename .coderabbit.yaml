@@ -78,23 +78,7 @@ reviews:
               Allow trailing commas in TypeScript (consistent with Prettier configuration).
               Union types, binary operations, ternary operations, and var declarations in Typescript need to be wrapped on every item.
               Binary operations, call parameters, for statements, imports, method parameters, object literals, object types, and union types need to be split into lines when wrapped in Typescript.
-              Spaces after colons, optional parameters, and generator mults are required in Typescript.
-              Spaces should not be utilized within parentheses but should be utilized within object literal braces in Typescript.
-              Spaces need to be utilized within array initializer brackets in Typescript.
-              Explicit types for vars fields, function returns, and function expression returns in TypeScript need to be set.
-              Space before async arrow left parentheses in TypeScript is required.
-              Space before function left parentheses and class left brace in Typescript is desirable.
-              Prefer 'AS' for type casting in TypeScript.
-              Space is required before method call parentheses in TypeScript.
-              Space before Method Left Brace needs to be utilized in Typescript.
-              Space before Switch Parentheses is necessary in Typescript.
-              Space before Catch Left Brace is required in Typescript.
-              Utilize space before Catch Parentheses in Typescript.
-              Space before Catch Keyword is necessary in Typescript.
-              Make sure to use space before ASync Arrow LeftParen in TypeScript.
-              Make sure to use space before Type Colon in TypeScript.
-              Avoid space before Property Colon in TypeScript.
-              Utilize the space before Colon in TypeScript.
+              Follow Prettier's automatic spacing rules for consistency.
               Always prefer 'import type' over 'import' when importing in TypeScript.
               Always use 'public' modifier in TypeScript.
               Always use property prefix.
@@ -127,13 +111,10 @@ reviews:
               Arrays and objects should have types defined: Array items and Object properties must have their types clearly defined.
         - path: '**/*.json'
           instructions: |
-              Indent size for JSON files needs to be 2.
-              In JSON, an array wrapping needs to be split into lines.
-              Trailing commas in JSON need to be removed.
-              Object wrapping in JSON needs to be split into lines.
-              Avoid alignment of properties in JSON.
-              Space needs to be introduced after colon and comma in JSON.
-              Do not introduce space before colon or comma in JSON.
+              Follow Prettier's JSON formatting rules for consistency.
+              Use 2-space indentation for JSON files.
+              Allow trailing commas in JSON (consistent with Prettier).
+              Let Prettier handle array wrapping, object wrapping, and spacing.
 chat:
     auto_reply: true
 knowledge_base:

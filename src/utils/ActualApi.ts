@@ -26,10 +26,7 @@ import path from 'node:path';
 import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
-import {
-    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
-    FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
-} from './config.js';
+import { DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS, FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS } from './config.js';
 import type Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -40,19 +37,12 @@ const isActualNoise = (args: unknown[]) => {
 
     const message = util.format(...(args as [unknown, ...unknown[]]));
 
-    const noisyPrefixes = [
-        'Got messages from server',
-        'Syncing since',
-        'SENT -------',
-        'RECEIVED -------',
-    ];
+    const noisyPrefixes = ['Got messages from server', 'Syncing since', 'SENT -------', 'RECEIVED -------'];
 
     return noisyPrefixes.some((prefix) => message.startsWith(prefix));
 };
 const suppressIfNoisy =
-    <TArgs extends unknown[]>(
-        original: (...args: TArgs) => void
-    ): ((...args: TArgs) => void) =>
+    <TArgs extends unknown[]>(original: (...args: TArgs) => void): ((...args: TArgs) => void) =>
     (...args: TArgs): void => {
         if (isActualNoise(args)) {
             return;
@@ -67,17 +57,14 @@ const normalizeForHash = (value: unknown): unknown => {
     }
 
     if (value && typeof value === 'object') {
-        const sortedEntries = Object.entries(
-            value as Record<string, unknown>
-        ).sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
-
-        return sortedEntries.reduce<Record<string, unknown>>(
-            (accumulator, [key, nestedValue]) => {
-                accumulator[key] = normalizeForHash(nestedValue);
-                return accumulator;
-            },
-            {}
+        const sortedEntries = Object.entries(value as Record<string, unknown>).sort(([leftKey], [rightKey]) =>
+            leftKey.localeCompare(rightKey)
         );
+
+        return sortedEntries.reduce<Record<string, unknown>>((accumulator, [key, nestedValue]) => {
+            accumulator[key] = normalizeForHash(nestedValue);
+            return accumulator;
+        }, {});
     }
 
     return value;
@@ -110,9 +97,7 @@ type BudgetDirectoryResolution = {
 
 export class ActualApiTimeoutError extends Error {
     constructor(operation: string, timeoutMs: number) {
-        super(
-            `Actual API operation '${operation}' timed out after ${timeoutMs}ms`
-        );
+        super(`Actual API operation '${operation}' timed out after ${timeoutMs}ms`);
         this.name = 'ActualApiTimeoutError';
     }
 }
@@ -130,31 +115,20 @@ class ActualApi {
         const ms = this.serverConfig.requestTimeoutMs;
         if (typeof ms === 'number') {
             if (ms > 0) {
-                const cappedMs = Math.min(
-                    ms,
-                    DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS
-                );
+                const cappedMs = Math.min(ms, DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS);
                 if (cappedMs !== ms) {
-                    this.logger.warn(
-                        `requestTimeoutMs capped at ${DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS}ms`
-                    );
+                    this.logger.warn(`requestTimeoutMs capped at ${DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS}ms`);
                 }
                 return cappedMs;
             }
-            this.logger.warn(
-                `requestTimeoutMs must be > 0; falling back to ${FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS}ms`
-            );
+            this.logger.warn(`requestTimeoutMs must be > 0; falling back to ${FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS}ms`);
             return FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS;
         }
         return FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS;
     }
 
     private createContextHints(additional?: string | string[]): string[] {
-        const extras = Array.isArray(additional)
-            ? additional
-            : additional
-              ? [additional]
-              : [];
+        const extras = Array.isArray(additional) ? additional : additional ? [additional] : [];
 
         return [`Server URL: ${this.serverConfig.serverUrl}`, ...extras];
     }
@@ -169,10 +143,7 @@ class ActualApi {
             cause?: unknown;
         };
 
-        const codeValue =
-            typeof code === 'string' || typeof code === 'number'
-                ? String(code)
-                : undefined;
+        const codeValue = typeof code === 'string' || typeof code === 'number' ? String(code) : undefined;
 
         const knownCodes = new Set([
             'ECONNREFUSED',
@@ -194,12 +165,7 @@ class ActualApi {
                   ? String((error as { message?: unknown }).message)
                   : '';
 
-        if (
-            message &&
-            /(connect\s+)?ECONNREFUSED|ECONNRESET|network\s+timeout|fetch\s+failed/i.test(
-                message
-            )
-        ) {
+        if (message && /(connect\s+)?ECONNREFUSED|ECONNRESET|network\s+timeout|fetch\s+failed/i.test(message)) {
             return true;
         }
 
@@ -222,11 +188,7 @@ class ActualApi {
                   ? String((error as { message?: unknown }).message)
                   : '';
 
-        if (
-            /invalid\s+password|authentication\s+failed|unauthori[sz]ed/i.test(
-                message
-            )
-        ) {
+        if (/invalid\s+password|authentication\s+failed|unauthori[sz]ed/i.test(message)) {
             return true;
         }
 
@@ -237,24 +199,16 @@ class ActualApi {
             cause?: unknown;
         };
 
-        const reason =
-            typeof details.reason === 'string' ? details.reason : undefined;
+        const reason = typeof details.reason === 'string' ? details.reason : undefined;
         const status =
             typeof details.status === 'number'
                 ? details.status
                 : typeof details.status === 'string'
                   ? Number.parseInt(details.status, 10)
                   : undefined;
-        const responseStatus =
-            typeof details.response?.status === 'number'
-                ? details.response.status
-                : undefined;
+        const responseStatus = typeof details.response?.status === 'number' ? details.response.status : undefined;
 
-        if (
-            (reason && /invalid\s+password|auth/i.test(reason)) ||
-            status === 401 ||
-            responseStatus === 401
-        ) {
+        if ((reason && /invalid\s+password|auth/i.test(reason)) || status === 401 || responseStatus === 401) {
             return true;
         }
 
@@ -265,10 +219,7 @@ class ActualApi {
         return false;
     }
 
-    private getFriendlyErrorMessage(
-        operation: string,
-        error: unknown
-    ): string | null {
+    private getFriendlyErrorMessage(operation: string, error: unknown): string | null {
         if (this.isNetworkError(error)) {
             return (
                 'Unable to reach Actual server. ' +
@@ -300,9 +251,7 @@ class ActualApi {
 
         if (
             details.type === 'PostError' &&
-            /(^|[-\s])file[-\s]?not[-\s]?found$|group[-\s]?not[-\s]?found/i.test(
-                reason
-            )
+            /(^|[-\s])file[-\s]?not[-\s]?found$|group[-\s]?not[-\s]?found/i.test(reason)
         ) {
             return (
                 'The Actual server could not find the requested budget file. ' +
@@ -326,10 +275,7 @@ class ActualApi {
 
         const timeoutPromise = new Promise<never>((_, reject) => {
             timeoutHandle = setTimeout(() => {
-                const timeoutError = new ActualApiTimeoutError(
-                    operation,
-                    timeoutMs
-                );
+                const timeoutError = new ActualApiTimeoutError(operation, timeoutMs);
                 const finalizeTimeout = () => {
                     this.isInitialized = false;
                     this.currentDataDir = null;
@@ -346,10 +292,7 @@ class ActualApi {
                     : additionalHints
                       ? [additionalHints]
                       : [];
-                const fallbackHints = [
-                    ...extraHints,
-                    `Timeout triggered by operation '${operation}'`,
-                ];
+                const fallbackHints = [...extraHints, `Timeout triggered by operation '${operation}'`];
                 const warnHints = this.createContextHints(fallbackHints);
                 const shutdownAttempt = this.runActualRequest(
                     'shutdown session',
@@ -357,21 +300,13 @@ class ActualApi {
                     fallbackHints,
                     { skipTimeoutShutdown: true }
                 ).catch((shutdownError) => {
-                    const reason =
-                        shutdownError instanceof Error
-                            ? shutdownError.message
-                            : String(shutdownError);
-                    this.logger.warn(
-                        `Actual client shutdown after timeout failed: ${reason}`,
-                        warnHints
-                    );
+                    const reason = shutdownError instanceof Error ? shutdownError.message : String(shutdownError);
+                    this.logger.warn(`Actual client shutdown after timeout failed: ${reason}`, warnHints);
                 });
 
                 Promise.race([
                     shutdownAttempt,
-                    new Promise((resolve) =>
-                        setTimeout(resolve, Math.min(5_000, timeoutMs / 3))
-                    ),
+                    new Promise((resolve) => setTimeout(resolve, Math.min(5_000, timeoutMs / 3))),
                 ]).finally(finalizeTimeout);
             }, timeoutMs);
         });
@@ -392,10 +327,7 @@ class ActualApi {
         rawCallback.catch(() => {});
 
         try {
-            const result = (await Promise.race([
-                racingCallback,
-                timeoutPromise,
-            ])) as T;
+            const result = (await Promise.race([racingCallback, timeoutPromise])) as T;
             return result;
         } catch (error) {
             if (error instanceof ActualApiTimeoutError) {
@@ -403,10 +335,7 @@ class ActualApi {
                 throw error;
             }
 
-            const friendlyMessage = this.getFriendlyErrorMessage(
-                operation,
-                error
-            );
+            const friendlyMessage = this.getFriendlyErrorMessage(operation, error);
 
             const message = friendlyMessage
                 ? friendlyMessage
@@ -416,13 +345,8 @@ class ActualApi {
 
             const wrappedError =
                 error instanceof Error
-                    ? createErrorWithCause(
-                          `Actual API operation '${operation}' failed: ${message}`,
-                          error
-                      )
-                    : new Error(
-                          `Actual API operation '${operation}' failed: ${message}`
-                      );
+                    ? createErrorWithCause(`Actual API operation '${operation}' failed: ${message}`, error)
+                    : new Error(`Actual API operation '${operation}' failed: ${message}`);
             this.logger.error(wrappedError.message, hints);
             throw wrappedError;
         } finally {
@@ -443,9 +367,7 @@ class ActualApi {
 
         if (!dataDirExists) {
             await fs.mkdir(actualDataDir, { recursive: true });
-            this.logger.debug(
-                `Created Actual data directory at ${actualDataDir}`
-            );
+            this.logger.debug(`Created Actual data directory at ${actualDataDir}`);
         }
 
         this.logger.debug(
@@ -465,8 +387,7 @@ class ActualApi {
     }
 
     public async ensureInitialization(customDataDir?: string): Promise<void> {
-        const desiredDataDir =
-            customDataDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
+        const desiredDataDir = customDataDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
 
         if (!this.isInitialized) {
             await this.init(desiredDataDir);
@@ -475,9 +396,7 @@ class ActualApi {
 
         if (this.currentDataDir !== desiredDataDir) {
             this.logger.debug(
-                `Reinitialising Actual data directory: ${
-                    this.currentDataDir ?? '(none)'
-                } -> ${desiredDataDir}`
+                `Reinitialising Actual data directory: ${this.currentDataDir ?? '(none)'} -> ${desiredDataDir}`
             );
             await this.shutdown();
             await this.init(desiredDataDir);
@@ -486,24 +405,16 @@ class ActualApi {
 
     public async sync(additionalHints?: string | string[]): Promise<void> {
         await this.ensureInitialization();
-        await this.runActualRequest(
-            'sync budget',
-            () => actual.sync(),
-            additionalHints
-        );
+        await this.runActualRequest('sync budget', () => actual.sync(), additionalHints);
     }
 
     public async getAccounts(): ReturnType<typeof actual.getAccounts> {
         await this.ensureInitialization();
-        return await this.runActualRequest('fetch accounts', () =>
-            actual.getAccounts()
-        );
+        return await this.runActualRequest('fetch accounts', () => actual.getAccounts());
     }
 
     public async loadBudget(budgetId: string): Promise<void> {
-        const budgetConfig = this.serverConfig.budgets.find(
-            (b) => b.syncId === budgetId
-        );
+        const budgetConfig = this.serverConfig.budgets.find((b) => b.syncId === budgetId);
 
         if (!budgetConfig) {
             throw new Error(`No budget with syncId '${budgetId}' found.`);
@@ -512,8 +423,7 @@ class ActualApi {
         const budgetHints = [`Budget sync ID: ${budgetConfig.syncId}`];
         const rootDataDir = this.currentDataDir ?? DEFAULT_DATA_DIR;
         const encryptionPassword =
-            budgetConfig.e2eEncryption.enabled &&
-            budgetConfig.e2eEncryption.password
+            budgetConfig.e2eEncryption.enabled && budgetConfig.e2eEncryption.password
                 ? { password: budgetConfig.e2eEncryption.password }
                 : undefined;
 
@@ -527,24 +437,15 @@ class ActualApi {
 
                 let downloadRootDir = this.currentDataDir ?? rootDataDir;
 
-                const initialResolution = await this.tryResolveBudgetDirectory(
-                    budgetConfig.syncId,
-                    downloadRootDir
-                );
+                const initialResolution = await this.tryResolveBudgetDirectory(budgetConfig.syncId, downloadRootDir);
 
                 if (initialResolution) {
-                    const resolvedRootDir = path.dirname(
-                        initialResolution.directory
-                    );
+                    const resolvedRootDir = path.dirname(initialResolution.directory);
                     await this.ensureInitialization(resolvedRootDir);
                     downloadRootDir = this.currentDataDir ?? resolvedRootDir;
                 }
 
-                const downloadHints = [
-                    ...budgetHints,
-                    `Data root: ${downloadRootDir}`,
-                    attemptHint,
-                ];
+                const downloadHints = [...budgetHints, `Data root: ${downloadRootDir}`, attemptHint];
 
                 this.logger.debug(
                     `Downloading budget with syncId '${budgetConfig.syncId}' (attempt ${attempt}/${maxAttempts})...`
@@ -552,44 +453,30 @@ class ActualApi {
 
                 await this.runActualRequest(
                     `download budget '${budgetConfig.syncId}'`,
-                    () =>
-                        actual.downloadBudget(
-                            budgetConfig.syncId,
-                            encryptionPassword
-                        ),
+                    () => actual.downloadBudget(budgetConfig.syncId, encryptionPassword),
                     downloadHints
                 );
 
                 let resolvedBudget: BudgetDirectoryResolution;
                 if (initialResolution) {
                     try {
-                        const refreshedMetadata =
-                            await this.readBudgetMetadataByPath(
-                                initialResolution.metadataPath
-                            );
+                        const refreshedMetadata = await this.readBudgetMetadataByPath(initialResolution.metadataPath);
                         resolvedBudget = {
                             ...initialResolution,
                             metadata: refreshedMetadata,
                         };
                     } catch (_refreshError) {
-                        resolvedBudget = await this.resolveBudgetDataDir(
-                            budgetConfig.syncId,
-                            downloadRootDir,
-                            { logResolution: false }
-                        );
+                        resolvedBudget = await this.resolveBudgetDataDir(budgetConfig.syncId, downloadRootDir, {
+                            logResolution: false,
+                        });
                     }
                 } else {
-                    resolvedBudget = await this.resolveBudgetDataDir(
-                        budgetConfig.syncId,
-                        downloadRootDir,
-                        { logResolution: false }
-                    );
+                    resolvedBudget = await this.resolveBudgetDataDir(budgetConfig.syncId, downloadRootDir, {
+                        logResolution: false,
+                    });
                 }
 
-                this.logResolvedBudgetDirectory(
-                    resolvedBudget,
-                    budgetConfig.syncId
-                );
+                this.logResolvedBudgetDirectory(resolvedBudget, budgetConfig.syncId);
 
                 const finalRootDir = path.dirname(resolvedBudget.directory);
 
@@ -619,24 +506,17 @@ class ActualApi {
                     loadHints
                 );
 
-                this.logger.debug(
-                    `Synchronizing budget with syncId '${budgetConfig.syncId}'...`
-                );
+                this.logger.debug(`Synchronizing budget with syncId '${budgetConfig.syncId}'...`);
                 await this.sync([...budgetHints, attemptHint]);
                 return;
             } catch (error) {
                 lastError = error;
 
-                if (
-                    attempt >= maxAttempts ||
-                    !this.shouldRetryBudgetLoad(error)
-                ) {
+                if (attempt >= maxAttempts || !this.shouldRetryBudgetLoad(error)) {
                     throw error;
                 }
 
-                const retryHints: Array<string | Error> = [
-                    ...this.createContextHints([...budgetHints, attemptHint]),
-                ];
+                const retryHints: Array<string | Error> = [...this.createContextHints([...budgetHints, attemptHint])];
                 if (error instanceof Error) {
                     retryHints.push(error);
                 } else {
@@ -644,9 +524,7 @@ class ActualApi {
                 }
 
                 this.logger.warn(
-                    `Budget load attempt ${attempt} failed (${this.getErrorSummary(
-                        error
-                    )}). Retrying...`,
+                    `Budget load attempt ${attempt} failed (${this.getErrorSummary(error)}). Retrying...`,
                     retryHints
                 );
 
@@ -672,10 +550,7 @@ class ActualApi {
                 return null;
             }
 
-            if (
-                error instanceof Error &&
-                error.message.includes('No Actual budget directory found')
-            ) {
+            if (error instanceof Error && error.message.includes('No Actual budget directory found')) {
                 return null;
             }
 
@@ -683,30 +558,20 @@ class ActualApi {
         }
     }
 
-    private async readBudgetMetadataByPath(
-        metadataPath: string
-    ): Promise<BudgetMetadata> {
+    private async readBudgetMetadataByPath(metadataPath: string): Promise<BudgetMetadata> {
         const metadataRaw = await fs.readFile(metadataPath, 'utf8');
         const parsed = JSON.parse(metadataRaw);
 
         if (!parsed || typeof parsed !== 'object') {
-            throw new Error(
-                `Budget metadata at '${metadataPath}' is not an object`
-            );
+            throw new Error(`Budget metadata at '${metadataPath}' is not an object`);
         }
 
         const record = parsed as Record<string, unknown>;
         const directoryName = path.basename(path.dirname(metadataPath));
         const idRaw = record.id;
-        const id =
-            typeof idRaw === 'string' && idRaw.trim().length > 0
-                ? idRaw.trim()
-                : directoryName;
+        const id = typeof idRaw === 'string' && idRaw.trim().length > 0 ? idRaw.trim() : directoryName;
         const groupIdRaw = record.groupId;
-        const groupId =
-            typeof groupIdRaw === 'string' && groupIdRaw.trim().length > 0
-                ? groupIdRaw.trim()
-                : undefined;
+        const groupId = typeof groupIdRaw === 'string' && groupIdRaw.trim().length > 0 ? groupIdRaw.trim() : undefined;
 
         const metadata: BudgetMetadata = {
             ...(record as BudgetMetadata),
@@ -737,16 +602,12 @@ class ActualApi {
         }
 
         if (!metadata.id || metadata.groupId !== syncId) {
-            throw new Error(
-                `Budget metadata for syncId '${syncId}' is invalid or mismatched`
-            );
+            throw new Error(`Budget metadata for syncId '${syncId}' is invalid or mismatched`);
         }
     }
 
     private shouldRetryBudgetLoad(error: unknown): boolean {
-        const lower = (
-            error instanceof Error ? error.message : String(error ?? '')
-        ).toLowerCase();
+        const lower = (error instanceof Error ? error.message : String(error ?? '')).toLowerCase();
         if (!lower) {
             return false;
         }
@@ -782,19 +643,14 @@ class ActualApi {
         try {
             await this.shutdown();
         } catch (error) {
-            const hints: Array<string | Error> = [
-                ...this.createContextHints(contextHints),
-            ];
+            const hints: Array<string | Error> = [...this.createContextHints(contextHints)];
             if (error instanceof Error) {
                 hints.push(error);
             } else {
                 hints.push(String(error));
             }
 
-            this.logger.warn(
-                'Failed to shutdown Actual client cleanly after budget load failure',
-                hints
-            );
+            this.logger.warn('Failed to shutdown Actual client cleanly after budget load failure', hints);
         }
     }
 
@@ -804,12 +660,7 @@ class ActualApi {
         }
 
         const message = error.message;
-        return (
-            error instanceof TypeError &&
-            message.includes(
-                "Cannot read properties of null (reading 'prepare')"
-            )
-        );
+        return error instanceof TypeError && message.includes("Cannot read properties of null (reading 'prepare')");
     }
 
     public async importTransactions(
@@ -817,27 +668,18 @@ class ActualApi {
         transactions: ImportTransaction[]
     ): ReturnType<typeof actual.importTransactions> {
         await this.ensureInitialization();
-        const dedupedTransactions = this.normalizeAndDeduplicateTransactions(
-            accountId,
-            transactions
-        );
+        const dedupedTransactions = this.normalizeAndDeduplicateTransactions(accountId, transactions);
         const importOptions = { defaultCleared: false };
         const removed = transactions.length - dedupedTransactions.length;
         if (removed > 0) {
-            this.logger.debug(
-                `Deduplicated ${removed} duplicate transactions before import`,
-                [`Account ID: ${accountId}`]
-            );
+            this.logger.debug(`Deduplicated ${removed} duplicate transactions before import`, [
+                `Account ID: ${accountId}`,
+            ]);
         }
 
         return await this.runActualRequest(
             `import transactions for account '${accountId}'`,
-            () =>
-                actual.importTransactions(
-                    accountId,
-                    dedupedTransactions,
-                    importOptions
-                ),
+            () => actual.importTransactions(accountId, dedupedTransactions, importOptions),
             [`Account ID: ${accountId}`]
         );
     }
@@ -880,9 +722,7 @@ class ActualApi {
         const endDate = to ? format(to, 'yyyy-MM-dd') : null;
 
         await this.ensureInitialization();
-        const rangeHint = endDate
-            ? `Date range: ${startDate} – ${endDate}`
-            : `Date range: ${startDate} onwards`;
+        const rangeHint = endDate ? `Date range: ${startDate} – ${endDate}` : `Date range: ${startDate} onwards`;
 
         return await this.runActualRequest(
             `fetch transactions for account '${accountId}'`,
@@ -906,9 +746,7 @@ class ActualApi {
                 } catch (error) {
                     if (this.isIgnorableShutdownError(error)) {
                         const hints: Array<string | Error> = [
-                            ...this.createContextHints(
-                                'Operation: shutdown session'
-                            ),
+                            ...this.createContextHints('Operation: shutdown session'),
                         ];
                         if (error instanceof Error) {
                             hints.push(error);
@@ -940,10 +778,7 @@ class ActualApi {
         warn: typeof console.warn;
     } | null = null;
 
-    private ensureImportedId(
-        accountId: string,
-        transaction: ImportTransaction
-    ): ImportTransaction {
+    private ensureImportedId(accountId: string, transaction: ImportTransaction): ImportTransaction {
         const importedId = transaction.imported_id;
 
         if (typeof importedId === 'string') {
@@ -967,20 +802,11 @@ class ActualApi {
         };
     }
 
-    private logResolvedBudgetDirectory(
-        resolution: BudgetDirectoryResolution,
-        syncId: string
-    ): void {
+    private logResolvedBudgetDirectory(resolution: BudgetDirectoryResolution, syncId: string): void {
         const directoryName = path.basename(resolution.directory);
-        const hints = [
-            `Metadata path: ${resolution.metadataPath}`,
-            `Local budget ID: ${resolution.metadata.id}`,
-        ];
+        const hints = [`Metadata path: ${resolution.metadataPath}`, `Local budget ID: ${resolution.metadata.id}`];
 
-        this.logger.debug(
-            `Using budget directory: ${directoryName} for syncId ${syncId}`,
-            hints
-        );
+        this.logger.debug(`Using budget directory: ${directoryName} for syncId ${syncId}`, hints);
     }
 
     private async resolveBudgetDataDir(
@@ -989,8 +815,7 @@ class ActualApi {
         options?: { logResolution?: boolean }
     ): Promise<BudgetDirectoryResolution> {
         const { logResolution = true } = options ?? {};
-        const actualDataDir =
-            rootDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
+        const actualDataDir = rootDir ?? this.currentDataDir ?? DEFAULT_DATA_DIR;
 
         let entries: Dirent[];
         try {
@@ -1022,30 +847,21 @@ class ActualApi {
 
         for (const entry of sortedEntries.slice(0, MAX_DIRS_TO_SCAN)) {
             inspectedDirs.push(entry.name);
-            const metadataPath = path.join(
-                actualDataDir,
-                entry.name,
-                'metadata.json'
-            );
+            const metadataPath = path.join(actualDataDir, entry.name, 'metadata.json');
 
             try {
                 const metadataRaw = await fs.readFile(metadataPath, 'utf8');
                 const parsed = JSON.parse(metadataRaw);
                 if (!parsed || typeof parsed !== 'object') {
-                    metadataDiagnostics.push(
-                        `${entry.name}: metadata is not an object`
-                    );
+                    metadataDiagnostics.push(`${entry.name}: metadata is not an object`);
                     continue;
                 }
 
                 const record = parsed as Record<string, unknown>;
                 const groupIdRaw = record.groupId;
-                const groupId =
-                    typeof groupIdRaw === 'string' ? groupIdRaw.trim() : '';
+                const groupId = typeof groupIdRaw === 'string' ? groupIdRaw.trim() : '';
                 if (!groupId) {
-                    metadataDiagnostics.push(
-                        `${entry.name}: metadata missing groupId`
-                    );
+                    metadataDiagnostics.push(`${entry.name}: metadata missing groupId`);
                     continue;
                 }
 
@@ -1057,13 +873,10 @@ class ActualApi {
                 }
 
                 const idRaw = record.id;
-                const id =
-                    typeof idRaw === 'string' ? idRaw.trim() : entry.name;
+                const id = typeof idRaw === 'string' ? idRaw.trim() : entry.name;
 
                 if (!id) {
-                    metadataDiagnostics.push(
-                        `${entry.name}: metadata missing id`
-                    );
+                    metadataDiagnostics.push(`${entry.name}: metadata missing id`);
                     continue;
                 }
 
@@ -1084,20 +897,13 @@ class ActualApi {
                 return resolution;
             } catch (error) {
                 const maybeErrno = error as NodeJS.ErrnoException | undefined;
-                if (
-                    maybeErrno?.code === 'ENOENT' ||
-                    maybeErrno?.code === 'EISDIR'
-                ) {
-                    metadataDiagnostics.push(
-                        `${entry.name}: metadata.json not found`
-                    );
+                if (maybeErrno?.code === 'ENOENT' || maybeErrno?.code === 'EISDIR') {
+                    metadataDiagnostics.push(`${entry.name}: metadata.json not found`);
                     continue;
                 }
 
                 if (error instanceof SyntaxError) {
-                    metadataDiagnostics.push(
-                        `${entry.name}: metadata.json could not be parsed`
-                    );
+                    metadataDiagnostics.push(`${entry.name}: metadata.json could not be parsed`);
                     continue;
                 }
 
@@ -1105,12 +911,9 @@ class ActualApi {
             }
         }
 
-        const inspectedSummary =
-            inspectedDirs.length > 0 ? inspectedDirs.join(', ') : '(none)';
+        const inspectedSummary = inspectedDirs.length > 0 ? inspectedDirs.join(', ') : '(none)';
         const metadataSummary =
-            metadataDiagnostics.length > 0
-                ? ` Metadata issues: ${metadataDiagnostics.join('; ')}.`
-                : '';
+            metadataDiagnostics.length > 0 ? ` Metadata issues: ${metadataDiagnostics.join('; ')}.` : '';
 
         throw new Error(
             `No Actual budget directory found for syncId '${syncId}'. ` +
@@ -1120,10 +923,7 @@ class ActualApi {
         );
     }
 
-    private createFallbackImportedId(
-        accountId: string,
-        transaction: ImportTransaction
-    ): string {
+    private createFallbackImportedId(accountId: string, transaction: ImportTransaction): string {
         const payeeId = (transaction as { payee_id?: string }).payee_id ?? '';
         const payee = (transaction as { payee?: string }).payee ?? '';
         const rawSubtransactions = (
@@ -1139,25 +939,17 @@ class ActualApi {
             accountId,
             date: transaction.date,
             amount: transaction.amount,
-            imported_payee:
-                (transaction as { imported_payee?: string }).imported_payee ??
-                '',
+            imported_payee: (transaction as { imported_payee?: string }).imported_payee ?? '',
             category: (transaction as { category?: string }).category ?? '',
             notes: transaction.notes ?? '',
-            transfer_id:
-                (transaction as { transfer_id?: string }).transfer_id ?? '',
-            cleared:
-                typeof transaction.cleared === 'boolean'
-                    ? String(transaction.cleared)
-                    : '',
+            transfer_id: (transaction as { transfer_id?: string }).transfer_id ?? '',
+            cleared: typeof transaction.cleared === 'boolean' ? String(transaction.cleared) : '',
             payee_id: payeeId,
             payee,
             subtransactions: normalizedSubtransactions,
         };
 
-        const hash = createHash('sha256')
-            .update(JSON.stringify(normalized))
-            .digest('hex');
+        const hash = createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
 
         return `mm-sync-${hash}`;
     }
@@ -1177,26 +969,18 @@ class ActualApi {
                 warn: console.warn,
             };
             const originals = ActualApi.originals;
-            console.log = suppressIfNoisy(
-                (...args: Parameters<typeof console.log>) => {
-                    originals.log.apply(console, args);
-                }
-            );
-            console.info = suppressIfNoisy(
-                (...args: Parameters<typeof console.info>) => {
-                    originals.info.apply(console, args);
-                }
-            );
-            console.debug = suppressIfNoisy(
-                (...args: Parameters<typeof console.debug>) => {
-                    originals.debug.apply(console, args);
-                }
-            );
-            console.warn = suppressIfNoisy(
-                (...args: Parameters<typeof console.warn>) => {
-                    originals.warn.apply(console, args);
-                }
-            );
+            console.log = suppressIfNoisy((...args: Parameters<typeof console.log>) => {
+                originals.log.apply(console, args);
+            });
+            console.info = suppressIfNoisy((...args: Parameters<typeof console.info>) => {
+                originals.info.apply(console, args);
+            });
+            console.debug = suppressIfNoisy((...args: Parameters<typeof console.debug>) => {
+                originals.debug.apply(console, args);
+            });
+            console.warn = suppressIfNoisy((...args: Parameters<typeof console.warn>) => {
+                originals.warn.apply(console, args);
+            });
         }
         ActualApi.suppressDepth++;
         return () => {

@@ -153,9 +153,7 @@ declare module '@actual-app/api' {
 
     type InitResult = object;
 
-    export async function init(
-        params: InitParams
-    ): Promise<undefined | InitResult>;
+    export async function init(params: InitParams): Promise<undefined | InitResult>;
     export async function shutdown(): Promise<void>;
 
     export const internal: {
@@ -178,62 +176,34 @@ declare module '@actual-app/api' {
 
     export type CreateTransaction = CreateTransactionPayload;
 
-    const addTransactions: (
-        accountId: ID,
-        transactions: CreateTransactionPayload[]
-    ) => Promise<ID[]>;
+    const addTransactions: (accountId: ID, transactions: CreateTransactionPayload[]) => Promise<ID[]>;
     const importTransactions: (
         accountId: ID,
         transactions: CreateTransactionPayload[],
         opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
-    const getTransactions: (
-        accountId: ID,
-        startDate: DateString,
-        endDate?: DateString
-    ) => Promise<ReadTransaction[]>;
-    const updateTransaction: (
-        transactionId: ID,
-        fields: UpdateFields<UpdateTransaction>
-    ) => Promise<ID>;
+    const getTransactions: (accountId: ID, startDate: DateString, endDate?: DateString) => Promise<ReadTransaction[]>;
+    const updateTransaction: (transactionId: ID, fields: UpdateFields<UpdateTransaction>) => Promise<ID>;
     const deleteTransaction: (transactionId: ID) => Promise<void>;
 
     // Accounts
-    const getAccounts: (
-        includeOffBudget?: boolean,
-        includeClosed?: boolean
-    ) => Promise<Account[]>;
-    const createAccount: (
-        account: CreateAccount,
-        initialBalance?: number
-    ) => Promise<ID>;
+    const getAccounts: (includeOffBudget?: boolean, includeClosed?: boolean) => Promise<Account[]>;
+    const createAccount: (account: CreateAccount, initialBalance?: number) => Promise<ID>;
     const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
     const deleteAccount: (accountId: ID) => Promise<void>;
-    const closeAccount: (
-        accountId: ID,
-        transferAccountId?: ID,
-        transferCategoryId?: ID
-    ) => Promise<void>;
+    const closeAccount: (accountId: ID, transferAccountId?: ID, transferCategoryId?: ID) => Promise<void>;
     const reopenAccount: (accountId: ID) => Promise<void>;
 
     // Categories
     const getCategories: () => Promise<Category[]>;
     const createCategory: (category: Category) => Promise<ID>;
-    const updateCategory: (
-        categoryId: ID,
-        fields: UpdateFields<Category>
-    ) => Promise<ID>;
+    const updateCategory: (categoryId: ID, fields: UpdateFields<Category>) => Promise<ID>;
     const deleteCategory: (categoryId: ID) => Promise<void>;
 
     // Category groups
     const getCategoryGroups: () => Promise<CategoryGroup[]>;
-    const createCategoryGroup: (
-        categoryGroup: CategoryGroupPayload
-    ) => Promise<ID>;
-    const updateCategoryGroup: (
-        categoryGroupId: ID,
-        fields: UpdateFields<CategoryGroupPayload>
-    ) => Promise<ID>;
+    const createCategoryGroup: (categoryGroup: CategoryGroupPayload) => Promise<ID>;
+    const updateCategoryGroup: (categoryGroupId: ID, fields: UpdateFields<CategoryGroupPayload>) => Promise<ID>;
     const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
 }
 
@@ -283,14 +253,7 @@ type CreateTransactionPayload = Modify<
     'id' | 'account'
 >;
 
-type AccountType =
-    | 'checking'
-    | 'savings'
-    | 'credit'
-    | 'investment'
-    | 'mortgage'
-    | 'debt'
-    | 'other';
+type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'mortgage' | 'debt' | 'other';
 
 type Account = {
     id: ID;
@@ -360,10 +323,7 @@ type CategoryGroup = {
     categories: Category[];
 };
 
-type Modify<T, OptionalKeys extends keyof T, RemoveKeys extends keyof T> = Omit<
-    T,
-    RemoveKeys | OptionalKeys
-> &
+type Modify<T, OptionalKeys extends keyof T, RemoveKeys extends keyof T> = Omit<T, RemoveKeys | OptionalKeys> &
     Partial<Pick<T, OptionalKeys>>;
 
 type ID = string;

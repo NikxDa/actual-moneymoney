@@ -20,9 +20,7 @@ class MockOpenAI {
         },
     };
 
-    constructor(
-        public readonly options: { apiKey: string; timeout?: number }
-    ) {}
+    constructor(public readonly options: { apiKey: string; timeout?: number }) {}
 }
 
 vi.mock('openai', () => ({
@@ -32,9 +30,7 @@ vi.mock('openai', () => ({
 let dataDir: string;
 
 vi.mock('../src/utils/shared.js', async () => {
-    const actual = await vi.importActual<
-        typeof import('../src/utils/shared.js')
-    >('../src/utils/shared.js');
+    const actual = await vi.importActual<typeof import('../src/utils/shared.js')>('../src/utils/shared.js');
 
     return {
         ...actual,
@@ -62,29 +58,23 @@ beforeEach(async () => {
     listMock.mockReset();
     createMock.mockReset();
 
-    dataDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'actual-moneymoney-test-')
-    );
+    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actual-moneymoney-test-'));
 
-    createMock.mockImplementation(
-        async (config: { messages: Array<{ content: string }> }) => {
-            const userMessage = config.messages[1]?.content ?? '';
-            const payees = userMessage.split('\n').filter(Boolean);
-            const result = Object.fromEntries(
-                payees.map((payee) => [payee, `${payee}-normalized`])
-            );
+    createMock.mockImplementation(async (config: { messages: Array<{ content: string }> }) => {
+        const userMessage = config.messages[1]?.content ?? '';
+        const payees = userMessage.split('\n').filter(Boolean);
+        const result = Object.fromEntries(payees.map((payee) => [payee, `${payee}-normalized`]));
 
-            return {
-                choices: [
-                    {
-                        message: {
-                            content: JSON.stringify(result),
-                        },
+        return {
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify(result),
                     },
-                ],
-            };
-        }
-    );
+                },
+            ],
+        };
+    });
 
     listMock.mockResolvedValue({
         data: [{ id: 'gpt-3.5-turbo' }, { id: 'gpt-4o-mini' }],
@@ -192,9 +182,7 @@ describe('PayeeTransformer', () => {
         }));
 
         vi.doMock('../src/utils/shared.js', async () => {
-            const actual = await vi.importActual<
-                typeof import('../src/utils/shared.js')
-            >('../src/utils/shared.js');
+            const actual = await vi.importActual<typeof import('../src/utils/shared.js')>('../src/utils/shared.js');
 
             return {
                 ...actual,
@@ -242,9 +230,7 @@ describe('PayeeTransformer', () => {
             logger
         );
 
-        const result = await transformer.transformPayees([
-            'Vendor Corrupted Cache',
-        ]);
+        const result = await transformer.transformPayees(['Vendor Corrupted Cache']);
 
         expect(result).toEqual({
             'Vendor Corrupted Cache': 'Vendor Corrupted Cache-normalized',
@@ -278,9 +264,7 @@ describe('PayeeTransformer', () => {
         }));
 
         vi.doMock('../src/utils/shared.js', async () => {
-            const actual = await vi.importActual<
-                typeof import('../src/utils/shared.js')
-            >('../src/utils/shared.js');
+            const actual = await vi.importActual<typeof import('../src/utils/shared.js')>('../src/utils/shared.js');
 
             return {
                 ...actual,
@@ -303,9 +287,7 @@ describe('PayeeTransformer', () => {
             secondLogger
         );
 
-        const secondResult = await secondTransformer.transformPayees([
-            'Vendor Healthy Cache',
-        ]);
+        const secondResult = await secondTransformer.transformPayees(['Vendor Healthy Cache']);
 
         expect(secondResult).toEqual({
             'Vendor Healthy Cache': 'Vendor Healthy Cache-normalized',
@@ -339,10 +321,7 @@ describe('PayeeTransformer', () => {
             ],
         }));
 
-        const result = await transformer.transformPayees([
-            'Vendor A',
-            'Vendor B',
-        ]);
+        const result = await transformer.transformPayees(['Vendor A', 'Vendor B']);
 
         expect(result).toEqual({
             'Vendor A': 'Vendor A',
@@ -351,9 +330,7 @@ describe('PayeeTransformer', () => {
 
         expect(logger.warn).toHaveBeenCalledWith(
             'OpenAI returned empty payload, falling back to original payee names',
-            [
-                'This may indicate the model failed to process the request properly',
-            ]
+            ['This may indicate the model failed to process the request properly']
         );
     });
 
@@ -377,17 +354,13 @@ describe('PayeeTransformer', () => {
             choices: [
                 {
                     message: {
-                        content:
-                            '{"Vendor A": "Normalized A", "Vendor A": "Normalized B"}',
+                        content: '{"Vendor A": "Normalized A", "Vendor A": "Normalized B"}',
                     },
                 },
             ],
         }));
 
-        const result = await transformer.transformPayees([
-            'Vendor A',
-            'Vendor B',
-        ]);
+        const result = await transformer.transformPayees(['Vendor A', 'Vendor B']);
 
         expect(result).toEqual({
             'Vendor A': 'Vendor A',

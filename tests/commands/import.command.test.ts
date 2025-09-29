@@ -25,9 +25,7 @@ interface RecordedEvent {
     readonly [key: string]: unknown;
 }
 
-const loaderPath = fileURLToPath(
-    new URL('../helpers/cli-mock-loader.mjs', import.meta.url)
-);
+const loaderPath = fileURLToPath(new URL('../helpers/cli-mock-loader.mjs', import.meta.url));
 const loaderNodeOptions = ['--loader', loaderPath] as const;
 
 const CLI_TIMEOUT_MS = 20000;
@@ -166,9 +164,7 @@ describe('import command (CLI)', () => {
             );
 
             const events = await readEvents(eventsFile);
-            const importerEvents = events.filter(
-                (event) => event.type === 'Importer#importTransactions'
-            );
+            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
             expect(importerEvents).toEqual([
                 {
                     type: 'Importer#importTransactions',
@@ -182,9 +178,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const loadEvents = events.filter(
-                (event) => event.type === 'ActualApi#loadBudget'
-            );
+            const loadEvents = events.filter((event) => event.type === 'ActualApi#loadBudget');
             expect(loadEvents).toEqual([
                 {
                     type: 'ActualApi#loadBudget',
@@ -228,26 +222,19 @@ describe('import command (CLI)', () => {
                 config,
             });
 
-            const result = await runCli(
-                ['import', '--server', 'https://server-only.example.com'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                }
-            );
+            const result = await runCli(['import', '--server', 'https://server-only.example.com'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+            });
 
             expect(result.exitCode).toBe(0);
             expect(result.stderr).toBe('');
-            expect(result.stdout).toContain(
-                'Importing transactions... Budget: primary-budget'
-            );
-            expect(result.stdout).toContain(
-                'Importing transactions... Budget: secondary-budget'
-            );
+            expect(result.stdout).toContain('Importing transactions... Budget: primary-budget');
+            expect(result.stdout).toContain('Importing transactions... Budget: secondary-budget');
 
             const events = await readEvents(eventsFile);
             const importerEvents = events
@@ -305,14 +292,7 @@ describe('import command (CLI)', () => {
             });
 
             const result = await runCli(
-                [
-                    'import',
-                    '--server',
-                    'https://server-failure.example.com',
-                    '--budget',
-                    'budget-failure',
-                    '--dry-run',
-                ],
+                ['import', '--server', 'https://server-failure.example.com', '--budget', 'budget-failure', '--dry-run'],
                 {
                     env: {
                         CLI_TEST_CONTEXT_DIR: contextDir,
@@ -327,9 +307,7 @@ describe('import command (CLI)', () => {
             expect(result.stderr).toContain(failureMessage);
 
             const events = await readEvents(eventsFile);
-            const importerEvents = events.filter(
-                (event) => event.type === 'Importer#importTransactions'
-            );
+            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
             expect(importerEvents).toEqual([
                 {
                     type: 'Importer#importTransactions',
@@ -344,9 +322,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const shutdownEvents = events.filter(
-                (event) => event.type === 'ActualApi#shutdown'
-            );
+            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',
@@ -386,27 +362,20 @@ describe('import command (CLI)', () => {
                 },
             });
 
-            const result = await runCli(
-                ['import', '--account', 'unknown-account'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                }
-            );
+            const result = await runCli(['import', '--account', 'unknown-account'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+            });
 
             expect(result.exitCode).toBe(1);
-            expect(result.stderr).toContain(
-                'Unknown account reference: unknown-account'
-            );
+            expect(result.stderr).toContain('Unknown account reference: unknown-account');
 
             const events = await readEvents(eventsFile);
-            const shutdownEvents = events.filter(
-                (event) => event.type === 'ActualApi#shutdown'
-            );
+            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',
@@ -414,9 +383,7 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const importerEvents = events.filter(
-                (event) => event.type === 'Importer#importTransactions'
-            );
+            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
             expect(importerEvents).toHaveLength(1);
             expect(importerEvents[0]).toMatchObject({
                 error: 'Unknown account reference: unknown-account',

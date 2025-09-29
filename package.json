@@ -13,7 +13,8 @@
         "lint:prettier": "prettier --check .",
         "lint:prettier:fix": "prettier --write .",
         "prepare": "husky",
-        "test": "npm run build && vitest run"
+        "test": "npm run build && vitest run",
+        "test:typecheck": "tsc --noEmit -p tsconfig.test.json"
     },
     "type": "module",
     "keywords": [

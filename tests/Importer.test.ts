@@ -120,17 +120,13 @@ describe('Importer', () => {
 
         const [moneyMoneyArgs] = moneyMoneyTransactionsMock.mock.calls;
         expect(moneyMoneyArgs).toBeDefined();
-        expect(moneyMoneyArgs[0].from.toISOString()).toBe(
-            '2024-02-01T00:00:00.000Z'
-        );
+        expect(moneyMoneyArgs[0].from.toISOString()).toBe('2024-02-01T00:00:00.000Z');
         expect(moneyMoneyArgs[0].to).toBe(to);
 
         const [actualArgs] = actualApi.getTransactions.mock.calls;
         expect(actualArgs).toBeDefined();
         expect(actualArgs[0]).toBe('actual-1');
-        expect(actualArgs[1]?.from.toISOString()).toBe(
-            '2024-02-01T00:00:00.000Z'
-        );
+        expect(actualArgs[1]?.from.toISOString()).toBe('2024-02-01T00:00:00.000Z');
         expect(actualArgs[1]?.to).toBe(to);
     });
 
@@ -217,9 +213,7 @@ describe('Importer', () => {
         expect(actualApi.importTransactions).not.toHaveBeenCalled();
         expect(logger.warn).toHaveBeenCalledWith(
             "Skipping starting balance for Actual account 'Checking' because no MoneyMoney transactions were found for account primary-account in this import window.",
-            [
-                'Extend the date range or review ignore patterns if a starting balance is expected.',
-            ]
+            ['Extend the date range or review ignore patterns if a starting balance is expected.']
         );
     });
 
@@ -306,9 +300,7 @@ describe('Importer', () => {
         expect(actualApi.importTransactions).not.toHaveBeenCalled();
         expect(logger.warn).toHaveBeenCalledWith(
             "Skipping starting balance for Actual account 'Checking' because no MoneyMoney transactions were found for account primary-account in this import window.",
-            [
-                'Extend the date range or review ignore patterns if a starting balance is expected.',
-            ]
+            ['Extend the date range or review ignore patterns if a starting balance is expected.']
         );
     });
 
@@ -487,13 +479,10 @@ describe('Importer', () => {
         expect(logger.warn).not.toHaveBeenCalled();
         expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
 
-        const [, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
         expect(createTransactions).toHaveLength(2);
 
-        const importedIds = createTransactions.map(
-            (transaction: { imported_id?: string }) => transaction.imported_id
-        );
+        const importedIds = createTransactions.map((transaction: { imported_id?: string }) => transaction.imported_id);
         expect(importedIds).toContain('primary-account-start');
         expect(importedIds).toContain('primary-account-txn-1');
     });
@@ -585,13 +574,11 @@ describe('Importer', () => {
         expect(logger.warn).not.toHaveBeenCalled();
         expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
 
-        const [, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
         expect(createTransactions).toHaveLength(2);
 
         const startingBalanceTransaction = createTransactions.find(
-            (transaction: { imported_id?: string }) =>
-                transaction.imported_id === 'primary-account-start'
+            (transaction: { imported_id?: string }) => transaction.imported_id === 'primary-account-start'
         );
 
         expect(startingBalanceTransaction).toMatchObject({
@@ -742,12 +729,9 @@ describe('Importer', () => {
         await importer.importTransactions({});
 
         expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
-        const [, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
 
-        const importedIds = createTransactions.map(
-            (transaction: { imported_id?: string }) => transaction.imported_id
-        );
+        const importedIds = createTransactions.map((transaction: { imported_id?: string }) => transaction.imported_id);
         expect(importedIds).toEqual([
             'primary-account-txn-1',
             'primary-account-txn-2',
@@ -868,23 +852,21 @@ describe('Importer', () => {
         ]);
 
         const actualApi = {
-            getTransactions: vi
-                .fn()
-                .mockImplementation(async (accountId: string) => {
-                    if (accountId === 'actual-1') {
-                        return [
-                            {
-                                imported_id: 'primary-account-txn-1',
-                            },
-                        ];
-                    }
+            getTransactions: vi.fn().mockImplementation(async (accountId: string) => {
+                if (accountId === 'actual-1') {
+                    return [
+                        {
+                            imported_id: 'primary-account-txn-1',
+                        },
+                    ];
+                }
 
-                    if (accountId === 'actual-2') {
-                        return [];
-                    }
+                if (accountId === 'actual-2') {
+                    return [];
+                }
 
-                    throw new Error(`Unexpected account id ${accountId}`);
-                }),
+                throw new Error(`Unexpected account id ${accountId}`);
+            }),
             importTransactions: vi.fn().mockResolvedValue({
                 added: [],
                 updated: [],
@@ -920,37 +902,25 @@ describe('Importer', () => {
         });
 
         expect(actualApi.getTransactions).toHaveBeenCalledTimes(2);
-        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(
-            1,
-            'actual-1',
-            {
-                from,
-                to,
-            }
-        );
-        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(
-            2,
-            'actual-2',
-            {
-                from,
-                to,
-            }
-        );
+        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(1, 'actual-1', {
+            from,
+            to,
+        });
+        expect(actualApi.getTransactions).toHaveBeenNthCalledWith(2, 'actual-2', {
+            from,
+            to,
+        });
 
         expect(actualApi.importTransactions).toHaveBeenCalledTimes(1);
 
-        const [actualAccountId, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
+        const [actualAccountId, createTransactions] = actualApi.importTransactions.mock.calls[0];
         expect(actualAccountId).toBe('actual-2');
         expect(createTransactions).toHaveLength(2);
 
         const transactionIds = createTransactions.map(
             (transaction: { imported_id?: string }) => transaction.imported_id
         );
-        expect(transactionIds).toEqual([
-            'savings-account-txn-3',
-            'savings-account-start',
-        ]);
+        expect(transactionIds).toEqual(['savings-account-txn-3', 'savings-account-start']);
 
         expect(createTransactions[0]).toMatchObject({
             amount: 7550,
@@ -1052,10 +1022,7 @@ describe('Importer', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
             expect.stringContaining('malformed transaction'),
-            expect.arrayContaining([
-                'Transaction ID: txn-1',
-                'MoneyMoney account UUID: account-uuid',
-            ])
+            expect.arrayContaining(['Transaction ID: txn-1', 'MoneyMoney account UUID: account-uuid'])
         );
         expect(actualApi.getTransactions).not.toHaveBeenCalled();
     });
@@ -1146,10 +1113,7 @@ describe('Importer', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
             expect.stringContaining('amount is missing or invalid'),
-            expect.arrayContaining([
-                'Transaction ID: txn-1',
-                'MoneyMoney account UUID: account-uuid',
-            ])
+            expect.arrayContaining(['Transaction ID: txn-1', 'MoneyMoney account UUID: account-uuid'])
         );
         expect(actualApi.getTransactions).not.toHaveBeenCalled();
     });
@@ -1245,16 +1209,11 @@ describe('Importer', () => {
 
         await importer.importTransactions({});
 
-        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith([
-            'Coffee Shop',
-            'Starting balance',
-        ]);
+        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith(['Coffee Shop', 'Starting balance']);
 
-        const [, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
         const transaction = createTransactions.find(
-            (entry: { imported_id?: string }) =>
-                entry.imported_id === 'primary-account-txn-10'
+            (entry: { imported_id?: string }) => entry.imported_id === 'primary-account-txn-10'
         );
 
         expect(transaction?.payee_name).toBe('Coffee Shop (AI cleaned)');
@@ -1351,14 +1310,9 @@ describe('Importer', () => {
 
         await importer.importTransactions({});
 
-        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith([
-            'Coffee',
-            'Starting balance',
-        ]);
+        expect(payeeTransformer.transformPayees).toHaveBeenCalledWith(['Coffee', 'Starting balance']);
 
-        expect(logger.warn).toHaveBeenCalledWith(
-            'Payee transformation failed. Using default payee names...'
-        );
+        expect(logger.warn).toHaveBeenCalledWith('Payee transformation failed. Using default payee names...');
 
         const maskedCall = logger.debug.mock.calls.find(
             ([message]) => message === 'Final payee names for import (masked):'
@@ -1369,13 +1323,10 @@ describe('Importer', () => {
             expect(token).toMatch(/^"PAYEE#[0-9A-F]{8}"$/);
         });
 
-        const [, createTransactions] =
-            actualApi.importTransactions.mock.calls[0];
-        createTransactions.forEach(
-            (transaction: { payee_name?: string; imported_payee?: string }) => {
-                expect(transaction.payee_name).toBe(transaction.imported_payee);
-            }
-        );
+        const [, createTransactions] = actualApi.importTransactions.mock.calls[0];
+        createTransactions.forEach((transaction: { payee_name?: string; imported_payee?: string }) => {
+            expect(transaction.payee_name).toBe(transaction.imported_payee);
+        });
     });
 
     it('logs raw payee names when masking is disabled', async () => {
@@ -1464,9 +1415,7 @@ describe('Importer', () => {
 
         await importer.importTransactions({});
 
-        const payeeLogCall = logger.debug.mock.calls.find(
-            ([message]) => message === 'Final payee names for import:'
-        );
+        const payeeLogCall = logger.debug.mock.calls.find(([message]) => message === 'Final payee names for import:');
 
         expect(payeeLogCall?.[1]).toEqual(['"Bakery"', '"Starting balance"']);
     });

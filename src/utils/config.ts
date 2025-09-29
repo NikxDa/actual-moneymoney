@@ -14,8 +14,7 @@ import { DEFAULT_CONFIG_FILE } from './shared.js';
 
 export type { ConfigDefaultDecision } from './config-format.js';
 
-const trimmedNonEmptyString = (message: string) =>
-    z.string().trim().min(1, message);
+const trimmedNonEmptyString = (message: string) => z.string().trim().min(1, message);
 
 const isoDateSchema = z
     .string()
@@ -26,8 +25,7 @@ const isoDateSchema = z
         if (!isValidDate(parsed)) {
             ctx.addIssue({
                 code: ZodIssueCode.custom,
-                message:
-                    'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
+                message: 'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
             });
             return;
         }
@@ -36,8 +34,7 @@ const isoDateSchema = z
         if (canonical !== value) {
             ctx.addIssue({
                 code: ZodIssueCode.custom,
-                message:
-                    'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
+                message: 'Invalid earliest import date. Provide a valid ISO 8601 date (YYYY-MM-DD).',
             });
         }
     });
@@ -59,8 +56,7 @@ const budgetSchema = z
         if (val.e2eEncryption.enabled && !val.e2eEncryption.password) {
             ctx.addIssue({
                 code: ZodIssueCode.custom,
-                message:
-                    'Password must not be empty if end-to-end encryption is enabled',
+                message: 'Password must not be empty if end-to-end encryption is enabled',
                 path: ['e2eEncryption', 'password'],
             });
         }
@@ -73,19 +69,14 @@ const actualServerSchema = z.object({
         .number()
         .int()
         .positive()
-        .max(
-            DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS,
-            'Actual server timeout must be 5 minutes (300000 ms) or less'
-        )
+        .max(DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS, 'Actual server timeout must be 5 minutes (300000 ms) or less')
         .default(FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS),
     budgets: z.array(budgetSchema).min(1),
 });
 
 const payeeTransformationSchema = z.object({
     enabled: z.boolean(),
-    openAiApiKey: trimmedNonEmptyString(
-        'OpenAI API key must not be empty'
-    ).optional(),
+    openAiApiKey: trimmedNonEmptyString('OpenAI API key must not be empty').optional(),
     openAiModel: z.string().trim().optional().default('gpt-3.5-turbo'),
     skipModelValidation: z.boolean().default(false),
     maskPayeeNamesInLogs: z.boolean().default(true),
@@ -118,22 +109,16 @@ export const configSchema = z
     })
     .superRefine((val, ctx) => {
         // Check openAI key if payeeTransformation is enabled
-        if (
-            val.payeeTransformation.enabled &&
-            !val.payeeTransformation.openAiApiKey
-        ) {
+        if (val.payeeTransformation.enabled && !val.payeeTransformation.openAiApiKey) {
             ctx.addIssue({
                 code: ZodIssueCode.custom,
-                message:
-                    'OpenAI key must not be empty if payeeTransformation is enabled',
+                message: 'OpenAI key must not be empty if payeeTransformation is enabled',
                 path: ['payeeTransformation', 'openAiApiKey'],
             });
         }
     });
 
-export type PayeeTransformationConfig = z.infer<
-    typeof payeeTransformationSchema
->;
+export type PayeeTransformationConfig = z.infer<typeof payeeTransformationSchema>;
 export type ActualServerConfig = z.infer<typeof actualServerSchema>;
 export type ActualBudgetConfig = z.infer<typeof budgetSchema>;
 export type Config = z.infer<typeof configSchema>;
@@ -146,13 +131,9 @@ export interface LoadedConfig {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const hasOwn = (value: Record<string, unknown>, key: string) =>
-    Object.prototype.hasOwnProperty.call(value, key);
+const hasOwn = (value: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(value, key);
 
-export const collectDefaultedConfigDecisions = (
-    rawConfig: unknown,
-    parsedConfig: Config
-): ConfigDefaultDecision[] => {
+export const collectDefaultedConfigDecisions = (rawConfig: unknown, parsedConfig: Config): ConfigDefaultDecision[] => {
     if (!isRecord(rawConfig)) {
         return [];
     }
@@ -173,9 +154,7 @@ export const collectDefaultedConfigDecisions = (
         });
     }
 
-    const payeeTransformationConfig = isRecord(rawConfig.payeeTransformation)
-        ? rawConfig.payeeTransformation
-        : {};
+    const payeeTransformationConfig = isRecord(rawConfig.payeeTransformation) ? rawConfig.payeeTransformation : {};
     if (!hasOwn(payeeTransformationConfig, 'openAiModel')) {
         decisions.push({
             path: 'payeeTransformation.openAiModel',
@@ -195,23 +174,17 @@ export const collectDefaultedConfigDecisions = (
         });
     }
 
-    const actualServersRaw = Array.isArray(rawConfig.actualServers)
-        ? rawConfig.actualServers
-        : [];
+    const actualServersRaw = Array.isArray(rawConfig.actualServers) ? rawConfig.actualServers : [];
     for (const [index, server] of actualServersRaw.entries()) {
         if (!isRecord(server) || hasOwn(server, 'requestTimeoutMs')) {
             continue;
         }
 
         const parsedServer = parsedConfig.actualServers[index];
-        const hints = parsedServer?.serverUrl
-            ? [`Server URL: ${parsedServer.serverUrl}`]
-            : undefined;
+        const hints = parsedServer?.serverUrl ? [`Server URL: ${parsedServer.serverUrl}`] : undefined;
         decisions.push({
             path: `actualServers[${index}].requestTimeoutMs`,
-            value:
-                parsedServer?.requestTimeoutMs ??
-                FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
+            value: parsedServer?.requestTimeoutMs ?? FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS,
             hints,
         });
     }
@@ -221,10 +194,7 @@ export const collectDefaultedConfigDecisions = (
 
 const MAX_AGGREGATED_DECISION_HINTS = DEFAULT_DECISION_LOG_MAX_HINTS;
 
-export const logDefaultedConfigDecisions = (
-    logger: Logger,
-    decisions: ConfigDefaultDecision[]
-) => {
+export const logDefaultedConfigDecisions = (logger: Logger, decisions: ConfigDefaultDecision[]) => {
     const entry = createDefaultDecisionLog(decisions, {
         maxHints: MAX_AGGREGATED_DECISION_HINTS,
     });
@@ -245,9 +215,7 @@ export const getConfigFile = (argv: ArgumentsCamelCase): string => {
     return DEFAULT_CONFIG_FILE;
 };
 
-export const loadConfig = async (
-    argv: ArgumentsCamelCase
-): Promise<LoadedConfig> => {
+export const loadConfig = async (argv: ArgumentsCamelCase): Promise<LoadedConfig> => {
     const configFile = getConfigFile(argv);
 
     let configContent: string;
@@ -265,10 +233,7 @@ export const loadConfig = async (
     try {
         const configData = toml.parse(configContent);
         const config = configSchema.parse(configData);
-        const defaultDecisions = collectDefaultedConfigDecisions(
-            configData,
-            config
-        );
+        const defaultDecisions = collectDefaultedConfigDecisions(configData, config);
 
         return {
             config,
@@ -296,9 +261,7 @@ export const loadConfig = async (
             throw new Error(`Invalid configuration: ${formattedIssues}`);
         }
 
-        throw new Error(
-            `Invalid configuration file format. Run 'validate' to see errors.`
-        );
+        throw new Error(`Invalid configuration file format. Run 'validate' to see errors.`);
     }
 };
 

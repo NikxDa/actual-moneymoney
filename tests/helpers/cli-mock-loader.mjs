@@ -7,10 +7,7 @@ const importerUrl = `${MOCK_URL_PREFIX}importer`;
 const payeeTransformerUrl = `${MOCK_URL_PREFIX}payee-transformer`;
 const moneyMoneyUrl = `${MOCK_URL_PREFIX}moneymoney`;
 const configFormatSpecifier = '@actual-moneymoney/config-format';
-const configFormatModuleUrl = new URL(
-    '../../dist/utils/config-format.js',
-    import.meta.url
-).href;
+const configFormatModuleUrl = new URL('../../dist/utils/config-format.js', import.meta.url).href;
 const COMMON_SOURCE = `
 const CONTEXT_DIR = process.env.CLI_TEST_CONTEXT_DIR;
 const EVENTS_FILE = process.env.CLI_TEST_EVENTS_FILE;

@@ -30,8 +30,7 @@ vi.mock('toml', () => ({
     },
 }));
 
-const getConfigFileMock =
-    vi.fn<(typeof import('../../src/utils/config.js'))['getConfigFile']>();
+const getConfigFileMock = vi.fn<(typeof import('../../src/utils/config.js'))['getConfigFile']>();
 const configSchemaParseMock = vi.fn();
 
 vi.mock('../../src/utils/config.js', () => ({
@@ -86,15 +85,11 @@ describe('validate command', () => {
         const configPath = 'tmp/custom/config.toml';
 
         getConfigFileMock.mockResolvedValue(configPath);
-        readFileMock.mockRejectedValue(
-            Object.assign(new Error('missing'), { code: 'ENOENT' })
-        );
+        readFileMock.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
         writeFileMock.mockResolvedValue();
         mkdirMock.mockResolvedValue(undefined);
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -119,15 +114,11 @@ describe('validate command', () => {
         const configPath = 'config.toml';
 
         getConfigFileMock.mockResolvedValue(configPath);
-        readFileMock.mockRejectedValue(
-            Object.assign(new Error('missing'), { code: 'ENOENT' })
-        );
+        readFileMock.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
         writeFileMock.mockResolvedValue();
         mkdirMock.mockResolvedValue(undefined);
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -150,14 +141,10 @@ describe('validate command', () => {
         const mkdirError = new Error('permission denied');
 
         getConfigFileMock.mockResolvedValue(configPath);
-        readFileMock.mockRejectedValue(
-            Object.assign(new Error('missing'), { code: 'ENOENT' })
-        );
+        readFileMock.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
         mkdirMock.mockRejectedValue(mkdirError);
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -170,10 +157,10 @@ describe('validate command', () => {
             } as ArgumentsCamelCase)
         ).rejects.toThrow(mkdirError);
 
-        expect(loggerErrorMock).toHaveBeenCalledWith(
-            'Failed to create configuration directory.',
-            ['Path: tmp/custom', 'Reason: permission denied']
-        );
+        expect(loggerErrorMock).toHaveBeenCalledWith('Failed to create configuration directory.', [
+            'Path: tmp/custom',
+            'Reason: permission denied',
+        ]);
         expect(writeFileMock).not.toHaveBeenCalled();
     });
 
@@ -182,15 +169,11 @@ describe('validate command', () => {
         const writeError = new Error('disk full');
 
         getConfigFileMock.mockResolvedValue(configPath);
-        readFileMock.mockRejectedValue(
-            Object.assign(new Error('missing'), { code: 'ENOENT' })
-        );
+        readFileMock.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
         mkdirMock.mockResolvedValue(undefined);
         writeFileMock.mockRejectedValue(writeError);
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -203,10 +186,10 @@ describe('validate command', () => {
             } as ArgumentsCamelCase)
         ).rejects.toThrow(writeError);
 
-        expect(loggerErrorMock).toHaveBeenCalledWith(
-            'Failed to create configuration file.',
-            ['Path: tmp/custom/config.toml', 'Reason: disk full']
-        );
+        expect(loggerErrorMock).toHaveBeenCalledWith('Failed to create configuration file.', [
+            'Path: tmp/custom/config.toml',
+            'Reason: disk full',
+        ]);
     });
 
     it('logs syntax errors from the TOML parser with line and column details', async () => {
@@ -223,9 +206,7 @@ describe('validate command', () => {
             throw syntaxError;
         });
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -263,9 +244,7 @@ describe('validate command', () => {
             throw validationError;
         });
 
-        const { default: commandModule } = await import(
-            '../../src/commands/validate.command.js'
-        );
+        const { default: commandModule } = await import('../../src/commands/validate.command.js');
 
         if (!commandModule.handler) {
             throw new Error('validate command handler not registered');
@@ -278,9 +257,7 @@ describe('validate command', () => {
             } as ArgumentsCamelCase)
         ).rejects.toThrow(validationError);
 
-        expect(loggerErrorMock).toHaveBeenCalledWith(
-            'Configuration file is invalid:'
-        );
+        expect(loggerErrorMock).toHaveBeenCalledWith('Configuration file is invalid:');
         expect(loggerErrorMock).toHaveBeenCalledWith(
             'Code invalid_type at path [servers.0.url]: Expected string, received number'
         );

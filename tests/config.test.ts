@@ -59,9 +59,7 @@ describe('Config Validation', () => {
             const parsedConfig = configSchema.parse(buildBaseConfig());
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
-            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
-                true
-            );
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(true);
         });
 
         it('allows overriding payee transformation masking without affecting importer defaults', () => {
@@ -74,9 +72,7 @@ describe('Config Validation', () => {
             });
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(false);
-            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
-                false
-            );
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(false);
         });
 
         it('allows overriding importer masking without affecting payee transformation defaults', () => {
@@ -89,9 +85,7 @@ describe('Config Validation', () => {
             });
 
             expect(parsedConfig.import.maskPayeeNamesInLogs).toBe(true);
-            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(
-                true
-            );
+            expect(parsedConfig.payeeTransformation.maskPayeeNamesInLogs).toBe(true);
         });
     });
 
@@ -386,9 +380,7 @@ describe('Configuration default logging', () => {
         const rawConfig = buildBaseConfig();
         const parsedConfig = configSchema.parse(rawConfig);
 
-        expect(
-            collectDefaultedConfigDecisions(rawConfig, parsedConfig)
-        ).toEqual([
+        expect(collectDefaultedConfigDecisions(rawConfig, parsedConfig)).toEqual([
             {
                 path: 'import.synchronizeClearedStatus',
                 value: true,
@@ -449,9 +441,7 @@ password = ""
         const argv = { config: configPath } as unknown as ArgumentsCamelCase;
         const logger = new Logger(LogLevel.INFO);
         const debugSpy = vi.spyOn(logger, 'debug');
-        const consoleSpy = vi
-            .spyOn(console, 'log')
-            .mockImplementation(() => undefined);
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
         try {
             const { defaultDecisions } = await loadConfig(argv);
@@ -489,16 +479,13 @@ password = ""
             ]);
 
             expect(debugSpy).toHaveBeenCalledTimes(1);
-            expect(debugSpy).toHaveBeenCalledWith(
-                'Using default configuration values for 2 entries.',
-                [
-                    'Path: first.path',
-                    'Value: true',
-                    'Path: second.path',
-                    'Value: "value"',
-                    '  extra context',
-                ]
-            );
+            expect(debugSpy).toHaveBeenCalledWith('Using default configuration values for 2 entries.', [
+                'Path: first.path',
+                'Value: true',
+                'Path: second.path',
+                'Value: "value"',
+                '  extra context',
+            ]);
         } finally {
             debugSpy.mockRestore();
         }
@@ -518,20 +505,17 @@ password = ""
 
     it('logs a single default decision with concise formatting', () => {
         const logger = new Logger(LogLevel.DEBUG);
-        const debugSpy = vi
-            .spyOn(logger, 'debug')
-            .mockImplementation(() => undefined);
+        const debugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => undefined);
 
         try {
-            logDefaultedConfigDecisions(logger, [
-                { path: 'only.path', value: 1, hints: ['single hint'] },
-            ]);
+            logDefaultedConfigDecisions(logger, [{ path: 'only.path', value: 1, hints: ['single hint'] }]);
 
             expect(debugSpy).toHaveBeenCalledTimes(1);
-            expect(debugSpy).toHaveBeenCalledWith(
-                'Using default configuration value.',
-                ['Path: only.path', 'Value: 1', '  single hint']
-            );
+            expect(debugSpy).toHaveBeenCalledWith('Using default configuration value.', [
+                'Path: only.path',
+                'Value: 1',
+                '  single hint',
+            ]);
         } finally {
             debugSpy.mockRestore();
         }

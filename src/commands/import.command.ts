@@ -1,6 +1,6 @@
 import { parse } from 'date-fns';
 import { checkDatabaseUnlocked } from 'moneymoney';
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
+import type { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { AccountMap } from '../utils/AccountMap.js';
 import ActualApi from '../utils/ActualApi.js';
 import Importer from '../utils/Importer.js';
@@ -31,52 +31,34 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const isDryRun = Boolean(argv['dry-run'] ?? argv.dryRun);
-    const fromDate = argv.from
-        ? parse(argv.from as string, DATE_FORMAT, new Date())
-        : undefined;
-    const toDate = argv.to
-        ? parse(argv.to as string, DATE_FORMAT, new Date())
-        : undefined;
+    const fromDate = argv.from ? parse(argv.from as string, DATE_FORMAT, new Date()) : undefined;
+    const toDate = argv.to ? parse(argv.to as string, DATE_FORMAT, new Date()) : undefined;
     const server = argv.server as string | Array<string> | undefined;
     const account = argv.account as string | Array<string> | undefined;
     const budget = argv.budget as string | Array<string> | undefined;
 
-    const serverUrls = server
-        ? Array.isArray(server)
-            ? server
-            : [server]
-        : undefined;
+    const serverUrls = server ? (Array.isArray(server) ? server : [server]) : undefined;
 
     let accountRefs: Array<string> | undefined;
     if (account) {
         accountRefs = Array.isArray(account) ? account : [account];
     }
 
-    const budgetSyncIds = budget
-        ? Array.isArray(budget)
-            ? budget
-            : [budget]
-        : undefined;
+    const budgetSyncIds = budget ? (Array.isArray(budget) ? budget : [budget]) : undefined;
 
     if (fromDate && isNaN(fromDate.getTime())) {
-        throw new Error(
-            `Invalid 'from' date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
-        );
+        throw new Error(`Invalid 'from' date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`);
     }
 
     if (toDate && isNaN(toDate.getTime())) {
-        throw new Error(
-            `Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`
-        );
+        throw new Error(`Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`);
     }
 
     try {
         logger.debug(`Checking MoneyMoney database access...`);
         const isUnlocked = await checkDatabaseUnlocked();
         if (!isUnlocked) {
-            throw new Error(
-                `MoneyMoney database is locked. Please unlock it and try again.`
-            );
+            throw new Error(`MoneyMoney database is locked. Please unlock it and try again.`);
         }
         logger.debug(`MoneyMoney database is accessible.`);
     } catch (error) {
@@ -87,24 +69,16 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const serversToProcess = serverUrls
-        ? config.actualServers.filter((serverConfig) =>
-              serverUrls.includes(serverConfig.serverUrl)
-          )
+        ? config.actualServers.filter((serverConfig) => serverUrls.includes(serverConfig.serverUrl))
         : config.actualServers;
 
     if (serverUrls && serverUrls.length > 0) {
-        const configuredServerUrls = new Set(
-            config.actualServers.map((serverConfig) => serverConfig.serverUrl)
-        );
-        const missingServers = serverUrls.filter(
-            (url) => !configuredServerUrls.has(url)
-        );
+        const configuredServerUrls = new Set(config.actualServers.map((serverConfig) => serverConfig.serverUrl));
+        const missingServers = serverUrls.filter((url) => !configuredServerUrls.has(url));
 
         if (missingServers.length > 0) {
             const missingList = missingServers.join(', ');
-            throw new Error(
-                `Server${missingServers.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
-            );
+            throw new Error(`Server${missingServers.length > 1 ? 's' : ''} not found in configuration: ${missingList}`);
         }
     }
 
@@ -116,36 +90,26 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
 
     if (budgetSyncIds && budgetSyncIds.length > 0) {
         const configuredBudgets = new Set(
-            serversToProcess.flatMap((serverConfig) =>
-                serverConfig.budgets.map((b) => b.syncId)
-            )
+            serversToProcess.flatMap((serverConfig) => serverConfig.budgets.map((b) => b.syncId))
         );
-        const missingBudgets = budgetSyncIds.filter(
-            (syncId) => !configuredBudgets.has(syncId)
-        );
+        const missingBudgets = budgetSyncIds.filter((syncId) => !configuredBudgets.has(syncId));
 
         if (missingBudgets.length > 0) {
             const missingList = missingBudgets.join(', ');
-            throw new Error(
-                `Budget${missingBudgets.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
-            );
+            throw new Error(`Budget${missingBudgets.length > 1 ? 's' : ''} not found in configuration: ${missingList}`);
         }
     }
 
     for (const serverConfig of serversToProcess) {
         const budgetsToProcess = budgetSyncIds
-            ? serverConfig.budgets.filter((budgetConfig) =>
-                  budgetSyncIds.includes(budgetConfig.syncId)
-              )
+            ? serverConfig.budgets.filter((budgetConfig) => budgetSyncIds.includes(budgetConfig.syncId))
             : serverConfig.budgets;
 
         if (budgetsToProcess.length === 0) {
             continue;
         }
 
-        logger.debug(`Creating Actual API instance...`, [
-            `Server URL: ${serverConfig.serverUrl}`,
-        ]);
+        logger.debug(`Creating Actual API instance...`, [`Server URL: ${serverConfig.serverUrl}`]);
         const actualApi = new ActualApi(serverConfig, logger);
 
         try {
@@ -153,28 +117,14 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             await actualApi.init();
 
             for (const budgetConfig of budgetsToProcess) {
-                logger.debug(
-                    `Loading budget...`,
-                    `Budget: ${budgetConfig.syncId}`
-                );
+                logger.debug(`Loading budget...`, `Budget: ${budgetConfig.syncId}`);
                 await actualApi.loadBudget(budgetConfig.syncId);
 
                 logger.debug(`Loading accounts...`);
-                const accountMap = new AccountMap(
-                    budgetConfig,
-                    logger,
-                    actualApi
-                );
+                const accountMap = new AccountMap(budgetConfig, logger, actualApi);
                 await accountMap.loadFromConfig();
 
-                const importer = new Importer(
-                    config,
-                    budgetConfig,
-                    actualApi,
-                    logger,
-                    accountMap,
-                    payeeTransformer
-                );
+                const importer = new Importer(config, budgetConfig, actualApi, logger, accountMap, payeeTransformer);
 
                 if (isDryRun) {
                     logger.info(
@@ -182,10 +132,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
                         `Budget: ${budgetConfig.syncId}`
                     );
                 } else {
-                    logger.info(
-                        `Importing transactions...`,
-                        `Budget: ${budgetConfig.syncId}`
-                    );
+                    logger.info(`Importing transactions...`, `Budget: ${budgetConfig.syncId}`);
                 }
 
                 await importer.importTransactions({
@@ -197,10 +144,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
             }
         } finally {
             try {
-                logger.debug(
-                    `Shutting down Actual API instance...`,
-                    `Server URL: ${serverConfig.serverUrl}`
-                );
+                logger.debug(`Shutting down Actual API instance...`, `Server URL: ${serverConfig.serverUrl}`);
                 await actualApi.shutdown();
             } catch (error) {
                 logger.warn(
@@ -226,30 +170,15 @@ export default {
             })
             .alias('dry-run', 'dryRun')
             .string('server')
-            .describe(
-                'server',
-                'Import only budgets configured for the specified Actual server URL'
-            )
+            .describe('server', 'Import only budgets configured for the specified Actual server URL')
             .string('account')
-            .describe(
-                'account',
-                'Import only transactions from the specified MoneyMoney account identifier'
-            )
+            .describe('account', 'Import only transactions from the specified MoneyMoney account identifier')
             .string('budget')
-            .describe(
-                'budget',
-                'Import only to the specified Actual budget identifier'
-            )
+            .describe('budget', 'Import only to the specified Actual budget identifier')
             .string('from')
-            .describe(
-                'from',
-                `Import transactions on or after this date (${DATE_FORMAT})`
-            )
+            .describe('from', `Import transactions on or after this date (${DATE_FORMAT})`)
             .string('to')
-            .describe(
-                'to',
-                `Import transactions up to this date (${DATE_FORMAT})`
-            );
+            .describe('to', `Import transactions up to this date (${DATE_FORMAT})`);
     },
     handler: (argv) => handleCommand(argv),
 } as CommandModule;

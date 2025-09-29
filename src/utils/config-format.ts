@@ -115,11 +115,7 @@ export const createDefaultDecisionLog = (
 
         return {
             message: 'Using default configuration value.',
-            hints: [
-                `Path: ${decision.path}`,
-                `Value: ${decision.value}`,
-                ...decision.hints.map((hint) => `  ${hint}`),
-            ],
+            hints: [`Path: ${decision.path}`, `Value: ${decision.value}`, ...decision.hints.map((hint) => `  ${hint}`)],
         };
     }
 
@@ -127,9 +123,7 @@ export const createDefaultDecisionLog = (
     const maxHints =
         provided === Infinity
             ? MAX_HINTS_HARD_CAP
-            : clampToNonNegativeInteger(
-                  provided ?? DEFAULT_DECISION_LOG_MAX_HINTS
-              );
+            : clampToNonNegativeInteger(provided ?? DEFAULT_DECISION_LOG_MAX_HINTS);
     const aggregatedHints: string[] = [];
     let appended = 0;
     let omitted = 0;

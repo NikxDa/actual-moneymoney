@@ -1,20 +1,14 @@
-import { Account as MonMonAccount, getAccounts } from 'moneymoney';
+import type { Account as MonMonAccount } from 'moneymoney';
+import { getAccounts } from 'moneymoney';
 import ActualApi from './ActualApi.js';
-import { ActualBudgetConfig } from './config.js';
+import type { ActualBudgetConfig } from './config.js';
 import Logger from './Logger.js';
 
 // Define the Actual Account interface based on the types
 interface ActualAccount {
     id: string;
     name: string;
-    type:
-        | 'checking'
-        | 'savings'
-        | 'credit'
-        | 'investment'
-        | 'mortgage'
-        | 'debt'
-        | 'other';
+    type: 'checking' | 'savings' | 'credit' | 'investment' | 'mortgage' | 'debt' | 'other';
     offbudget: boolean;
     closed: boolean;
 }
@@ -31,13 +25,9 @@ export class AccountMap {
 
     private mapping: Map<MonMonAccount, ActualAccount> | null = null;
 
-    public getMap(
-        moneyMoneyAccountRefs?: Array<string>
-    ): Map<MonMonAccount, ActualAccount> {
+    public getMap(moneyMoneyAccountRefs?: Array<string>): Map<MonMonAccount, ActualAccount> {
         if (!this.mapping) {
-            throw new Error(
-                'Account mapping has not been loaded. Call loadFromConfig() before accessing the map.'
-            );
+            throw new Error('Account mapping has not been loaded. Call loadFromConfig() before accessing the map.');
         }
 
         if (!moneyMoneyAccountRefs) return this.mapping;
@@ -47,9 +37,7 @@ export class AccountMap {
             const monMonAccount = this.getMoneyMoneyAccountByRef(ref);
 
             if (!monMonAccount) {
-                this.logger.error(
-                    `Specified account ref '${ref}' did not resolve to any MoneyMoney accounts.`
-                );
+                this.logger.error(`Specified account ref '${ref}' did not resolve to any MoneyMoney accounts.`);
                 continue;
             }
 
@@ -69,22 +57,14 @@ export class AccountMap {
     }
 
     private checkMoneyMoneyAccountRef(account: MonMonAccount, ref: string) {
-        return (
-            account.uuid === ref ||
-            account.accountNumber === ref ||
-            account.name === ref
-        );
+        return account.uuid === ref || account.accountNumber === ref || account.name === ref;
     }
 
     public getMoneyMoneyAccountByRef(ref: string) {
-        const matchingAccounts = this.moneyMoneyAccounts.filter((acc) =>
-            this.checkMoneyMoneyAccountRef(acc, ref)
-        );
+        const matchingAccounts = this.moneyMoneyAccounts.filter((acc) => this.checkMoneyMoneyAccountRef(acc, ref));
 
         if (matchingAccounts.length === 0) {
-            this.logger.warn(
-                `No MoneyMoney account found for reference '${ref}'.`
-            );
+            this.logger.warn(`No MoneyMoney account found for reference '${ref}'.`);
 
             return null;
         } else if (matchingAccounts.length > 1) {
@@ -101,61 +81,43 @@ export class AccountMap {
     }
 
     public getActualAccountByRef(ref: string) {
-        const matchingAccounts = this.actualAccounts.filter((acc) =>
-            this.checkActualAccountRef(acc, ref)
-        );
+        const matchingAccounts = this.actualAccounts.filter((acc) => this.checkActualAccountRef(acc, ref));
 
         if (matchingAccounts.length === 0) {
             this.logger.warn(`No Actual account found for reference '${ref}'.`);
 
             return null;
         } else if (matchingAccounts.length > 1) {
-            this.logger.warn(
-                `Found multiple Actual accounts matching the reference '${ref}'. Using the first one.`
-            );
+            this.logger.warn(`Found multiple Actual accounts matching the reference '${ref}'. Using the first one.`);
         }
 
         return matchingAccounts[0];
     }
 
-    async loadFromConfig() {
+    public async loadFromConfig() {
         if (this.mapping) return;
 
         const accountMapping = this.budgetConfig.accountMapping;
-        const parsedAccountMapping: Map<MonMonAccount, ActualAccount> =
-            new Map();
+        const parsedAccountMapping: Map<MonMonAccount, ActualAccount> = new Map();
 
         this.moneyMoneyAccounts = await getAccounts();
-        this.logger.debug(
-            `Found ${this.moneyMoneyAccounts.length} accounts in MoneyMoney.`
-        );
+        this.logger.debug(`Found ${this.moneyMoneyAccounts.length} accounts in MoneyMoney.`);
 
         this.actualAccounts = await this.actualApi.getAccounts();
-        this.logger.debug(
-            `Found ${this.actualAccounts.length} accounts in Actual.`
-        );
+        this.logger.debug(`Found ${this.actualAccounts.length} accounts in Actual.`);
 
-        this.logger.debug(
-            `Account mapping contains ${Object.entries(accountMapping).length} entries.`
-        );
+        this.logger.debug(`Account mapping contains ${Object.entries(accountMapping).length} entries.`);
 
-        for (const [moneyMoneyRef, actualRef] of Object.entries(
-            accountMapping
-        )) {
-            const moneyMoneyAccount =
-                this.getMoneyMoneyAccountByRef(moneyMoneyRef);
+        for (const [moneyMoneyRef, actualRef] of Object.entries(accountMapping)) {
+            const moneyMoneyAccount = this.getMoneyMoneyAccountByRef(moneyMoneyRef);
 
             const actualAccount = this.getActualAccountByRef(actualRef);
 
             if (!actualAccount) {
-                this.logger.debug(
-                    `No Actual account found for reference '${actualRef}'. Skipping...`
-                );
+                this.logger.debug(`No Actual account found for reference '${actualRef}'. Skipping...`);
                 continue;
             } else if (!moneyMoneyAccount) {
-                this.logger.debug(
-                    `No MoneyMoney account found for reference '${moneyMoneyRef}'. Skipping...`
-                );
+                this.logger.debug(`No MoneyMoney account found for reference '${moneyMoneyRef}'. Skipping...`);
                 continue;
             }
 
@@ -169,8 +131,7 @@ export class AccountMap {
         this.logger.info('Parsed account mapping', [
             '[MoneyMoney Account] → [Actual Account]',
             ...Array.from(parsedAccountMapping.entries()).map(
-                ([monMonAccount, actualAccount]) =>
-                    `${monMonAccount.name} → ${actualAccount.name}`
+                ([monMonAccount, actualAccount]) => `${monMonAccount.name} → ${actualAccount.name}`
             ),
         ]);
 

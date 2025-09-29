@@ -16,16 +16,12 @@ interface RecordedEvent {
     readonly [key: string]: unknown;
 }
 
-const loaderPath = fileURLToPath(
-    new URL('../helpers/cli-mock-loader.mjs', import.meta.url)
-);
+const loaderPath = fileURLToPath(new URL('../helpers/cli-mock-loader.mjs', import.meta.url));
 const loaderNodeOptions = ['--loader', loaderPath] as const;
 
 const CLI_TIMEOUT_MS = 20000;
 
-const numericLogLevels = Object.values(LogLevel).filter(
-    (value): value is number => typeof value === 'number'
-);
+const numericLogLevels = Object.values(LogLevel).filter((value): value is number => typeof value === 'number');
 const expectedInvalidLogLevelMessage = `--logLevel must be a finite number. Values are clamped to ${Math.min(
     ...numericLogLevels
 )}-${Math.max(...numericLogLevels)}.`;
@@ -107,25 +103,20 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                ['import', '--dry-run', '--logLevel', '99'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--logLevel', '99'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(0);
 
             const events = await readEvents(eventsFile);
-            const loggerEvents = events.filter(
-                (event) => event.type === 'Logger#constructor'
-            );
+            const loggerEvents = events.filter((event) => event.type === 'Logger#constructor');
 
             expect(loggerEvents).toEqual([
                 {
@@ -145,25 +136,20 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                ['import', '--dry-run', '--logLevel=-5'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--logLevel=-5'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(0);
 
             const events = await readEvents(eventsFile);
-            const loggerEvents = events.filter(
-                (event) => event.type === 'Logger#constructor'
-            );
+            const loggerEvents = events.filter((event) => event.type === 'Logger#constructor');
 
             expect(loggerEvents).toEqual([
                 {
@@ -183,25 +169,20 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                ['import', '--dry-run', '--structuredLogs'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--structuredLogs'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(0);
 
             const events = await readEvents(eventsFile);
-            const loggerEvents = events.filter(
-                (event) => event.type === 'Logger#constructor'
-            );
+            const loggerEvents = events.filter((event) => event.type === 'Logger#constructor');
 
             expect(loggerEvents).toEqual([
                 {
@@ -221,27 +202,22 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                ['import', '--dry-run', '--logLevel', 'abc'],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--logLevel', 'abc'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(1);
             expect(result.stdout).toBe('');
             expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
 
             const events = await readEvents(eventsFile);
-            const importerEvents = events.filter((event) =>
-                event.type.startsWith('Importer#')
-            );
+            const importerEvents = events.filter((event) => event.type.startsWith('Importer#'));
             expect(importerEvents).toEqual([]);
         },
         CLI_TIMEOUT_MS
@@ -254,33 +230,22 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                [
-                    'import',
-                    '--dry-run',
-                    '--structuredLogs=false',
-                    '--logLevel',
-                    'abc',
-                ],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--structuredLogs=false', '--logLevel', 'abc'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(1);
             expect(result.stdout).toBe('');
             expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
 
             const events = await readEvents(eventsFile);
-            const loggerEvents = events.filter(
-                (event) => event.type === 'Logger#constructor'
-            );
+            const loggerEvents = events.filter((event) => event.type === 'Logger#constructor');
 
             expect(loggerEvents).toEqual([
                 {
@@ -300,34 +265,22 @@ describe('CLI global options', () => {
                 config: createBaseConfig(),
             });
 
-            const result = await runCli(
-                [
-                    'import',
-                    '--dry-run',
-                    '--structured-logs',
-                    'true',
-                    '--logLevel',
-                    'abc',
-                ],
-                {
-                    env: {
-                        CLI_TEST_CONTEXT_DIR: contextDir,
-                        CLI_TEST_EVENTS_FILE: eventsFile,
-                        NODE_NO_WARNINGS: '1',
-                    },
-                    nodeOptions: loaderNodeOptions,
-                    timeoutMs: CLI_TIMEOUT_MS,
-                }
-            );
+            const result = await runCli(['import', '--dry-run', '--structured-logs', 'true', '--logLevel', 'abc'], {
+                env: {
+                    CLI_TEST_CONTEXT_DIR: contextDir,
+                    CLI_TEST_EVENTS_FILE: eventsFile,
+                    NODE_NO_WARNINGS: '1',
+                },
+                nodeOptions: loaderNodeOptions,
+                timeoutMs: CLI_TIMEOUT_MS,
+            });
 
             expect(result.exitCode).toBe(1);
             expect(result.stdout).toBe('');
             expect(result.stderr).toContain(expectedInvalidLogLevelMessage);
 
             const events = await readEvents(eventsFile);
-            const loggerEvents = events.filter(
-                (event) => event.type === 'Logger#constructor'
-            );
+            const loggerEvents = events.filter((event) => event.type === 'Logger#constructor');
 
             expect(loggerEvents).toEqual([
                 {
@@ -372,24 +325,12 @@ describe('CLI global options', () => {
                 .join('\n');
 
             expect(normalisedHelp).toContain('index.js [command]');
-            expect(normalisedHelp).toContain(
-                'index.js import    Import data from MoneyMoney'
-            );
-            expect(normalisedHelp).toContain(
-                'index.js validate  View information about and validate the current'
-            );
-            expect(normalisedHelp).toMatch(
-                /--help\s+Show help[\s\S]*\[boolean\]/
-            );
-            expect(normalisedHelp).toMatch(
-                /--version\s+Show version number[\s\S]*\[boolean\]/
-            );
-            expect(normalisedHelp).toMatch(
-                /--config\s+Path to the configuration file[\s\S]*\[string\]/
-            );
-            expect(normalisedHelp).toMatch(
-                /--logLevel\s+The log level to use \(0-3\)[\s\S]*\[number\]/
-            );
+            expect(normalisedHelp).toContain('index.js import    Import data from MoneyMoney');
+            expect(normalisedHelp).toContain('index.js validate  View information about and validate the current');
+            expect(normalisedHelp).toMatch(/--help\s+Show help[\s\S]*\[boolean\]/);
+            expect(normalisedHelp).toMatch(/--version\s+Show version number[\s\S]*\[boolean\]/);
+            expect(normalisedHelp).toMatch(/--config\s+Path to the configuration file[\s\S]*\[string\]/);
+            expect(normalisedHelp).toMatch(/--logLevel\s+The log level to use \(0-3\)[\s\S]*\[number\]/);
             expect(normalisedHelp).toMatch(
                 /--structuredLogs\s+Emit structured JSON logs instead of coloured text output[\s\S]*\[boolean\]/
             );
