@@ -380,9 +380,7 @@ describe('import command (CLI)', () => {
             expect(result.stderr).toContain(failureMessage);
 
             const events = await readEvents(eventsFile);
-            const accountMapEvents = events.filter(
-                (event) => event.type === 'AccountMap#loadFromConfig'
-            );
+            const accountMapEvents = events.filter((event) => event.type === 'AccountMap#loadFromConfig');
             expect(accountMapEvents).toEqual([
                 {
                     type: 'AccountMap#loadFromConfig',
@@ -391,14 +389,10 @@ describe('import command (CLI)', () => {
                 },
             ]);
 
-            const importerEvents = events.filter(
-                (event) => event.type === 'Importer#importTransactions'
-            );
+            const importerEvents = events.filter((event) => event.type === 'Importer#importTransactions');
             expect(importerEvents).toHaveLength(0);
 
-            const shutdownEvents = events.filter(
-                (event) => event.type === 'ActualApi#shutdown'
-            );
+            const shutdownEvents = events.filter((event) => event.type === 'ActualApi#shutdown');
             expect(shutdownEvents).toEqual([
                 {
                     type: 'ActualApi#shutdown',

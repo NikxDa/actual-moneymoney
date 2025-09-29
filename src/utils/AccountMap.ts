@@ -105,9 +105,7 @@ export class AccountMap {
         const parsedAccountMapping: Map<MonMonAccount, ActualAccount> = new Map();
 
         const accountRefsFilter =
-            options.accountRefs && options.accountRefs.length > 0
-                ? new Set(options.accountRefs)
-                : null;
+            options.accountRefs && options.accountRefs.length > 0 ? new Set(options.accountRefs) : null;
         const unresolvedErrors: string[] = [];
 
         this.moneyMoneyAccounts = await getAccounts();
@@ -123,9 +121,7 @@ export class AccountMap {
 
             const actualAccount = this.getActualAccountByRef(actualRef);
 
-            const requiresResolution =
-                accountRefsFilter === null ||
-                accountRefsFilter.has(moneyMoneyRef);
+            const requiresResolution = accountRefsFilter === null || accountRefsFilter.has(moneyMoneyRef);
 
             if (!moneyMoneyAccount) {
                 const message = `MoneyMoney account reference '${moneyMoneyRef}' did not match any MoneyMoney accounts.`;
@@ -167,9 +163,7 @@ export class AccountMap {
         if (unresolvedErrors.length > 0) {
             const header = `Failed to resolve account mapping for budget '${this.budgetConfig.syncId}'.`;
             const details =
-                unresolvedErrors.length === 1
-                    ? ` ${unresolvedErrors[0]}`
-                    : `\n - ${unresolvedErrors.join('\n - ')}`;
+                unresolvedErrors.length === 1 ? ` ${unresolvedErrors[0]}` : `\n - ${unresolvedErrors.join('\n - ')}`;
             throw new Error(`${header}${details}`);
         }
 
