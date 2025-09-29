@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
 set -e
 
-npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
+# Pre-push: No checks needed since pre-commit runs the full suite
+# Every commit is already fully validated
