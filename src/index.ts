@@ -15,9 +15,7 @@ try {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const logLevelEnumValues = Object.values(LogLevel).filter(
-    (value): value is number => typeof value === 'number'
-);
+const logLevelEnumValues = Object.values(LogLevel).filter((value): value is number => typeof value === 'number');
 const minLogLevel = Math.min(...logLevelEnumValues);
 const maxLogLevel = Math.max(...logLevelEnumValues);
 
@@ -34,29 +32,20 @@ const parser: Argv<unknown> = yargs(hideBin(process.argv))
     })
     .option('structuredLogs', {
         type: 'boolean',
-        description:
-            'Emit structured JSON logs instead of coloured text output',
+        description: 'Emit structured JSON logs instead of coloured text output',
     })
     .coerce('logLevel', (value: unknown): number | null | undefined => {
         if (value === undefined || value === null) {
             return value;
         }
 
-        const numericValue =
-            typeof value === 'number'
-                ? value
-                : Number.parseInt(String(value), 10);
+        const numericValue = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
 
         if (!Number.isFinite(numericValue)) {
-            throw new Error(
-                `--logLevel must be a finite number. Values are clamped to ${minLogLevel}-${maxLogLevel}.`
-            );
+            throw new Error(`--logLevel must be a finite number. Values are clamped to ${minLogLevel}-${maxLogLevel}.`);
         }
 
-        const clampedValue = Math.min(
-            Math.max(numericValue, minLogLevel),
-            maxLogLevel
-        );
+        const clampedValue = Math.min(Math.max(numericValue, minLogLevel), maxLogLevel);
 
         return Math.trunc(clampedValue);
     })
@@ -103,9 +92,7 @@ run().catch((error: unknown) => {
                 continue;
             }
 
-            const matchingFlag = flagNames.find(
-                (flag) => arg === flag || arg.startsWith(`${flag}=`)
-            );
+            const matchingFlag = flagNames.find((flag) => arg === flag || arg.startsWith(`${flag}=`));
 
             if (!matchingFlag) {
                 continue;

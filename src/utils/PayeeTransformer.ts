@@ -20,8 +20,7 @@ const MODEL_CACHE_FILENAME = 'openai-model-cache.json';
 const MODEL_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 const MAX_LOG_ENTRIES = 50;
 
-type ExtendedChatCompletionCreateParams =
-    OpenAI.Chat.Completions.ChatCompletionCreateParams;
+type ExtendedChatCompletionCreateParams = OpenAI.Chat.Completions.ChatCompletionCreateParams;
 
 class PayeeTransformer {
     private openai: OpenAI;
@@ -49,17 +48,12 @@ class PayeeTransformer {
         }
     }
 
-    private static async readModelCacheFromDisk(
-        logger?: Logger
-    ): Promise<ModelCache | null> {
+    private static async readModelCacheFromDisk(logger?: Logger): Promise<ModelCache | null> {
         try {
             const cacheFile = PayeeTransformer.getCacheFilePath();
             const cacheContent = await fs.readFile(cacheFile, 'utf-8');
             const parsed = JSON.parse(cacheContent) as ModelCache;
-            if (
-                !Array.isArray(parsed.models) ||
-                typeof parsed.expiresAt !== 'number'
-            ) {
+            if (!Array.isArray(parsed.models) || typeof parsed.expiresAt !== 'number') {
                 return null;
             }
 
@@ -71,10 +65,10 @@ class PayeeTransformer {
 
             if (error instanceof SyntaxError) {
                 const cacheFile = PayeeTransformer.getCacheFilePath();
-                logger?.warn(
-                    'OpenAI model cache was corrupted and has been reset.',
-                    [`Path: ${cacheFile}`, `Parse error: ${error.message}`]
-                );
+                logger?.warn('OpenAI model cache was corrupted and has been reset.', [
+                    `Path: ${cacheFile}`,
+                    `Parse error: ${error.message}`,
+                ]);
                 await PayeeTransformer.deleteModelCacheFile();
             }
 
@@ -82,25 +76,19 @@ class PayeeTransformer {
         }
     }
 
-    private static async writeModelCacheToDisk(
-        cache: ModelCache
-    ): Promise<void> {
+    private static async writeModelCacheToDisk(cache: ModelCache): Promise<void> {
         try {
             await PayeeTransformer.ensureCacheDirExists();
             const cacheFile = PayeeTransformer.getCacheFilePath();
             const tmpFile = `${cacheFile}.tmp`;
-            await fs.writeFile(
-                tmpFile,
-                JSON.stringify(cache, null, 2),
-                'utf-8'
-            );
+            await fs.writeFile(tmpFile, JSON.stringify(cache, null, 2), { encoding: 'utf-8', mode: 0o600 });
             await fs.rename(tmpFile, cacheFile);
         } catch (_error) {
             // Ignore cache write errors but log in debug environments if needed
         }
     }
 
-    constructor(
+    public constructor(
         private config: PayeeTransformationConfig,
         private logger: Logger
     ) {
@@ -117,32 +105,21 @@ class PayeeTransformer {
         });
     }
 
-    public async transformPayees(
-        payeeList: string[]
-    ): Promise<Record<string, string> | null> {
+    public async transformPayees(payeeList: string[]): Promise<Record<string, string> | null> {
         const prompt = this.generatePrompt();
 
         if (payeeList.length === 0) {
-            this.logger.debug(
-                'No payees to transform. Returning empty object.'
-            );
+            this.logger.debug('No payees to transform. Returning empty object.');
             return {};
         }
 
         const uniquePayees = Array.from(new Set(payeeList));
-        const uncachedPayees = uniquePayees.filter(
-            (payee) => !this.transformationCache.has(payee)
-        );
+        const uncachedPayees = uniquePayees.filter((payee) => !this.transformationCache.has(payee));
 
-        this.logger.debug(
-            'Original payee names:',
-            this.formatPayeeListForLog(uniquePayees)
-        );
+        this.logger.debug('Original payee names:', this.formatPayeeListForLog(uniquePayees));
 
         if (uncachedPayees.length === 0) {
-            this.logger.debug(
-                'All payees resolved from cache. Skipping OpenAI request.'
-            );
+            this.logger.debug('All payees resolved from cache. Skipping OpenAI request.');
             return this.buildResponse(uniquePayees);
         }
 
@@ -155,11 +132,7 @@ class PayeeTransformer {
         try {
             const model = await this.getConfiguredModel();
 
-            const response = await this.makeOpenAIRequest(
-                prompt,
-                uncachedPayees,
-                model
-            );
+            const response = await this.makeOpenAIRequest(prompt, uncachedPayees, model);
 
             if (!response || !response.choices[0]?.message?.content) {
                 this.logger.error('Invalid response from OpenAI API');
@@ -168,12 +141,15 @@ class PayeeTransformer {
 
             const finishReason = response.choices[0]?.finish_reason;
             if (finishReason && finishReason !== 'stop') {
-                this.logger.error(
-                    `OpenAI response ended prematurely (finish_reason: ${finishReason}).`
-                );
+                this.logger.error(`OpenAI response ended prematurely (finish_reason: ${finishReason}).`);
                 if (!this.shouldMaskPayeeLogs()) {
+                    const raw = response.choices[0].message.content ?? '';
+                    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+                    const hex = Array.from(new Uint8Array(hash))
+                        .map((b) => b.toString(16).padStart(2, '0'))
+                        .join('');
                     this.logger.debug(
-                        `Raw response content may be truncated: ${response.choices[0].message.content}`
+                        `Raw response content may be truncated. contentSHA256=${hex}, length=${raw.length}`
                     );
                 }
                 return null;
@@ -183,14 +159,8 @@ class PayeeTransformer {
 
             try {
                 const parsed = JSON.parse(output) as unknown;
-                if (
-                    typeof parsed !== 'object' ||
-                    parsed === null ||
-                    Array.isArray(parsed)
-                ) {
-                    throw new Error(
-                        'Transformed payee response is not an object'
-                    );
+                if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+                    throw new Error('Transformed payee response is not an object');
                 }
 
                 const transformedPayees = parsed as {
@@ -199,12 +169,9 @@ class PayeeTransformer {
 
                 // Check for empty payload
                 if (Object.keys(transformedPayees).length === 0) {
-                    this.logger.warn(
-                        'OpenAI returned empty payload, falling back to original payee names',
-                        [
-                            'This may indicate the model failed to process the request properly',
-                        ]
-                    );
+                    this.logger.warn('OpenAI returned empty payload, falling back to original payee names', [
+                        'This may indicate the model failed to process the request properly',
+                    ]);
                     return this.buildResponse(uniquePayees);
                 }
 
@@ -213,29 +180,30 @@ class PayeeTransformer {
                 const rawKeys = this.extractKeysFromJsonString(output);
                 const uniqueRawKeys = new Set(rawKeys);
                 if (rawKeys.length !== uniqueRawKeys.size) {
-                    this.logger.warn(
-                        'OpenAI response contains duplicate keys, falling back to original payee names',
-                        ['This indicates malformed response structure']
-                    );
+                    this.logger.warn('OpenAI response contains duplicate keys, falling back to original payee names', [
+                        'This indicates malformed response structure',
+                    ]);
                     return this.buildResponse(uniquePayees);
                 }
 
-                for (const [original, transformed] of Object.entries(
-                    transformedPayees
-                )) {
+                const MAX_CACHE_ENTRIES = 5000; // tune as needed
+                for (const [original, transformed] of Object.entries(transformedPayees)) {
                     if (typeof transformed === 'string') {
+                        if (this.transformationCache.size >= MAX_CACHE_ENTRIES) {
+                            // Evict the oldest entry (Map preserves insertion order)
+                            const oldestKey = this.transformationCache.keys().next().value as string | undefined;
+                            if (oldestKey) {
+                                this.transformationCache.delete(oldestKey);
+                            }
+                        }
                         this.transformationCache.set(original, transformed);
                     }
                 }
 
                 const finalResult = this.buildResponse(uniquePayees);
 
-                const mappingForLog =
-                    this.formatPayeeMappingForLog(finalResult);
-                this.logger.debug('Payee transformation completed:', [
-                    'Original → Transformed:',
-                    ...mappingForLog,
-                ]);
+                const mappingForLog = this.formatPayeeMappingForLog(finalResult);
+                this.logger.debug('Payee transformation completed:', ['Original → Transformed:', ...mappingForLog]);
 
                 return finalResult;
             } catch (parseError) {
@@ -243,9 +211,7 @@ class PayeeTransformer {
                     `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
                 );
                 if (this.shouldMaskPayeeLogs()) {
-                    this.logger.debug(
-                        'Raw response omitted to respect payee masking configuration.'
-                    );
+                    this.logger.debug('Raw response omitted to respect payee masking configuration.');
                 } else {
                     this.logger.debug(`Raw response: ${output}`);
                 }
@@ -263,7 +229,7 @@ class PayeeTransformer {
         model: string,
         retries = 3
     ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
-        const capabilities = await this.getModelCapabilities(model);
+        const capabilities = this.getModelCapabilities(model);
 
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
@@ -279,41 +245,23 @@ class PayeeTransformer {
                 };
 
                 // Add model-specific parameters based on capabilities
-                if (
-                    capabilities.supportsTemperature &&
-                    this.config.modelConfig?.temperature !== undefined
-                ) {
-                    const requestedTemperature =
-                        this.config.modelConfig.temperature;
-                    requestConfig.temperature = Math.min(
-                        2,
-                        Math.max(0, requestedTemperature)
-                    );
+                if (capabilities.supportsTemperature) {
+                    const t = this.config.modelConfig?.temperature ?? capabilities.defaultTemperature;
+                    requestConfig.temperature = Math.min(2, Math.max(0, t));
                 }
 
-                if (
-                    capabilities.supportsMaxTokens &&
-                    this.config.modelConfig?.maxTokens !== undefined
-                ) {
-                    const requestedMaxTokens =
-                        this.config.modelConfig.maxTokens;
-                    requestConfig.max_tokens = Math.min(
-                        4096,
-                        Math.max(64, requestedMaxTokens)
-                    );
+                if (capabilities.supportsMaxTokens && this.config.modelConfig?.maxTokens !== undefined) {
+                    const requestedMaxTokens = this.config.modelConfig.maxTokens;
+                    requestConfig.max_tokens = Math.min(4096, Math.max(64, requestedMaxTokens));
                 }
 
-                this.logger.debug(
-                    `Making OpenAI request (attempt ${attempt})`,
-                    [
-                        `Model: ${model}`,
-                        `Temperature: ${requestConfig.temperature || 'default'}`,
-                        `Max tokens: ${requestConfig.max_tokens || 'default'}`,
-                    ]
-                );
+                this.logger.debug(`Making OpenAI request (attempt ${attempt})`, [
+                    `Model: ${model}`,
+                    `Temperature: ${requestConfig.temperature || 'default'}`,
+                    `Max tokens: ${requestConfig.max_tokens || 'default'}`,
+                ]);
 
-                const response =
-                    await this.openai.chat.completions.create(requestConfig);
+                const response = await this.openai.chat.completions.create(requestConfig);
                 return response;
             } catch (error) {
                 if (attempt === retries) throw error;
@@ -322,12 +270,11 @@ class PayeeTransformer {
                 if (error instanceof Error && 'status' in error) {
                     const status = (error as { status?: number }).status;
                     if (status && (status === 429 || status >= 500)) {
-                        this.logger.debug(
-                            `Attempt ${attempt} failed, retrying... (${status})`
-                        );
-                        await new Promise((resolve) =>
-                            setTimeout(resolve, 1000 * 2 ** (attempt - 1))
-                        ); // Exponential backoff
+                        this.logger.debug(`Attempt ${attempt} failed, retrying... (${status})`);
+                        // Exponential backoff with jitter
+                        const base = 1000 * 2 ** (attempt - 1);
+                        const delay = Math.floor(base * (0.5 + Math.random())); // 50–150% jitter
+                        await new Promise((resolve) => setTimeout(resolve, delay));
                         continue;
                     }
                 }
@@ -338,9 +285,7 @@ class PayeeTransformer {
         throw new Error('Failed to complete OpenAI request');
     }
 
-    private async getModelCapabilities(
-        model: string
-    ): Promise<ModelCapabilities> {
+    private getModelCapabilities(model: string): ModelCapabilities {
         if (this.modelCapabilities.has(model)) {
             return this.modelCapabilities.get(model)!;
         }
@@ -403,9 +348,7 @@ class PayeeTransformer {
             return this.availableModels;
         }
 
-        const diskCache = await PayeeTransformer.readModelCacheFromDisk(
-            this.logger
-        );
+        const diskCache = await PayeeTransformer.readModelCacheFromDisk(this.logger);
         if (diskCache && diskCache.expiresAt > now) {
             this.logger.debug('Loaded OpenAI model list from disk cache.');
             PayeeTransformer.modelCache = diskCache;
@@ -420,10 +363,12 @@ class PayeeTransformer {
             const response = await this.openai.models.list();
             models = response.data.map((m) => m.id);
         } catch (err) {
-            this.logger.error(
-                'Failed to fetch OpenAI model list',
-                err instanceof Error ? err.message : String(err)
-            );
+            const e = err as { name?: string; message?: string; stack?: string };
+            this.logger.error('Failed to fetch OpenAI model list', [
+                `name: ${e?.name ?? 'Unknown'}`,
+                `message: ${e?.message ?? String(err)}`,
+                ...(e?.stack ? [`stack: ${e.stack.split('\n')[0]}`] : []),
+            ]);
             throw err;
         }
         const cache: ModelCache = {
@@ -487,48 +432,34 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
     private handleError(error: unknown): void {
         if (error instanceof Error) {
             // Handle specific OpenAI errors
-            if (
-                'status' in error &&
-                typeof (error as { status?: number }).status === 'number'
-            ) {
+            if ('status' in error && typeof (error as { status?: number }).status === 'number') {
                 const status = (error as { status?: number }).status;
                 switch (status) {
                     case 401:
-                        this.logger.error(
-                            'OpenAI API key is invalid or expired'
-                        );
+                        this.logger.error('OpenAI API key is invalid or expired');
                         break;
                     case 403:
-                        this.logger.error(
-                            'OpenAI API access forbidden - check your API key permissions'
-                        );
+                        this.logger.error('OpenAI API access forbidden - check your API key permissions');
                         break;
                     case 429:
-                        this.logger.error(
-                            'OpenAI API rate limit exceeded - try again later'
-                        );
+                        this.logger.error('OpenAI API rate limit exceeded - try again later');
                         break;
                     case 500:
-                        this.logger.error(
-                            'OpenAI API server error - try again later'
-                        );
+                        this.logger.error('OpenAI API server error - try again later');
                         break;
                     case 502:
                     case 503:
                     case 504:
-                        this.logger.error(
-                            'OpenAI API service temporarily unavailable - try again later'
-                        );
+                        this.logger.error('OpenAI API service temporarily unavailable - try again later');
                         break;
                     default:
-                        this.logger.error(
-                            `OpenAI API error (${status}): ${error.message}`
-                        );
+                        this.logger.error(`OpenAI API error (${status}): ${error.message}`);
                 }
             } else {
-                this.logger.error(
-                    `Error in payee transformation: ${error.message}`
-                );
+                this.logger.error(`Error in payee transformation: ${error.message}`);
+                if (error.stack) {
+                    this.logger.debug(error.stack);
+                }
             }
         } else {
             this.logger.error('Unknown error in payee transformation');
@@ -540,30 +471,20 @@ CRITICAL: Return ONLY valid JSON. No explanations or additional text.`;
     }
 
     private formatPayeeListForLog(payees: Array<string>): Array<string> {
-        const prepared = this.shouldMaskPayeeLogs()
-            ? payees.map((payee) => this.obfuscatePayeeName(payee))
-            : payees;
+        const prepared = this.shouldMaskPayeeLogs() ? payees.map((payee) => this.obfuscatePayeeName(payee)) : payees;
 
         return this.summarizeLogEntries(prepared);
     }
 
-    private formatPayeeMappingForLog(
-        mappings: Record<string, string>
-    ): Array<string> {
+    private formatPayeeMappingForLog(mappings: Record<string, string>): Array<string> {
         const shouldMask = this.shouldMaskPayeeLogs();
 
-        const formatted = Object.entries(mappings).map(
-            ([original, transformed]) => {
-                const displayOriginal = shouldMask
-                    ? this.obfuscatePayeeName(original)
-                    : original;
-                const displayTransformed = shouldMask
-                    ? this.obfuscatePayeeName(transformed)
-                    : transformed;
+        const formatted = Object.entries(mappings).map(([original, transformed]) => {
+            const displayOriginal = shouldMask ? this.obfuscatePayeeName(original) : original;
+            const displayTransformed = shouldMask ? this.obfuscatePayeeName(transformed) : transformed;
 
-                return `  "${displayOriginal}" → "${displayTransformed}"`;
-            }
-        );
+            return `  "${displayOriginal}" → "${displayTransformed}"`;
+        });
 
         return this.summarizeLogEntries(formatted);
     }

@@ -1,6 +1,6 @@
-import { parse } from 'date-fns';
+import { parse, startOfDay, endOfDay } from 'date-fns';
 import { checkDatabaseUnlocked } from 'moneymoney';
-import { ArgumentsCamelCase, CommandModule } from 'yargs';
+import type { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { AccountMap } from '../utils/AccountMap.js';
 import ActualApi from '../utils/ActualApi.js';
 import Importer from '../utils/Importer.js';
@@ -8,6 +8,151 @@ import Logger, { LogLevel } from '../utils/Logger.js';
 import PayeeTransformer from '../utils/PayeeTransformer.js';
 import { loadConfig, logDefaultedConfigDecisions } from '../utils/config.js';
 import { DATE_FORMAT } from '../utils/shared.js';
+import type { Config, ActualServerConfig, ActualBudgetConfig } from '../utils/config.js';
+
+const parseDateFilters = (argv: ArgumentsCamelCase) => {
+    const fromDate = argv.from ? startOfDay(parse(argv.from as string, DATE_FORMAT, new Date(0))) : undefined;
+    const toDate = argv.to ? endOfDay(parse(argv.to as string, DATE_FORMAT, new Date(0))) : undefined;
+
+    if (fromDate && isNaN(fromDate.getTime())) {
+        throw new Error(`Invalid 'from' date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`);
+    }
+
+    if (toDate && isNaN(toDate.getTime())) {
+        throw new Error(`Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`);
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+        throw new Error(`The 'from' date must be on or before the 'to' date.`);
+    }
+
+    return { fromDate, toDate };
+};
+
+const parseArrayFilters = (argv: ArgumentsCamelCase) => {
+    const server = argv.server as string | Array<string> | undefined;
+    const account = argv.account as string | Array<string> | undefined;
+    const budget = argv.budget as string | Array<string> | undefined;
+
+    const serverUrls = server ? (Array.isArray(server) ? server : [server]) : undefined;
+    const accountRefs = account ? (Array.isArray(account) ? account : [account]) : undefined;
+    const budgetSyncIds = budget ? (Array.isArray(budget) ? budget : [budget]) : undefined;
+
+    return { serverUrls, accountRefs, budgetSyncIds };
+};
+
+const validateServerFilters = (serverUrls: Array<string> | undefined, config: Config) => {
+    if (!serverUrls || serverUrls.length === 0) return;
+
+    const configuredServerUrls = new Set(config.actualServers.map((serverConfig) => serverConfig.serverUrl));
+    const missingServers = serverUrls.filter((url) => !configuredServerUrls.has(url));
+
+    if (missingServers.length > 0) {
+        const missingList = missingServers.join(', ');
+        throw new Error(`Server${missingServers.length > 1 ? 's' : ''} not found in configuration: ${missingList}`);
+    }
+};
+
+const validateBudgetFilters = (budgetSyncIds: Array<string> | undefined, serversToProcess: ActualServerConfig[]) => {
+    if (!budgetSyncIds || budgetSyncIds.length === 0) return;
+
+    const configuredBudgets = new Set(
+        serversToProcess.flatMap((serverConfig) => serverConfig.budgets.map((b) => b.syncId))
+    );
+    const missingBudgets = budgetSyncIds.filter((syncId) => !configuredBudgets.has(syncId));
+
+    if (missingBudgets.length > 0) {
+        const missingList = missingBudgets.join(', ');
+        throw new Error(`Budget${missingBudgets.length > 1 ? 's' : ''} not found in configuration: ${missingList}`);
+    }
+};
+
+const processServer = async (
+    serverConfig: ActualServerConfig,
+    budgetSyncIds: Array<string> | undefined,
+    accountRefs: Array<string> | undefined,
+    fromDate: Date | undefined,
+    toDate: Date | undefined,
+    isDryRun: boolean,
+    config: Config,
+    logger: Logger,
+    payeeTransformer: PayeeTransformer | undefined
+) => {
+    const budgetsToProcess = budgetSyncIds
+        ? serverConfig.budgets.filter((budgetConfig) => budgetSyncIds.includes(budgetConfig.syncId))
+        : serverConfig.budgets;
+
+    if (budgetsToProcess.length === 0) {
+        return;
+    }
+
+    logger.debug(`Creating Actual API instance... Server: ${serverConfig.serverUrl}`);
+    const actualApi = new ActualApi(serverConfig, logger);
+
+    try {
+        logger.debug(`Initializing Actual API...`);
+        await actualApi.init();
+
+        for (const budgetConfig of budgetsToProcess) {
+            await processBudget(
+                budgetConfig,
+                actualApi,
+                accountRefs,
+                fromDate,
+                toDate,
+                isDryRun,
+                config,
+                logger,
+                payeeTransformer
+            );
+        }
+    } finally {
+        try {
+            logger.debug(`Shutting down Actual API instance... Server: ${serverConfig.serverUrl}`);
+            await actualApi.shutdown();
+        } catch (error) {
+            logger.warn(
+                `Failed to shut down Actual API cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
+    }
+};
+
+const processBudget = async (
+    budgetConfig: ActualBudgetConfig,
+    actualApi: ActualApi,
+    accountRefs: Array<string> | undefined,
+    fromDate: Date | undefined,
+    toDate: Date | undefined,
+    isDryRun: boolean,
+    config: Config,
+    logger: Logger,
+    payeeTransformer: PayeeTransformer | undefined
+) => {
+    logger.debug(`Loading budget... Budget: ${budgetConfig.syncId}`);
+    await actualApi.loadBudget(budgetConfig.syncId);
+
+    logger.debug(`Loading accounts...`);
+    const accountMap = new AccountMap(budgetConfig, logger, actualApi);
+    await accountMap.loadFromConfig({ accountRefs });
+
+    const importer = new Importer(config, budgetConfig, actualApi, logger, accountMap, payeeTransformer);
+
+    if (isDryRun) {
+        logger.info(
+            `DRY RUN MODE - Importing transactions (no changes will be made)... Budget: ${budgetConfig.syncId}`
+        );
+    } else {
+        logger.info(`Importing transactions... Budget: ${budgetConfig.syncId}`);
+    }
+
+    await importer.importTransactions({
+        accountRefs,
+        from: fromDate,
+        to: toDate,
+        isDryRun,
+    });
+};
 
 const handleCommand = async (argv: ArgumentsCamelCase) => {
     const logLevel = (argv.logLevel ?? LogLevel.INFO) as number;
@@ -31,52 +176,14 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const isDryRun = Boolean(argv['dry-run'] ?? argv.dryRun);
-    const fromDate = argv.from
-        ? parse(argv.from as string, DATE_FORMAT, new Date())
-        : undefined;
-    const toDate = argv.to
-        ? parse(argv.to as string, DATE_FORMAT, new Date())
-        : undefined;
-    const server = argv.server as string | Array<string> | undefined;
-    const account = argv.account as string | Array<string> | undefined;
-    const budget = argv.budget as string | Array<string> | undefined;
-
-    const serverUrls = server
-        ? Array.isArray(server)
-            ? server
-            : [server]
-        : undefined;
-
-    let accountRefs: Array<string> | undefined;
-    if (account) {
-        accountRefs = Array.isArray(account) ? account : [account];
-    }
-
-    const budgetSyncIds = budget
-        ? Array.isArray(budget)
-            ? budget
-            : [budget]
-        : undefined;
-
-    if (fromDate && isNaN(fromDate.getTime())) {
-        throw new Error(
-            `Invalid 'from' date: '${argv.from}'. Expected a date in the format: ${DATE_FORMAT}`
-        );
-    }
-
-    if (toDate && isNaN(toDate.getTime())) {
-        throw new Error(
-            `Invalid 'to' date: '${argv.to}'. Expected a date in the format: ${DATE_FORMAT}`
-        );
-    }
+    const { fromDate, toDate } = parseDateFilters(argv);
+    const { serverUrls, accountRefs, budgetSyncIds } = parseArrayFilters(argv);
 
     try {
         logger.debug(`Checking MoneyMoney database access...`);
         const isUnlocked = await checkDatabaseUnlocked();
         if (!isUnlocked) {
-            throw new Error(
-                `MoneyMoney database is locked. Please unlock it and try again.`
-            );
+            throw new Error(`MoneyMoney database is locked. Please unlock it and try again.`);
         }
         logger.debug(`MoneyMoney database is accessible.`);
     } catch (error) {
@@ -87,26 +194,10 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const serversToProcess = serverUrls
-        ? config.actualServers.filter((serverConfig) =>
-              serverUrls.includes(serverConfig.serverUrl)
-          )
+        ? config.actualServers.filter((serverConfig) => serverUrls.includes(serverConfig.serverUrl))
         : config.actualServers;
 
-    if (serverUrls && serverUrls.length > 0) {
-        const configuredServerUrls = new Set(
-            config.actualServers.map((serverConfig) => serverConfig.serverUrl)
-        );
-        const missingServers = serverUrls.filter(
-            (url) => !configuredServerUrls.has(url)
-        );
-
-        if (missingServers.length > 0) {
-            const missingList = missingServers.join(', ');
-            throw new Error(
-                `Server${missingServers.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
-            );
-        }
-    }
+    validateServerFilters(serverUrls, config);
 
     if (serversToProcess.length === 0) {
         throw new Error(
@@ -114,102 +205,20 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         );
     }
 
-    if (budgetSyncIds && budgetSyncIds.length > 0) {
-        const configuredBudgets = new Set(
-            serversToProcess.flatMap((serverConfig) =>
-                serverConfig.budgets.map((b) => b.syncId)
-            )
-        );
-        const missingBudgets = budgetSyncIds.filter(
-            (syncId) => !configuredBudgets.has(syncId)
-        );
-
-        if (missingBudgets.length > 0) {
-            const missingList = missingBudgets.join(', ');
-            throw new Error(
-                `Budget${missingBudgets.length > 1 ? 's' : ''} not found in configuration: ${missingList}`
-            );
-        }
-    }
+    validateBudgetFilters(budgetSyncIds, serversToProcess);
 
     for (const serverConfig of serversToProcess) {
-        const budgetsToProcess = budgetSyncIds
-            ? serverConfig.budgets.filter((budgetConfig) =>
-                  budgetSyncIds.includes(budgetConfig.syncId)
-              )
-            : serverConfig.budgets;
-
-        if (budgetsToProcess.length === 0) {
-            continue;
-        }
-
-        logger.debug(`Creating Actual API instance...`, [
-            `Server URL: ${serverConfig.serverUrl}`,
-        ]);
-        const actualApi = new ActualApi(serverConfig, logger);
-
-        try {
-            logger.debug(`Initializing Actual API...`);
-            await actualApi.init();
-
-            for (const budgetConfig of budgetsToProcess) {
-                logger.debug(
-                    `Loading budget...`,
-                    `Budget: ${budgetConfig.syncId}`
-                );
-                await actualApi.loadBudget(budgetConfig.syncId);
-
-                logger.debug(`Loading accounts...`);
-                const accountMap = new AccountMap(
-                    budgetConfig,
-                    logger,
-                    actualApi
-                );
-                await accountMap.loadFromConfig({ accountRefs });
-
-                const importer = new Importer(
-                    config,
-                    budgetConfig,
-                    actualApi,
-                    logger,
-                    accountMap,
-                    payeeTransformer
-                );
-
-                if (isDryRun) {
-                    logger.info(
-                        `DRY RUN MODE - Importing transactions (no changes will be made)...`,
-                        `Budget: ${budgetConfig.syncId}`
-                    );
-                } else {
-                    logger.info(
-                        `Importing transactions...`,
-                        `Budget: ${budgetConfig.syncId}`
-                    );
-                }
-
-                await importer.importTransactions({
-                    accountRefs,
-                    from: fromDate,
-                    to: toDate,
-                    isDryRun,
-                });
-            }
-        } finally {
-            try {
-                logger.debug(
-                    `Shutting down Actual API instance...`,
-                    `Server URL: ${serverConfig.serverUrl}`
-                );
-                await actualApi.shutdown();
-            } catch (error) {
-                logger.warn(
-                    `Failed to shut down Actual API cleanly: ${
-                        error instanceof Error ? error.message : 'Unknown error'
-                    }`
-                );
-            }
-        }
+        await processServer(
+            serverConfig,
+            budgetSyncIds,
+            accountRefs,
+            fromDate,
+            toDate,
+            isDryRun,
+            config,
+            logger,
+            payeeTransformer
+        );
     }
 
     return;
@@ -225,31 +234,16 @@ export default {
                 describe: 'Do not import data',
             })
             .alias('dry-run', 'dryRun')
-            .string('server')
-            .describe(
-                'server',
-                'Import only budgets configured for the specified Actual server URL'
-            )
-            .string('account')
-            .describe(
-                'account',
-                'Import only transactions from the specified MoneyMoney account identifier'
-            )
-            .string('budget')
-            .describe(
-                'budget',
-                'Import only to the specified Actual budget identifier'
-            )
+            .array('server')
+            .describe('server', 'Import only budgets configured for the specified Actual server URL')
+            .array('account')
+            .describe('account', 'Import only transactions from the specified MoneyMoney account identifier')
+            .array('budget')
+            .describe('budget', 'Import only to the specified Actual budget identifier')
             .string('from')
-            .describe(
-                'from',
-                `Import transactions on or after this date (${DATE_FORMAT})`
-            )
+            .describe('from', `Import transactions on or after this date (${DATE_FORMAT})`)
             .string('to')
-            .describe(
-                'to',
-                `Import transactions up to this date (${DATE_FORMAT})`
-            );
+            .describe('to', `Import transactions up to this date (${DATE_FORMAT})`);
     },
     handler: (argv) => handleCommand(argv),
-} as CommandModule;
+} as CommandModule<ArgumentsCamelCase>;

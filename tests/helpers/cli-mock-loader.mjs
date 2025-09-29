@@ -6,6 +6,8 @@ const accountMapUrl = `${MOCK_URL_PREFIX}account-map`;
 const importerUrl = `${MOCK_URL_PREFIX}importer`;
 const payeeTransformerUrl = `${MOCK_URL_PREFIX}payee-transformer`;
 const moneyMoneyUrl = `${MOCK_URL_PREFIX}moneymoney`;
+const configFormatSpecifier = '@actual-moneymoney/config-format';
+const configFormatModuleUrl = new URL('../../dist/utils/config-format.js', import.meta.url).href;
 const COMMON_SOURCE = `
 const CONTEXT_DIR = process.env.CLI_TEST_CONTEXT_DIR;
 const EVENTS_FILE = process.env.CLI_TEST_EVENTS_FILE;
@@ -103,6 +105,10 @@ export default class Logger {
         configUrl,
         `import fs from 'node:fs';
 import path from 'node:path';
+import {
+    DEFAULT_DECISION_LOG_MAX_HINTS,
+    createDefaultDecisionLog,
+} from '${configFormatSpecifier}';
 ${COMMON_SOURCE}
 
 export const DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS = 300000;
@@ -132,35 +138,15 @@ export function logDefaultedConfigDecisions(logger, decisions) {
         return;
     }
 
-    for (const decision of decisions ?? []) {
-        const pathValue =
-            decision && typeof decision.path === 'string'
-                ? decision.path
-                : String(decision?.path ?? '<unknown>');
-        const valueLine = 'Value: ' + formatMockDefaultValue(decision?.value);
-        const hintLines = normaliseHints(decision?.hints).map((hint) =>
-            String(hint)
-        );
-        logger.debug('Using default configuration value.', [
-            'Path: ' + pathValue,
-            valueLine,
-            ...hintLines,
-        ]);
-    }
-}
+    const entry = createDefaultDecisionLog(decisions, {
+        maxHints: DEFAULT_DECISION_LOG_MAX_HINTS,
+    });
 
-function formatMockDefaultValue(value) {
-    if (typeof value === 'string') {
-        return value;
+    if (!entry) {
+        return;
     }
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        return String(value);
-    }
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return String(value);
-    }
+
+    logger.debug(entry.message, entry.hints);
 }
 
 export function getConfigFile() {
@@ -342,6 +328,9 @@ export async function checkDatabaseUnlocked() {
 export const resolve = async (specifier, context, defaultResolve) => {
     if (specifier === 'moneymoney') {
         return { url: moneyMoneyUrl, shortCircuit: true };
+    }
+    if (specifier === configFormatSpecifier) {
+        return { url: configFormatModuleUrl, shortCircuit: true };
     }
     if (specifier.endsWith('/utils/Logger.js')) {
         return { url: loggerUrl, shortCircuit: true };

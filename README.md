@@ -73,15 +73,21 @@ New to the project? Follow these steps to get your development environment
 ready:
 
 1. Confirm you are running Node.js **v20.9.0 or newer**.
+
 1. Install dependencies after cloning the repository:
+
    ```bash
    npm install
    ```
-1. Run the local smoke test to ensure linting, type checks, the build, and tests
+
+1. Run the quality gates to ensure linting, type checks, the build, and tests
    all pass:
+
    ```bash
-   npm run ci:local
+   npm run lint:eslint && npm run lint:complexity && \
+   npm run lint:prettier && npm run typecheck && npm test
    ```
+
 1. Read through the detailed [contributor guide](./CONTRIBUTING.md) for workflow
    expectations, helpful scripts, and documentation requirements.
 
@@ -113,20 +119,23 @@ A basic configuration document looks like this:
 enabled = false
 openAiApiKey = "<openAiKey>"  # Your OpenAI API key
 openAiModel = "gpt-3.5-turbo"  # Optional: Specify the OpenAI model to use
-# maskPayeeNamesInLogs = true     # Optional: keep payee names obfuscated in payee transformation debug logs
+# maskPayeeNamesInLogs = true     # Optional: keep payee names obfuscated in
+# payee transformation debug logs
 
 # Import settings
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
-# maskPayeeNamesInLogs = true  # Optional: replace payee names in import logs with deterministic placeholders
+# maskPayeeNamesInLogs = true  # Optional: replace payee names in import logs
+# with deterministic placeholders
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
 serverUrl = "http://localhost:5006"
 serverPassword = "<password>"
-# requestTimeoutMs = 45000  # Optional: Override the Actual server request timeout (milliseconds)
-# max 300000
+# requestTimeoutMs = 45000  # Optional: Override the Actual server request
+# timeout in milliseconds (e.g., 45000 = 45 seconds, 300000 = 5 minutes)
+# max 300000 ms (5 minutes)
 
 # Budgets for the server, you can add multiple budgets
 [[actualServers.budgets]]
@@ -289,8 +298,7 @@ scripts when working on the project:
 - `npm run typecheck` – perform a strict TypeScript type check without emitting
   files.
 - `npm run build` – compile the CLI for distribution.
-- `npm test` – execute the Vitest suite.
-- `npm run ci:local` – chain the same lint/type/build/test steps used in CI.
+- `npm test` – execute the Vitest suite (includes build step).
 
 Markdown files are formatted with `mdformat` (CodeRabbit runs it during review).
 Run `mdformat <files>` locally when updating docs to keep diffs clean.
@@ -299,7 +307,7 @@ The repository includes Husky hooks to keep the working tree clean:
 
 - `pre-commit` runs `npm run lint:prettier`, `npm run lint:eslint`, and
   `npm run lint:complexity` to block formatting, lint, or complexity violations.
-- `pre-push` runs `npm run ci:local` so that pushes only succeed when the entire
+- `pre-push` runs the quality gates so that pushes only succeed when the entire
   local CI suite is green.
 
 Tests exist to guard the most important scenarios. Keep the high-value suites

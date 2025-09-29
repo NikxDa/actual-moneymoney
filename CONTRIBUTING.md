@@ -14,6 +14,7 @@ up, run the quality checks, and collaborate smoothly with the team.
 ## Local Setup
 
 1. Clone the repository and install dependencies:
+
    ```bash
    git clone https://github.com/1cu/actual-moneymoney.git
    cd actual-moneymoney
@@ -22,22 +23,28 @@ up, run the quality checks, and collaborate smoothly with the team.
 1. Copy or create a configuration file as needed (see
    [`example-config-advanced.toml`](./example-config-advanced.toml) for
    reference).
-1. Run the smoke checks to confirm your environment is ready:
+1. Run the quality gates to confirm your environment is ready:
+
    ```bash
-   npm run ci:local
+   npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
    ```
-   This chains the linting, type checking, build, and test scripts that run in
+
+   This runs the same linting, type checking, build, and test scripts that run in
    CI. Keep the suite green before pushing.
 
 ## Daily Development Workflow
 
-- Create a feature branch from `develop` (or the requested base branch) before
+- Create a feature branch from `main` (or the requested base branch) before
   making changes.
 - Implement your changes and keep commits focused. Follow
   [Conventional Commits](https://www.conventionalcommits.org/) so commitlint
   accepts the history (e.g., `feat: add importer telemetry`).
-- Re-run the smoke checks (`npm run ci:local`) to verify linting, formatting,
-  type safety, builds, and tests.
+- Re-run the quality gates to verify linting, formatting, type safety, builds, and tests:
+
+  ```bash
+  npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm test
+  ```
+
 - Update documentation alongside behaviour changes. Configuration updates
   usually involve:
   - [`src/utils/config.ts`](./src/utils/config.ts)
@@ -51,16 +58,15 @@ up, run the quality checks, and collaborate smoothly with the team.
 
 ## Helpful npm Scripts
 
-| Script                      | Purpose                                                                               |
+| Script | Purpose |
 | --------------------------- | ------------------------------------------------------------------------------------- |
-| `npm run lint:eslint`       | Run ESLint across `src/`, `tests/`, and TypeScript config files.                      |
-| `npm run lint:complexity`   | Enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets.            |
-| `npm run lint:prettier`     | Check formatting with Prettier across the repository (excluding generated artifacts). |
-| `npm run lint:prettier:fix` | Automatically format files with Prettier using the shared rules.                      |
-| `npm run typecheck`         | Perform a strict TypeScript type check without emitting files.                        |
-| `npm run build`             | Compile the CLI for distribution.                                                     |
-| `npm test`                  | Execute the Vitest suite.                                                             |
-| `npm run ci:local`          | Run the complete smoke test locally (linting, formatting, type checks, build, tests). |
+| `npm run lint:eslint` | Run ESLint across `src/`, `tests/`, and TypeScript config files. |
+| `npm run lint:complexity` | Enforce the cyclomatic (max 40) and cognitive (max 60) complexity budgets. |
+| `npm run lint:prettier` | Check formatting with Prettier across the repository (excluding generated artifacts). |
+| `npm run lint:prettier:fix` | Automatically format files with Prettier using the shared rules. |
+| `npm run typecheck` | Perform a strict TypeScript type check without emitting files. |
+| `npm run build` | Compile the CLI for distribution. |
+| `npm test` | Execute the Vitest suite (includes build step). |
 
 ## Style and Tooling Notes
 
@@ -76,7 +82,7 @@ up, run the quality checks, and collaborate smoothly with the team.
   add new directories that should participate in linting or formatting.
 - Husky hooks guard the commit and push flows:
   - `pre-commit` runs the linting, complexity, and formatting checks.
-  - `pre-push` runs the full smoke test. Fix issues locally before retrying the
+  - `pre-push` runs the full quality gates suite. Fix issues locally before retrying the
     push.
 - When a function approaches the 40/60 complexity limits, break the logic into
   smaller helpers or extract pure utilities so the check stays green.

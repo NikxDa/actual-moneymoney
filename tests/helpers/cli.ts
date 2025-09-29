@@ -36,15 +36,11 @@ async function ensureCliBuilt(): Promise<void> {
         buildPromise = new Promise((resolve, reject) => {
             const buildEnv = createCliEnv();
 
-            const buildProcess = spawn(
-                process.execPath,
-                [typescriptCli, '--project', 'tsconfig.json'],
-                {
-                    cwd: repoRoot,
-                    env: buildEnv,
-                    stdio: ['ignore', 'pipe', 'pipe'],
-                }
-            );
+            const buildProcess = spawn(process.execPath, [typescriptCli, '--project', 'tsconfig.json'], {
+                cwd: repoRoot,
+                env: buildEnv,
+                stdio: ['ignore', 'pipe', 'pipe'],
+            });
 
             let stderr = '';
             let stdout = '';
@@ -72,9 +68,7 @@ async function ensureCliBuilt(): Promise<void> {
                 }
 
                 buildPromise = null;
-                const error = new Error(
-                    `tsc exited with code ${exitCode}.\n${stdout}${stderr}`
-                );
+                const error = new Error(`tsc exited with code ${exitCode}.\n${stdout}${stderr}`);
                 reject(error);
             });
         });
@@ -83,9 +77,7 @@ async function ensureCliBuilt(): Promise<void> {
     await buildPromise;
 }
 
-export function createCliEnv(
-    overrides: NodeJS.ProcessEnv = {}
-): NodeJS.ProcessEnv {
+export function createCliEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     return {
         ...process.env,
         NODE_ENV: 'test',
@@ -94,10 +86,7 @@ export function createCliEnv(
     };
 }
 
-export async function runCli(
-    args: readonly string[],
-    options: CliRunOptions = {}
-): Promise<CliRunResult> {
+export async function runCli(args: readonly string[], options: CliRunOptions = {}): Promise<CliRunResult> {
     await ensureCliBuilt();
 
     const baseEnv = createCliEnv();
@@ -107,11 +96,7 @@ export async function runCli(
         stdio: ['pipe', 'pipe', 'pipe'],
     };
 
-    const nodeArgs = [
-        ...(options.nodeOptions ? [...options.nodeOptions] : []),
-        cliEntryPoint,
-        ...args,
-    ];
+    const nodeArgs = [...(options.nodeOptions ? [...options.nodeOptions] : []), cliEntryPoint, ...args];
     const childProcess = spawn(process.execPath, nodeArgs, spawnOptions);
 
     if (options.input) {

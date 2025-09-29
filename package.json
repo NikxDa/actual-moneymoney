@@ -5,16 +5,16 @@
     "exports": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "build": "npx tsc",
-        "ci:local": "npm run lint:eslint && npm run lint:complexity && npm run lint:prettier && npm run typecheck && npm run build && npm test",
-        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "build": "tsc",
+        "typecheck": "tsc --noEmit --incremental -p tsconfig.json",
         "start": "node dist/index.js",
         "lint:eslint": "eslint .",
         "lint:complexity": "ENABLE_COMPLEXITY_RULES=true eslint .",
         "lint:prettier": "prettier --check .",
         "lint:prettier:fix": "prettier --write .",
         "prepare": "husky",
-        "test": "vitest run"
+        "test": "npm run build && vitest run",
+        "test:typecheck": "tsc --noEmit -p tsconfig.test.json"
     },
     "type": "module",
     "keywords": [

@@ -153,10 +153,8 @@ declare module '@actual-app/api' {
 
     type InitResult = object;
 
-    export async function init(
-        params: InitParams
-    ): Promise<undefined | InitResult>;
-    export async function shutdown(): Promise<void>;
+    export function init(params: InitParams): Promise<undefined | InitResult>;
+    export function shutdown(): Promise<void>;
 
     export const internal: {
         send: (message: string) => Promise<void>;
@@ -178,63 +176,39 @@ declare module '@actual-app/api' {
 
     export type CreateTransaction = CreateTransactionPayload;
 
-    const addTransactions: (
-        accountId: ID,
-        transactions: CreateTransactionPayload[]
-    ) => Promise<ID[]>;
-    const importTransactions: (
+    export const addTransactions: (accountId: ID, transactions: CreateTransactionPayload[]) => Promise<ID[]>;
+    export const importTransactions: (
         accountId: ID,
         transactions: CreateTransactionPayload[],
         opts?: ImportTransactionsOpts
     ) => Promise<{ errors?: Error[]; added: ID[]; updated: ID[] }>;
-    const getTransactions: (
+    export const getTransactions: (
         accountId: ID,
         startDate: DateString,
         endDate?: DateString
     ) => Promise<ReadTransaction[]>;
-    const updateTransaction: (
-        transactionId: ID,
-        fields: UpdateFields<UpdateTransaction>
-    ) => Promise<ID>;
-    const deleteTransaction: (transactionId: ID) => Promise<void>;
+    export const updateTransaction: (transactionId: ID, fields: UpdateFields<UpdateTransaction>) => Promise<ID>;
+    export const deleteTransaction: (transactionId: ID) => Promise<void>;
 
     // Accounts
-    const getAccounts: (
-        includeOffBudget?: boolean,
-        includeClosed?: boolean
-    ) => Promise<Account[]>;
-    const createAccount: (
-        account: CreateAccount,
-        initialBalance?: number
-    ) => Promise<ID>;
-    const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
-    const deleteAccount: (accountId: ID) => Promise<void>;
-    const closeAccount: (
-        accountId: ID,
-        transferAccountId?: ID,
-        transferCategoryId?: ID
-    ) => Promise<void>;
-    const reopenAccount: (accountId: ID) => Promise<void>;
+    export const getAccounts: (includeOffBudget?: boolean, includeClosed?: boolean) => Promise<Account[]>;
+    export const createAccount: (account: CreateAccount, initialBalance?: number) => Promise<ID>;
+    export const updateAccount: (accountId: ID, fields: UpdateAccount) => Promise<ID>;
+    export const deleteAccount: (accountId: ID) => Promise<void>;
+    export const closeAccount: (accountId: ID, transferAccountId?: ID, transferCategoryId?: ID) => Promise<void>;
+    export const reopenAccount: (accountId: ID) => Promise<void>;
 
     // Categories
-    const getCategories: () => Promise<Category[]>;
-    const createCategory: (category: Category) => Promise<ID>;
-    const updateCategory: (
-        categoryId: ID,
-        fields: UpdateFields<Category>
-    ) => Promise<ID>;
-    const deleteCategory: (categoryId: ID) => Promise<void>;
+    export const getCategories: () => Promise<Category[]>;
+    export const createCategory: (category: Category) => Promise<ID>;
+    export const updateCategory: (categoryId: ID, fields: UpdateFields<Category>) => Promise<ID>;
+    export const deleteCategory: (categoryId: ID) => Promise<void>;
 
     // Category groups
-    const getCategoryGroups: () => Promise<CategoryGroup[]>;
-    const createCategoryGroup: (
-        categoryGroup: CategoryGroupPayload
-    ) => Promise<ID>;
-    const updateCategoryGroup: (
-        categoryGroupId: ID,
-        fields: UpdateFields<CategoryGroupPayload>
-    ) => Promise<ID>;
-    const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
+    export const getCategoryGroups: () => Promise<CategoryGroup[]>;
+    export const createCategoryGroup: (categoryGroup: CategoryGroupPayload) => Promise<ID>;
+    export const updateCategoryGroup: (categoryGroupId: ID, fields: UpdateFields<CategoryGroupPayload>) => Promise<ID>;
+    export const deleteCategoryGroup: (categoryGroupId: ID) => Promise<void>;
 }
 
 type UpdateFields<T> = Partial<Omit<T, 'id'>>;
@@ -283,14 +257,7 @@ type CreateTransactionPayload = Modify<
     'id' | 'account'
 >;
 
-type AccountType =
-    | 'checking'
-    | 'savings'
-    | 'credit'
-    | 'investment'
-    | 'mortgage'
-    | 'debt'
-    | 'other';
+type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'mortgage' | 'debt' | 'other';
 
 type Account = {
     id: ID;
@@ -302,7 +269,7 @@ type Account = {
 
 type ReadAccount = Account;
 type CreateAccount = Modify<Account, 'offbudget' | 'closed', 'id'>;
-type UpdateAccount = Modify<Account, void, 'id'>;
+type UpdateAccount = Modify<Account, never, 'id'>;
 
 /*
 getAccounts
@@ -313,7 +280,8 @@ Get all accounts. Returns an array of Account objects.
 createAccount
 createAccount(Accountaccount, amount?initialBalance = 0) → Promise<id>
 
-Create an account with an initial balance of initialBalance (defaults to 0). Remember that amount has no decimal places. Returns the id of the new account.
+Create an account with an initial balance of initialBalance (defaults to 0).
+Remember that amount has no decimal places. Returns the id of the new account.
 
 updateAccount
 updateAccount(idid, objectfields) → Promise<null>
@@ -323,11 +291,15 @@ Update fields of an account. fields can specify any field described in Account.
 closeAccount
 closeAccount(idid, id?transferAccountId, id?transferCategoryId) → Promise<null>
 
-Close an account. transferAccountId and transferCategoryId are optional if the balance of the account is 0, otherwise see next paragraph.
+Close an account. transferAccountId and transferCategoryId are optional if the balance of the account is 0,
+otherwise see next paragraph.
 
-If the account has a non-zero balance, you need to specify an account with transferAccountId to transfer the money into. If you are transferring from an on-budget account to an off-budget account, you can optionally specify a category with transferCategoryId to categorize the transfer transaction.
+If the account has a non-zero balance, you need to specify an account with transferAccountId to transfer the money into.
+If you are transferring from an on-budget account to an off-budget account, you can optionally specify a category with
+transferCategoryId to categorize the transfer transaction.
 
-Tranferring money to an off-budget account needs a category because money is taken out of the budget, so it needs to come from somewhere.
+Transferring money to an off-budget account needs a category because money is taken out of the budget,
+so it needs to come from somewhere.
 
 If you want to simply delete an account, see deleteAccount.
 
@@ -360,10 +332,7 @@ type CategoryGroup = {
     categories: Category[];
 };
 
-type Modify<T, OptionalKeys extends keyof T, RemoveKeys extends keyof T> = Omit<
-    T,
-    RemoveKeys | OptionalKeys
-> &
+type Modify<T, OptionalKeys extends keyof T, RemoveKeys extends keyof T> = Omit<T, RemoveKeys | OptionalKeys> &
     Partial<Pick<T, OptionalKeys>>;
 
 type ID = string;

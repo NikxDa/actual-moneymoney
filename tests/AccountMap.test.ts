@@ -21,17 +21,14 @@ const createLogger = () => ({
     getLevel: vi.fn().mockReturnValue(0),
 });
 
-const createTestLogger = () =>
-    createLogger() as unknown as Logger & ReturnType<typeof createLogger>;
+const createTestLogger = () => createLogger() as unknown as Logger & ReturnType<typeof createLogger>;
 
 describe('AccountMap', () => {
     beforeEach(() => {
         getAccountsMock.mockReset();
     });
 
-    const createBudgetConfig = (
-        accountMapping: Record<string, string>
-    ): ActualBudgetConfig => ({
+    const createBudgetConfig = (accountMapping: Record<string, string>): ActualBudgetConfig => ({
         syncId: 'budget-test',
         earliestImportDate: undefined,
         e2eEncryption: { enabled: false, password: '' },
@@ -42,14 +39,7 @@ describe('AccountMap', () => {
         accounts: Array<{
             id: string;
             name: string;
-            type:
-                | 'checking'
-                | 'savings'
-                | 'credit'
-                | 'investment'
-                | 'mortgage'
-                | 'debt'
-                | 'other';
+            type: 'checking' | 'savings' | 'credit' | 'investment' | 'mortgage' | 'debt' | 'other';
             offbudget: boolean;
             closed: boolean;
         }>
@@ -127,10 +117,7 @@ describe('AccountMap', () => {
             accountNumber: 'DE05',
             name: 'Secondary Account',
         };
-        getAccountsMock.mockResolvedValue([
-            moneyMoneyPrimary,
-            moneyMoneySecondary,
-        ]);
+        getAccountsMock.mockResolvedValue([moneyMoneyPrimary, moneyMoneySecondary]);
         const actualApi = createActualApi([
             {
                 id: 'actual-primary',

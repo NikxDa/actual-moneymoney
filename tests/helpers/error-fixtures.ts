@@ -35,7 +35,7 @@ export const makeNetworkDisconnectError = (overrides: ErrorOverrides = {}) => {
 
 export const makeInvalidCredentialsError = (overrides: ErrorOverrides = {}) =>
     Object.assign(
-        new Error('Failed to login: Invalid password provided'),
+        Object.assign(new Error('Failed to login: Invalid password provided'), { name: 'InvalidCredentialsError' }),
         overrides
     );
 

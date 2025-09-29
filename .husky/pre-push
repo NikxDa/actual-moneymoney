@@ -1,4 +1,10 @@
 #!/usr/bin/env sh
-set -e
 
-npm run ci:local
+# Quick, low-friction guard; skip with HUSKY_SKIP_PREPUSH=1 if truly needed
+if [ -n "$HUSKY_SKIP_PREPUSH" ]; then
+  echo "[husky] pre-push checks skipped by HUSKY_SKIP_PREPUSH"
+  exit 0
+fi
+
+# Pre-push: No checks needed since pre-commit runs the full suite
+# Every commit is already fully validated

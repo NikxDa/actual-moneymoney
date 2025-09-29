@@ -18,7 +18,7 @@ class Logger {
 
     private readonly structuredLogs: boolean;
 
-    constructor(logLevel = LogLevel.INFO, options?: LoggerOptions) {
+    public constructor(logLevel = LogLevel.INFO, options?: LoggerOptions) {
         this.logLevel = logLevel;
         this.structuredLogs = Boolean(options?.structuredLogs);
     }

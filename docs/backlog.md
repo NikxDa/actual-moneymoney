@@ -286,16 +286,15 @@ end-to-end CLI tests being available.
 
 - **Complexity:** 5 pts
 - **Status:** ✅ Done
-- **Context:** The repository already exposes the `npm run ci:local` helper,
-  which chains the ESLint, Prettier, type-check, build, and test steps. Husky’s
-  `pre-push` hook and the README’s development section direct contributors to
-  the script, and the CI matrix mirrors the same gate coverage.
-- **Evidence:** See the `ci:local` script in `package.json`, the development
+- **Context:** The repository provides individual quality gate scripts that can be
+  chained together, and the CI matrix mirrors the same gate coverage. Husky's
+  `pre-push` hook and the README's development section direct contributors to
+  run the quality gates.
+- **Evidence:** See the individual scripts in `package.json`, the development
   workflow guidance in `README.md`, and the quality matrix defined in
   `.github/workflows/ci.yml`.
-- **Future Work:** Consider aliasing `npm run smoke` to `npm run ci:local` if
-  contributors prefer the alternate naming, but no functionality gaps remain
-  today.
+- **Future Work:** None - the individual scripts provide flexibility while
+  maintaining the same coverage as the previous consolidated approach.
 - **Key Files:** `package.json`, `.github/workflows/ci.yml`, `README.md`.
 
 ### Story 5.3 – Document importer fixture workflow

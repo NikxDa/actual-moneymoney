@@ -24,16 +24,11 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             const targetDirectory = path.dirname(configPath);
 
-            logger.debug(
-                `Ensuring configuration directory exists: ${targetDirectory}`
-            );
+            logger.debug(`Ensuring configuration directory exists: ${targetDirectory}`);
             try {
                 await fs.mkdir(targetDirectory, { recursive: true });
             } catch (mkdirError) {
-                const mkdirMessage =
-                    mkdirError instanceof Error
-                        ? mkdirError.message
-                        : String(mkdirError);
+                const mkdirMessage = mkdirError instanceof Error ? mkdirError.message : String(mkdirError);
                 logger.error('Failed to create configuration directory.', [
                     `Path: ${targetDirectory}`,
                     `Reason: ${mkdirMessage}`,
@@ -48,10 +43,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
                     mode: 0o600,
                 });
             } catch (writeError) {
-                const writeMessage =
-                    writeError instanceof Error
-                        ? writeError.message
-                        : String(writeError);
+                const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
                 logger.error('Failed to create configuration file.', [
                     `Path: ${configPath}`,
                     `Reason: ${writeMessage}`,
@@ -81,24 +73,23 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         if (e instanceof z.ZodError) {
             logger.error('Configuration file is invalid:');
             for (const issue of e.issues) {
-                const issuePath = issue.path.length
-                    ? issue.path.join('.')
-                    : '<root>';
-                logger.error(
-                    `Code ${issue.code} at path [${issuePath}]: ${issue.message}`
-                );
+                const issuePath = issue.path.length ? issue.path.join('.') : '<root>';
+                logger.error(`Code ${issue.code} at path [${issuePath}]: ${issue.message}`);
             }
         } else if (e instanceof Error && e.name === 'SyntaxError') {
-            const line = 'line' in e ? e.line : -1;
-            const column = 'column' in e ? e.column : -1;
+            const line =
+                typeof (e as unknown as { line?: number }).line === 'number'
+                    ? (e as unknown as { line: number }).line
+                    : undefined;
+            const column =
+                typeof (e as unknown as { column?: number }).column === 'number'
+                    ? (e as unknown as { column: number }).column
+                    : undefined;
+            const pos = line && column ? ` (line ${line}, column ${column})` : '';
 
-            logger.error(
-                `Failed to parse configuration file: ${e.message} (line ${line}, column ${column})`
-            );
+            logger.error(`Failed to parse configuration file: ${e.message}${pos}`);
         } else {
-            logger.error('An unexpected error occurred.', [
-                e instanceof Error ? e.message : String(e),
-            ]);
+            logger.error('An unexpected error occurred.', [e instanceof Error ? e.message : String(e)]);
         }
 
         if (e instanceof Error) {
