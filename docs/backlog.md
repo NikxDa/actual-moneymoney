@@ -17,16 +17,23 @@
 
 ## Roadmap
 
+The roadmap table only lists epics that still require planning or delivery work. When an epic lands, move its row to the [epic archive](#epic-archive) so this view stays focused on upcoming priorities. Every entry links to the detailed write-up below for additional context.
+
 | Order | Epic | State | Notes |
 | --- | --- | --- | --- |
-| 1 | **Epic 4 – CLI usability and coverage** | ✅ Done | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
-| 2 | **Epic 2 – Importer determinism and guard rails** | ✅ Done | CLI coverage and mapping failure guards ship together, so imports now fail fast when configuration drifts instead of proceeding with partial coverage. |
-| 3 | **Epic 6 – Testing & reliability** | ✅ Done | Error-path fixtures, malformed export guards, and structured logging are complete, keeping the CLI observable and resilient under test. |
-| 4 | **Epic 8 – Code quality and maintainability** | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
-| 5 | **Epic 5 – Observability and developer experience** | ✅ Done | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
-| 6 | **Epic 9 – Integration and tooling** | ✅ Done | Lint/format coverage and onboarding improvements shipped alongside cognitive-complexity checks so the refactored code stays within agreed budgets. |
-| 7 | **Epic 7 – CLI UX** | 🚧 Not started | Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented. |
-| 8 | **Epic 10 – Roadmap features** | 🧭 Discovery mode | Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk. |
+| 1 | [**Epic 8 – Code quality and maintainability**](#epic-8-code-quality-and-maintainability) | 🚧 Not started | Break up brittle flows such as `Importer.importTransactions` and `ActualApi.runActualRequest` once determinism and test scaffolding exist, reducing complexity before pursuing roadmap features. |
+| 2 | [**Epic 7 – CLI UX**](#epic-7-cli-ux) | 🚧 Not started | Improve discoverability and error messaging after the harness, importer guard rails, and observability improvements land, ensuring UX changes are measurable and well-instrumented. |
+| 3 | [**Epic 10 – Roadmap features**](#epic-10-roadmap-features) | 🧭 Discovery mode | Tackle multi-budget support, configurable data directories, and category translation last—each relies on the importer/CLI refactors and extended tooling to mitigate risk. |
+
+### Epic archive
+
+| Order | Epic | State | Notes |
+| --- | --- | --- | --- |
+| 1 | [**Epic 4 – CLI usability and coverage**](#epic-4-cli-usability-and-coverage) | ✅ Done | The CLI harness, option validation, and failure propagation stories shipped, so downstream work can assume end-to-end coverage already exists for anything that touches the command surface. |
+| 2 | [**Epic 2 – Importer determinism and guard rails**](#epic-2-importer-determinism-and-guard-rails) | ✅ Done | CLI coverage and mapping failure guards ship together, so imports now fail fast when configuration drifts instead of proceeding with partial coverage. |
+| 3 | [**Epic 6 – Testing & reliability**](#epic-6-testing--reliability) | ✅ Done | Error-path fixtures, malformed export guards, and structured logging are complete, keeping the CLI observable and resilient under test. |
+| 4 | [**Epic 5 – Observability and developer experience**](#epic-5-observability-and-developer-experience) | ✅ Done | Smoke coverage, default logging, and contributor docs are live, giving follow-on epics the observability and workflow guard rails they depend on. |
+| 5 | [**Epic 9 – Integration and tooling**](#epic-9-integration-and-tooling) | ✅ Done | Lint/format coverage and onboarding improvements shipped alongside cognitive-complexity checks so the refactored code stays within agreed budgets. |
 
 ## Epic 1: Actual session lifecycle resilience
 
