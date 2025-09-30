@@ -409,8 +409,10 @@ end-to-end CLI tests being available.
 - **Sequence:** 7.1 should ship before 7.2 to lock down help formatting.
 - **Tasks:**
   - Update `src/index.ts` and command modules with `.example()` metadata.
-  - Add or refresh CLI help snapshot tests under `tests/commands`.
+  - Add or refresh CLI help snapshot tests in `tests/commands/help.command.test.ts`.
   - Sync README usage sections with the new examples.
+  - Add telemetry marker implementation: define `cliHelpShown` boolean field in structured logging schema and emit when help/guidance is displayed.
+  - Add unit tests asserting `cliHelpShown` marker is emitted with expected schema.
   - Run linting/test suite and request review.
 
 ### Story 7.2 – Guardrail validation for common mistakes
@@ -429,8 +431,8 @@ end-to-end CLI tests being available.
 - **Sequence:** Implement after 7.1 to reuse improved help text references.
 - **Tasks:**
   - Extend command option parsing to perform upfront validation checks.
-  - Add integration tests in `tests/commands` for invalid flag and missing
-    config scenarios.
+  - Add integration tests in `tests/commands/import.command.test.ts` for invalid flag and missing
+    config scenarios (following the pattern established in Story 4.1).
   - Document validation behaviour in README troubleshooting section.
   - Update changelog/backlog entry and request review.
 
@@ -453,6 +455,9 @@ end-to-end CLI tests being available.
   - Implement an error translation helper consumed by CLI commands.
   - Backfill integration tests for each translated error scenario.
   - Add documentation on common errors and recovery paths.
+  - Add telemetry marker implementation: define `friendlyError` boolean field in structured logging schema and emit when translated user-friendly error is presented (include context like command, errorCode, and minimal user-safe details).
+  - Add unit tests asserting `friendlyError` marker is emitted with expected schema and update telemetry ingestion/test fixtures.
+  - Update metrics/telemetry dashboards and changelog to reflect the new markers.
   - Ensure structured logging includes telemetry flag and request review.
 
 ### Risks & Mitigations
@@ -461,8 +466,8 @@ end-to-end CLI tests being available.
   fixtures and mdformat enforcement.
 - Validation rejections could block legitimate advanced workflows → add feature
   flags or environment overrides for power users during rollout.
-- Error translation drift may regress UX → schedule periodic audit against
-  Actual API docs and maintain unit tests guarding the mapping table.
+- Error translation drift may regress UX → schedule quarterly audits against
+  Actual API docs (or when Actual SDK major versions bump) and maintain unit tests guarding the mapping table.
 
 ## Epic 8: Code quality and maintainability
 
