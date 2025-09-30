@@ -27,28 +27,95 @@ import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
 import { DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS, FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS } from './config.js';
-import type Logger from './Logger.js';
+import Logger, { LogLevel } from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
-const isActualNoise = (args: unknown[]) => {
+const SUPPRESSED_PREFIXES = [
+    'Got messages from server',
+    'Syncing since',
+    'SENT -------',
+    'RECEIVED -------',
+    'Performing transaction reconciliation',
+    'Performing transaction reconciliation matching',
+];
+
+type ConsoleNoiseDecision =
+    | { action: 'passthrough' }
+    | { action: 'suppress'; debugMessage?: string; debugHints?: string[]; fallbackMessage: string };
+
+const evaluateActualConsoleOutput = (args: unknown[]): ConsoleNoiseDecision => {
     if (args.length === 0) {
-        return false;
+        return { action: 'passthrough' };
     }
 
-    const message = util.format(...(args as [unknown, ...unknown[]]));
+    const formatted = util.format(...(args as [unknown, ...unknown[]]));
+    const [firstArg, ...rest] = args;
 
-    const noisyPrefixes = ['Got messages from server', 'Syncing since', 'SENT -------', 'RECEIVED -------'];
+    if (typeof firstArg === 'string') {
+        const trimmedFirstArg = firstArg.trim();
 
-    return noisyPrefixes.some((prefix) => message.startsWith(prefix));
+        if (/^Debug data for the operations:?/i.test(trimmedFirstArg)) {
+            const debugHints: string[] = [];
+
+            for (const entry of rest) {
+                if (typeof entry === 'undefined') {
+                    continue;
+                }
+
+                if (entry && typeof entry === 'object') {
+                    let serialised = '';
+                    try {
+                        serialised = JSON.stringify(entry, null, 2);
+                    } catch (_serializationError) {
+                        serialised = util.inspect(entry, { depth: 4 });
+                    }
+
+                    debugHints.push(serialised);
+                    continue;
+                }
+
+                debugHints.push(String(entry));
+            }
+
+            if (debugHints.length === 0) {
+                debugHints.push(formatted);
+            }
+
+            return {
+                action: 'suppress',
+                debugMessage: 'Actual sync debug data emitted by SDK',
+                debugHints,
+                fallbackMessage: formatted,
+            };
+        }
+
+        if (SUPPRESSED_PREFIXES.some((prefix) => trimmedFirstArg.startsWith(prefix))) {
+            return {
+                action: 'suppress',
+                debugMessage: formatted,
+                fallbackMessage: formatted,
+            };
+        }
+    }
+
+    return { action: 'passthrough' };
 };
-const suppressIfNoisy =
-    <TArgs extends unknown[]>(original: (...args: TArgs) => void): ((...args: TArgs) => void) =>
+
+const createConsoleInterceptor =
+    <TArgs extends unknown[]>(logger: Logger, original: (...args: TArgs) => void) =>
     (...args: TArgs): void => {
-        if (isActualNoise(args)) {
+        const decision = evaluateActualConsoleOutput(args);
+
+        if (decision.action === 'passthrough') {
+            original.apply(console, args);
             return;
         }
 
-        original(...args);
+        if (decision.action === 'suppress' && logger.getLevel() >= LogLevel.DEBUG) {
+            const hints = decision.debugHints?.length ? decision.debugHints : undefined;
+            const message = decision.debugMessage ?? decision.fallbackMessage;
+            logger.debug(message, hints);
+        }
     };
 
 const normalizeForHash = (value: unknown): unknown => {
@@ -973,16 +1040,16 @@ class ActualApi {
                 warn: console.warn,
             };
             const originals = ActualApi.originals;
-            console.log = suppressIfNoisy((...args: Parameters<typeof console.log>) => {
+            console.log = createConsoleInterceptor(this.logger, (...args: Parameters<typeof console.log>) => {
                 originals.log.apply(console, args);
             });
-            console.info = suppressIfNoisy((...args: Parameters<typeof console.info>) => {
+            console.info = createConsoleInterceptor(this.logger, (...args: Parameters<typeof console.info>) => {
                 originals.info.apply(console, args);
             });
-            console.debug = suppressIfNoisy((...args: Parameters<typeof console.debug>) => {
+            console.debug = createConsoleInterceptor(this.logger, (...args: Parameters<typeof console.debug>) => {
                 originals.debug.apply(console, args);
             });
-            console.warn = suppressIfNoisy((...args: Parameters<typeof console.warn>) => {
+            console.warn = createConsoleInterceptor(this.logger, (...args: Parameters<typeof console.warn>) => {
                 originals.warn.apply(console, args);
             });
         }
