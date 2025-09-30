@@ -380,36 +380,89 @@ end-to-end CLI tests being available.
 
 ## Epic 7: CLI UX
 
-- **Epic Assessment:** 🚧 Not started. User feedback still cites confusing
-  `--help` output and opaque error messaging; the stories here depend on Epic
-  4’s harness to ensure improvements are tested once implemented.
+- **Epic Goal:** Reduce friction for MoneyMoney users operating the CLI by
+  making help content actionable and surfacing clear guidance when imports
+  fail.
+- **Business Value:** Faster self-serve adoption lowers maintainer support load
+  while increasing successful imports from first-run users.
+- **Success Criteria:**
+  - Help output includes at least one vetted example per command and is covered
+    by golden tests.
+  - 90% of CLI errors triggered in integration tests display translated,
+    user-friendly guidance.
+  - CLI telemetry (existing structured logs) exposes a stable
+    `cliHelpShown`/`friendlyError` marker to measure adoption.
 
-### Story 7.1 – Improve command discoverability
+### Story 7.1 – Contextual help and examples
 
-- **Complexity:** 3 pts
+- **Story:** As a CLI user, I want `--help` output to include contextual
+  examples for each command so that I can discover the correct syntax without
+  reading the source.
 - **Status:** ⬜ Not started
-- **Current Behaviour:** `--help` output lacks concrete examples for `import`,
-  `sync`, or `resolve` workflows.
-- **Next Steps:**
-  - Augment command definitions with `.example()` entries demonstrating common
-    usage.
-  - Snapshot help output in tests to catch regressions when options change.
-- **Key Files:** `src/index.ts`, `src/commands/*.ts`, `tests/commands`.
+- **Acceptance Criteria:**
+  - Every top-level command lists at least one example illustrating common
+    options.
+  - `npm test -- tests/commands/help.command.test.ts` snapshots the rendered
+    help output.
+  - README command snippets stay consistent with the updated help text.
+- **Depends on:** Harness from Epic 4 (already complete).
+- **Sequence:** 7.1 should ship before 7.2 to lock down help formatting.
+- **Tasks:**
+  - Update `src/index.ts` and command modules with `.example()` metadata.
+  - Add or refresh CLI help snapshot tests under `tests/commands`.
+  - Sync README usage sections with the new examples.
+  - Run linting/test suite and request review.
 
-### Story 7.2 – Map backend errors to friendly CLI output
+### Story 7.2 – Guardrail validation for common mistakes
 
-- **Complexity:** 5 pts
+- **Story:** As a CLI user, I want the tool to detect missing configuration or
+  unsupported option combinations before contacting Actual so that I get
+  immediate, actionable feedback.
 - **Status:** ⬜ Not started
-- **Current Behaviour:** Backend errors propagate raw messages. Although
-  `ActualApi` has special handling for missing files, the CLI does not translate
-  frequent errors into user-friendly text.
-- **Next Steps:**
-  - Introduce an error translation layer that maps common Actual server errors
-    (`file-not-found`, `group-not-found`, HTTP 404) to actionable CLI messages.
-  - Add integration tests verifying mappings stay in sync with
+- **Acceptance Criteria:**
+  - CLI validates presence of required config paths and incompatible flags,
+    returning exit code 1 with guidance.
+  - Integration tests cover at least two validation failures with snapshot
+    output.
+  - Documentation lists validation guardrails and troubleshooting tips.
+- **Depends on:** 7.1 (reuse updated help scaffolding).
+- **Sequence:** Implement after 7.1 to reuse improved help text references.
+- **Tasks:**
+  - Extend command option parsing to perform upfront validation checks.
+  - Add integration tests in `tests/commands` for invalid flag and missing
+    config scenarios.
+  - Document validation behaviour in README troubleshooting section.
+  - Update changelog/backlog entry and request review.
+
+### Story 7.3 – Friendly translation of backend errors
+
+- **Story:** As a CLI user, I want backend failures (e.g., missing budgets or
+  authentication issues) translated into friendly CLI messages so that I know
+  how to resolve the problem.
+- **Status:** ⬜ Not started
+- **Acceptance Criteria:**
+  - Common Actual API error codes map to curated CLI messages with remediation
+    steps.
+  - Integration tests assert message translations stay in sync with
     `ActualApi.getFriendlyErrorMessage`.
-- **Key Files:** `src/commands/import.command.ts`, `src/utils/ActualApi.ts`,
-  `tests/commands`.
+  - Structured logs flag translated errors via a `friendlyError` field.
+- **Depends on:** 7.2 (shares validation utilities) and Epics 1 & 2 error
+  handling foundations.
+- **Sequence:** Ship after 7.2 to avoid duplicating validation copy updates.
+- **Tasks:**
+  - Implement an error translation helper consumed by CLI commands.
+  - Backfill integration tests for each translated error scenario.
+  - Add documentation on common errors and recovery paths.
+  - Ensure structured logging includes telemetry flag and request review.
+
+### Risks & Mitigations
+
+- Changes to help output risk brittle snapshots → mitigate with dedicated
+  fixtures and mdformat enforcement.
+- Validation rejections could block legitimate advanced workflows → add feature
+  flags or environment overrides for power users during rollout.
+- Error translation drift may regress UX → schedule periodic audit against
+  Actual API docs and maintain unit tests guarding the mapping table.
 
 ## Epic 8: Code quality and maintainability
 
