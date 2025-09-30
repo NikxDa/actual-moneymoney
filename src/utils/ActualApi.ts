@@ -140,7 +140,7 @@ const evaluateActualConsoleOutput = (args: unknown[]): ConsoleNoiseDecision => {
     }
 
     // Handle edge cases for malformed console output
-    if (args.some((arg) => arg === null && typeof arg !== 'object')) {
+    if (args.some((arg) => arg === null || arg === undefined)) {
         return { action: 'passthrough' };
     }
 
