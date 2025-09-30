@@ -430,8 +430,9 @@ end-to-end CLI tests being available.
   - A `TransactionImportPipeline` (or similarly named) orchestrator composes stage interfaces for fetch, filter, transform, reconcile, and persist steps while preserving current behaviour.
   - Unit tests cover the orchestrator happy path using spies/fakes for each stage.
   - The importer entry point delegates to the orchestrator, reducing the legacy method to ≤120 lines.
+- **Architecture Reference:** [Transaction Import Pipeline ADR](./adr/transaction-import-pipeline.md)
 - **Tasks:**
-  - 8.1.a Document the proposed pipeline architecture and naming in `docs/backlog.md` or a new design note for reviewer context.
+  - 8.1.a Draft `docs/adr/transaction-import-pipeline.md` capturing the importer pipeline architecture overview, naming rationale, stage contracts, and migration notes, then link this backlog entry to the note for reviewer context.
   - 8.1.b Add TypeScript interfaces for each stage in `src/utils/Importer/` with clear input/output contracts.
   - 8.1.c Implement the orchestrator shell that wires existing logic through the new interfaces without changing external behaviour.
   - 8.1.d Write unit tests for the orchestrator using Vitest mocks to assert stage invocation order and error propagation.
