@@ -27,28 +27,268 @@ import util from 'node:util';
 
 import type { ActualServerConfig } from './config.js';
 import { DEFAULT_ACTUAL_REQUEST_TIMEOUT_MS, FALLBACK_ACTUAL_REQUEST_TIMEOUT_MS } from './config.js';
-import type Logger from './Logger.js';
+import Logger, { LogLevel } from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
-const isActualNoise = (args: unknown[]) => {
-    if (args.length === 0) {
-        return false;
+// Enhanced pattern matching with categorization and regex support
+const SUPPRESSED_PATTERNS = [
+    { pattern: /^Got messages from server/i, type: 'sync', category: 'network' },
+    { pattern: /^Syncing since/i, type: 'sync', category: 'network' },
+    { pattern: /^SENT -------/i, type: 'network', category: 'network' },
+    { pattern: /^RECEIVED -------/i, type: 'network', category: 'network' },
+    { pattern: /^Performing transaction reconciliation/i, type: 'reconciliation', category: 'data' },
+    { pattern: /^Performing transaction reconciliation matching/i, type: 'reconciliation', category: 'data' },
+    // Add more patterns for common Actual SDK noise
+    { pattern: /^Loading budget/i, type: 'budget', category: 'data' },
+    { pattern: /^Budget loaded/i, type: 'budget', category: 'data' },
+    { pattern: /^Saving budget/i, type: 'budget', category: 'data' },
+    { pattern: /^Budget saved/i, type: 'budget', category: 'data' },
+    { pattern: /^Applying migration/i, type: 'migration', category: 'data' },
+    { pattern: /^Migration applied/i, type: 'migration', category: 'data' },
+];
+
+// Performance optimization: Cache for repeated evaluations
+class ConsoleFilterCache {
+    private patternCache = new Map<string, boolean>();
+    private lastEvaluation: { args: unknown[]; decision: ConsoleNoiseDecision } | null = null;
+    private maxCacheSize = 1000; // Prevent memory leaks
+
+    private getCacheKey(args: unknown[]): string {
+        // Create a simple hash for caching
+        return args.map((arg) => (typeof arg === 'string' ? arg.substring(0, 50) : String(arg))).join('|');
     }
 
-    const message = util.format(...(args as [unknown, ...unknown[]]));
+    public evaluateWithCache(args: unknown[]): ConsoleNoiseDecision {
+        // Check if we're evaluating the same args as last time (common case)
+        if (this.lastEvaluation && this.arraysEqual(this.lastEvaluation.args, args)) {
+            return this.lastEvaluation.decision;
+        }
 
-    const noisyPrefixes = ['Got messages from server', 'Syncing since', 'SENT -------', 'RECEIVED -------'];
+        // Check cache for simple string patterns
+        const cacheKey = this.getCacheKey(args);
+        if (this.patternCache.has(cacheKey)) {
+            const cached = this.patternCache.get(cacheKey);
+            const decision = cached
+                ? { action: 'suppress' as const, fallbackMessage: 'cached', type: 'cached', category: 'cached' }
+                : { action: 'passthrough' as const };
 
-    return noisyPrefixes.some((prefix) => message.startsWith(prefix));
+            this.lastEvaluation = { args, decision };
+            return decision;
+        }
+
+        // Evaluate normally
+        const decision = evaluateActualConsoleOutput(args);
+
+        // Cache the result for simple cases
+        if (decision.action === 'passthrough' || (decision.action === 'suppress' && !decision.debugHints?.length)) {
+            this.patternCache.set(cacheKey, decision.action === 'suppress');
+
+            // Prevent memory leaks by limiting cache size
+            if (this.patternCache.size > this.maxCacheSize) {
+                const firstKey = this.patternCache.keys().next().value;
+                if (firstKey !== undefined) {
+                    this.patternCache.delete(firstKey);
+                }
+            }
+        }
+
+        this.lastEvaluation = { args, decision };
+        return decision;
+    }
+
+    private arraysEqual(a: unknown[], b: unknown[]): boolean {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+    public clearCache(): void {
+        this.patternCache.clear();
+        this.lastEvaluation = null;
+    }
+}
+
+// Global cache instance
+const consoleFilterCache = new ConsoleFilterCache();
+
+// Legacy support for simple prefix matching
+const SUPPRESSED_PREFIXES = [
+    'Got messages from server',
+    'Syncing since',
+    'SENT -------',
+    'RECEIVED -------',
+    'Performing transaction reconciliation',
+    'Performing transaction reconciliation matching',
+];
+
+type ConsoleNoiseDecision =
+    | { action: 'passthrough' }
+    | {
+          action: 'suppress';
+          debugMessage?: string;
+          debugHints?: string[];
+          fallbackMessage: string;
+          type?: string;
+          category?: string;
+      };
+
+const evaluateActualConsoleOutput = (args: unknown[]): ConsoleNoiseDecision => {
+    if (args.length === 0) {
+        return { action: 'passthrough' };
+    }
+
+    // Handle edge cases for malformed console output
+    if (args.some((arg) => arg === null || arg === undefined)) {
+        return { action: 'passthrough' };
+    }
+
+    const formatted = util.format(...(args as [unknown, ...unknown[]]));
+    const [firstArg, ...rest] = args;
+
+    if (typeof firstArg === 'string') {
+        const trimmedFirstArg = firstArg.trim();
+
+        // Handle empty or whitespace-only strings
+        if (trimmedFirstArg.length === 0) {
+            return { action: 'passthrough' };
+        }
+
+        // Enhanced debug data processing with better error handling
+        if (/^Debug data for the operations:?/i.test(trimmedFirstArg)) {
+            const debugHints: string[] = [];
+            const metadata: Record<string, unknown> = {
+                timestamp: new Date().toISOString(),
+                source: 'actual-sdk',
+                operation: 'debug-data',
+            };
+
+            for (const entry of rest) {
+                if (typeof entry === 'undefined') {
+                    continue;
+                }
+
+                if (entry && typeof entry === 'object') {
+                    let serialised = '';
+                    try {
+                        // Handle circular references and complex objects
+                        serialised = JSON.stringify(entry, null, 2);
+                    } catch (_serializationError) {
+                        // Fallback to util.inspect with better error handling
+                        serialised = util.inspect(entry, {
+                            depth: 4,
+                            showHidden: false,
+                            colors: false,
+                            maxArrayLength: 10,
+                        });
+                        metadata.serializationError = true;
+                    }
+
+                    debugHints.push(serialised);
+                    continue;
+                }
+
+                debugHints.push(String(entry));
+            }
+
+            if (debugHints.length === 0) {
+                debugHints.push(formatted);
+            }
+
+            // Add metadata as first hint
+            debugHints.unshift(JSON.stringify(metadata, null, 2));
+
+            return {
+                action: 'suppress',
+                debugMessage: 'Actual sync debug data emitted by SDK',
+                debugHints,
+                fallbackMessage: formatted,
+                type: 'debug',
+                category: 'data',
+            };
+        }
+
+        // Enhanced pattern matching with regex support
+        const matchedPattern = SUPPRESSED_PATTERNS.find((p) => p.pattern.test(trimmedFirstArg));
+        if (matchedPattern) {
+            return {
+                action: 'suppress',
+                debugMessage: `Actual SDK ${matchedPattern.type} output`,
+                fallbackMessage: formatted,
+                type: matchedPattern.type,
+                category: matchedPattern.category,
+            };
+        }
+
+        // Fallback to legacy prefix matching for backward compatibility
+        if (SUPPRESSED_PREFIXES.some((prefix) => trimmedFirstArg.startsWith(prefix))) {
+            return {
+                action: 'suppress',
+                debugMessage: formatted,
+                fallbackMessage: formatted,
+                type: 'legacy',
+                category: 'unknown',
+            };
+        }
+    }
+
+    return { action: 'passthrough' };
 };
-const suppressIfNoisy =
-    <TArgs extends unknown[]>(original: (...args: TArgs) => void): ((...args: TArgs) => void) =>
+
+// Enhanced console interceptor with granular log level control and performance optimization
+const createConsoleInterceptor =
+    <TArgs extends unknown[]>(
+        logger: Logger,
+        original: (...args: TArgs) => void,
+        options: {
+            minLevelForDebug?: LogLevel;
+            enableCategorization?: boolean;
+            categoryFilter?: string[];
+            enableCaching?: boolean;
+        } = {}
+    ) =>
     (...args: TArgs): void => {
-        if (isActualNoise(args)) {
+        // Use cache for performance optimization if enabled
+        const decision =
+            options.enableCaching !== false
+                ? consoleFilterCache.evaluateWithCache(args)
+                : evaluateActualConsoleOutput(args);
+
+        if (decision.action === 'passthrough') {
+            original.apply(console, args);
             return;
         }
 
-        original(...args);
+        if (decision.action === 'suppress') {
+            const minLevel = options.minLevelForDebug ?? LogLevel.DEBUG;
+            const currentLevel = logger.getLevel();
+
+            // Check if we should log based on level and category filtering
+            const shouldLog =
+                currentLevel >= minLevel &&
+                (!options.categoryFilter || !decision.category || options.categoryFilter.includes(decision.category));
+
+            if (shouldLog) {
+                const hints = decision.debugHints?.length ? decision.debugHints : undefined;
+                let message = decision.debugMessage ?? decision.fallbackMessage;
+
+                // Add categorization to debug messages for better filtering
+                if (options.enableCategorization && decision.type && decision.category) {
+                    message = `[${decision.category.toUpperCase()}:${decision.type.toUpperCase()}] ${message}`;
+                }
+
+                // Use appropriate log level based on category
+                const logLevel = decision.category === 'network' ? LogLevel.INFO : LogLevel.DEBUG;
+                if (currentLevel >= logLevel) {
+                    if (logLevel === LogLevel.INFO) {
+                        logger.info(message, hints);
+                    } else {
+                        logger.debug(message, hints);
+                    }
+                }
+            }
+        }
     };
 
 const normalizeForHash = (value: unknown): unknown => {
@@ -973,18 +1213,42 @@ class ActualApi {
                 warn: console.warn,
             };
             const originals = ActualApi.originals;
-            console.log = suppressIfNoisy((...args: Parameters<typeof console.log>) => {
-                originals.log.apply(console, args);
-            });
-            console.info = suppressIfNoisy((...args: Parameters<typeof console.info>) => {
-                originals.info.apply(console, args);
-            });
-            console.debug = suppressIfNoisy((...args: Parameters<typeof console.debug>) => {
-                originals.debug.apply(console, args);
-            });
-            console.warn = suppressIfNoisy((...args: Parameters<typeof console.warn>) => {
-                originals.warn.apply(console, args);
-            });
+            // Enhanced console interception with granular control and performance optimization
+            const consoleOptions = {
+                minLevelForDebug: LogLevel.DEBUG,
+                enableCategorization: true,
+                categoryFilter: ['network', 'data', 'debug'], // Allow these categories
+                enableCaching: true, // Enable performance caching
+            };
+
+            console.log = createConsoleInterceptor(
+                this.logger,
+                (...args: Parameters<typeof console.log>) => {
+                    originals.log.apply(console, args);
+                },
+                consoleOptions
+            );
+            console.info = createConsoleInterceptor(
+                this.logger,
+                (...args: Parameters<typeof console.info>) => {
+                    originals.info.apply(console, args);
+                },
+                consoleOptions
+            );
+            console.debug = createConsoleInterceptor(
+                this.logger,
+                (...args: Parameters<typeof console.debug>) => {
+                    originals.debug.apply(console, args);
+                },
+                consoleOptions
+            );
+            console.warn = createConsoleInterceptor(
+                this.logger,
+                (...args: Parameters<typeof console.warn>) => {
+                    originals.warn.apply(console, args);
+                },
+                consoleOptions
+            );
         }
         ActualApi.suppressDepth++;
         return () => {

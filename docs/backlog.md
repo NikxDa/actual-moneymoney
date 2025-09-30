@@ -378,6 +378,20 @@ end-to-end CLI tests being available.
 - **Key Files:** `src/utils/Logger.ts`, `src/index.ts`,
   `tests/utils/Logger.test.ts`, `tests/commands/cli-options.command.test.ts`.
 
+### Story 5.3 – Enhanced Console Output Filtering
+
+- **Complexity:** 5 pts
+- **Status:** ✅ Done
+- **Outcome:** Console filtering system now provides intelligent suppression of noisy Actual SDK output with categorized debug logging, performance optimizations, and comprehensive test coverage.
+- **Evidence:**
+  - `src/utils/ActualApi.ts` includes enhanced pattern matching with regex support, categorization, and performance caching
+  - Console interceptor supports granular log level control with category filtering
+  - Debug data processing handles complex objects with proper JSON serialization and circular reference handling
+  - Performance optimizations include pattern caching and memory management
+  - `tests/ActualApi.test.ts` includes comprehensive test coverage for edge cases, categorization, and performance scenarios
+- **Next Steps:** Monitor for additional SDK output patterns that may need filtering as the Actual SDK evolves.
+- **Key Files:** `src/utils/ActualApi.ts`, `tests/ActualApi.test.ts`, `README.md`.
+
 ## Epic 7: CLI UX
 
 - **Epic Goal:** Reduce friction for MoneyMoney users operating the CLI by
