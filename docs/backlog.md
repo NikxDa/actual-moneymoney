@@ -600,6 +600,13 @@ end-to-end CLI tests being available.
   invalidation, credential reuse, and logging expectations so we do not regress
   the session lifecycle work in Epic 1.
 
+### Epic 10 Risks & Mitigations
+
+- **Budget session leakage across imports:** Expand CLI integration tests to cover back-to-back budget switches and add timing metrics to confirm shutdown/init gaps remain within the expected window.
+- **Configuration regressions when adding budget metadata:** Extend Zod schema tests and snapshot config fixtures so schema migrations surface diffs before rollout.
+- **Credential reuse failures under concurrency:** Gate runtime changes behind a feature flag and add targeted unit tests with fake timers to verify cache invalidation paths.
+- **Merge conflicts while iterating on shared importer code:** Sequence work after Epic 8 stories, branch from the latest mainline, and document rebases in PR notes to keep reviewers aligned.
+
 ### Story 10.1 – Model configuration and persistence
 
 - **Complexity:** 5 pts
@@ -676,6 +683,13 @@ end-to-end CLI tests being available.
 - **Epic Assessment:** Valuable for parity with MoneyMoney but requires careful
   design. MoneyMoney’s API only exposes point-in-time balances, so we must
   guarantee idempotent reconciliation entries and avoid noisy updates.
+
+### Epic 12 Risks & Mitigations
+
+- **Duplicate reconciliation entries or drift:** Backstop with importer unit and integration tests that compare before/after balance snapshots and assert idempotent ledger output.
+- **Performance regressions from frequent balance polling:** Capture execution timing metrics during dry-run/live flows and gate rollout with a feature flag to throttle adoption if runtime grows.
+- **Incorrect configuration leading to unintended account updates:** Extend schema tests with fixtures covering opt-in/off scenarios and add documentation review tasks to keep operator guidance current.
+- **Difficult rollbacks if reconciliation logic diverges:** Use dedicated branches for balance work, keep PRs focused, and record manual migration steps alongside release notes for rapid disablement.
 
 ### Story 12.1 – Model configuration for off-budget balance sync
 
