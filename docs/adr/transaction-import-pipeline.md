@@ -42,7 +42,7 @@ sequenceDiagram
 
 ### Naming rationale
 
-- **TransactionImportPipeline** emphasises orchestration and aligns with other pipeline-based modules in the repo (`BudgetSyncPipeline`).
+- **TransactionImportPipeline** emphasises orchestration and aligns with other pipeline-based modules in the repo (placeholder for future Epic 10 multi-budget work).
 - Stage helpers follow the `Transaction<Stage>` convention (`TransactionFetcher`, `TransactionFilter`, etc.) to keep their purpose unambiguous.
 - Public methods adopt verb-based names (`fetchTransactions`, `applyFilters`, `transform`, `reconcile`, `persist`) to read clearly inside the orchestrator.
 
