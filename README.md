@@ -28,6 +28,8 @@ This fork includes significant enhancements over the upstream version:
   better error handling
 - **📊 Better Logging**: Structured logging with proper error reporting and debug
   information
+- **🔇 Smart Console Filtering**: Intelligent suppression of noisy Actual SDK output
+  with categorized debug logging
 - **🔄 Robust Imports**: Enhanced transaction deduplication and retry mechanisms
 - **⚙️ Advanced Configuration**: Extended TOML configuration with timeout and
   filtering options
@@ -277,6 +279,51 @@ You can limit the scope of an import with additional flags:
 - `--logLevel <0-3>` – control CLI verbosity (defaults to `2`, INFO).
 - `--structuredLogs` – emit JSON-formatted logs instead of coloured text.
 - `--config <path>` – load a configuration file from a custom path.
+
+### Console Output Filtering
+
+The CLI automatically filters noisy Actual SDK console output to provide a cleaner user experience. By default, common SDK messages like "Got messages from server", "Syncing since", and "Performing transaction reconciliation" are suppressed unless DEBUG logging is enabled.
+
+#### How Console Filtering Works
+
+- **Automatic Suppression**: Noisy Actual SDK output is automatically detected and suppressed
+- **Categorized Debug Logging**: When `--logLevel 3` (DEBUG) is enabled, suppressed messages are logged with categories:
+
+  - `[NETWORK:SYNC]` - Network synchronization messages
+  - `[DATA:BUDGET]` - Budget loading and saving operations
+  - `[DATA:RECONCILIATION]` - Transaction reconciliation processes
+  - `[DATA:MIGRATION]` - Database migration operations
+  - `[DATA:DEBUG]` - Debug data with structured JSON formatting
+
+#### Debug Data Processing
+
+When the Actual SDK emits "Debug data for the operations:" messages, the CLI:
+
+- Converts complex objects to properly formatted JSON
+- Handles circular references gracefully with fallback serialization
+- Adds metadata including timestamps and source information
+- Preserves all debug information in structured format
+
+#### Performance Optimization
+
+The console filtering system includes performance optimizations:
+
+- **Pattern Caching**: Repeated console output patterns are cached for faster processing
+- **Memory Management**: Cache size is limited to prevent memory leaks
+- **Efficient Regex Matching**: Optimized pattern matching for common SDK output
+
+#### Examples
+
+```bash
+# See all console output including filtered messages
+actual-monmon import --logLevel 3
+
+# Use structured JSON logs for log aggregation
+actual-monmon import --logLevel 3 --structuredLogs
+
+# Normal operation (filtered output)
+actual-monmon import
+```
 
 ### Command Options
 

@@ -68,14 +68,19 @@ vi.mock('fs/promises', () => ({
     },
 }));
 
-const createLogger = () =>
-    ({
+const createLogger = () => {
+    let currentLevel = LogLevel.INFO;
+    return {
         debug: vi.fn(),
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        getLevel: () => LogLevel.INFO,
-    }) as unknown as Logger;
+        getLevel: () => currentLevel,
+        setLogLevel: (level: LogLevel) => {
+            currentLevel = level;
+        },
+    } as unknown as Logger;
+};
 
 const createDirent = (name: string, { isDirectory = true }: { isDirectory?: boolean } = {}): Dirent =>
     ({
@@ -179,6 +184,159 @@ describe('ActualApi', () => {
         expect(logSpy.mock.calls.some((args) => String(args[0]).includes('Got messages from server'))).toBe(false);
 
         logSpy.mockRestore();
+    });
+
+    describe('Enhanced Console Filtering', () => {
+        it('should handle malformed console output gracefully', async () => {
+            const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+            const logger = createLogger();
+            const api = new ActualApi(makeServerConfig('budget'), logger);
+            await api.init();
+
+            const logSpy = vi.spyOn(console, 'log');
+
+            // Test with null, undefined, and circular references
+            getTransactionsMock.mockImplementation(async () => {
+                console.log(null);
+                console.log(undefined);
+                console.log(''); // Empty string
+                console.log('   '); // Whitespace only
+                return [];
+            });
+
+            await api.getTransactions('account-1', { from: new Date('2024-02-01'), to: new Date('2024-02-20') });
+
+            // Should not crash and should pass through non-suppressed output
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+
+        it('should categorize different types of output correctly', async () => {
+            const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+            const logger = createLogger();
+            logger.setLogLevel(LogLevel.DEBUG);
+            const api = new ActualApi(makeServerConfig('budget'), logger);
+            await api.init();
+
+            const debugSpy = vi.spyOn(logger, 'debug');
+            const infoSpy = vi.spyOn(logger, 'info');
+
+            getTransactionsMock.mockImplementation(async () => {
+                console.log('Got messages from server abc'); // Network category
+                console.log('Loading budget data'); // Data category
+                console.log('Debug data for the operations:', { test: 'data' }); // Debug category
+                return [];
+            });
+
+            await api.getTransactions('account-1', { from: new Date('2024-02-01'), to: new Date('2024-02-20') });
+
+            // Check that different categories are logged appropriately
+            expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('[DATA:BUDGET]'), undefined);
+            expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('[DATA:DEBUG]'), expect.any(Array));
+
+            debugSpy.mockRestore();
+            infoSpy.mockRestore();
+        });
+
+        it('should handle complex debug data with proper JSON serialization', async () => {
+            const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+            const logger = createLogger();
+            logger.setLogLevel(LogLevel.DEBUG);
+            const api = new ActualApi(makeServerConfig('budget'), logger);
+            await api.init();
+
+            const debugSpy = vi.spyOn(logger, 'debug');
+
+            // Create a complex object with circular reference
+            const circularObj: Record<string, unknown> = { name: 'test' };
+            circularObj.self = circularObj;
+
+            getTransactionsMock.mockImplementation(async () => {
+                console.log('Debug data for the operations:', {
+                    simple: 'value',
+                    nested: { key: 'value' },
+                    array: [1, 2, 3],
+                    circular: circularObj,
+                });
+                return [];
+            });
+
+            await api.getTransactions('account-1', { from: new Date('2024-02-01'), to: new Date('2024-02-20') });
+
+            // Should handle circular references gracefully
+            expect(debugSpy).toHaveBeenCalledWith(
+                expect.stringContaining('[DATA:DEBUG]'),
+                expect.arrayContaining([
+                    expect.stringContaining('"source": "actual-sdk"'),
+                    expect.stringContaining('"serializationError": true'),
+                ])
+            );
+
+            debugSpy.mockRestore();
+        });
+
+        it('should respect log level filtering', async () => {
+            const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+            const logger = createLogger();
+            logger.setLogLevel(LogLevel.INFO); // Not DEBUG level
+            const api = new ActualApi(makeServerConfig('budget'), logger);
+            await api.init();
+
+            const debugSpy = vi.spyOn(logger, 'debug');
+            const infoSpy = vi.spyOn(logger, 'info');
+
+            getTransactionsMock.mockImplementation(async () => {
+                console.log('Got messages from server abc'); // Should be suppressed
+                console.log('Loading budget data'); // Should be suppressed
+                return [];
+            });
+
+            await api.getTransactions('account-1', { from: new Date('2024-02-01'), to: new Date('2024-02-20') });
+
+            // Should not log debug messages when log level is INFO
+            expect(debugSpy).not.toHaveBeenCalled();
+            expect(infoSpy).not.toHaveBeenCalled();
+
+            debugSpy.mockRestore();
+            infoSpy.mockRestore();
+        });
+
+        it('should handle regex pattern matching correctly', async () => {
+            const { default: ActualApi } = await import('../src/utils/ActualApi.js');
+            const logger = createLogger();
+            logger.setLogLevel(LogLevel.DEBUG);
+            const api = new ActualApi(makeServerConfig('budget'), logger);
+            await api.init();
+
+            const debugSpy = vi.spyOn(logger, 'debug');
+
+            getTransactionsMock.mockImplementation(async () => {
+                console.log('Got messages from server abc'); // Should match regex
+                console.log('got messages from server xyz'); // Case insensitive
+                console.log('Syncing since 2024-01-01'); // Should match regex
+                console.log('SENT ------- request data'); // Should match regex
+                console.log('RECEIVED ------- response data'); // Should match regex
+                console.log('Performing transaction reconciliation'); // Should match regex
+                console.log('Performing transaction reconciliation matching'); // Should match regex
+                console.log('Loading budget test-budget'); // Should match new pattern
+                console.log('Budget loaded successfully'); // Should match new pattern
+                console.log('Saving budget changes'); // Should match new pattern
+                console.log('Budget saved successfully'); // Should match new pattern
+                console.log('Applying migration v1.2.3'); // Should match new pattern
+                console.log('Migration applied successfully'); // Should match new pattern
+                console.log('This should pass through'); // Should not match any pattern
+                return [];
+            });
+
+            await api.getTransactions('account-1', { from: new Date('2024-02-01'), to: new Date('2024-02-20') });
+
+            // Should log all the suppressed messages with proper categorization
+            expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('[DATA:RECONCILIATION]'), undefined);
+            expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('[DATA:BUDGET]'), undefined);
+            expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('[DATA:MIGRATION]'), undefined);
+
+            debugSpy.mockRestore();
+        });
     });
 
     it('wraps network disconnects with actionable guidance', async () => {
