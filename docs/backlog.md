@@ -413,192 +413,102 @@ end-to-end CLI tests being available.
 
 ## Epic 8: Code quality and maintainability
 
-- **Epic Assessment:** 🚧 Not started. Analysis reveals several high-complexity hotspots that need refactoring:
-  - `Importer.importTransactions` (298 lines) mixes multiple concerns in a monolithic method
-  - `ActualApi.runActualRequest` (94 lines) handles timeout orchestration, console patching, and error handling
-  - `import.command.ts` (91 lines) tightly couples CLI parsing, validation, and orchestration
-  - Error handling is fragmented across modules with inconsistent patterns
-  - Budget resolution logic is well-implemented but not reusable
-  Executing these refactors will significantly improve maintainability and reduce risk before adding roadmap features.
+- **Epic Goal:** Reduce the cognitive complexity and coupling across the importer, Actual API wrapper, and CLI orchestration so new roadmap features (multi-budget sync, category translation) can be implemented safely and quickly.
+- **Business Value / User Benefit:** A modular codebase accelerates feature delivery, decreases regression risk for operators importing data, and keeps contributor onboarding time low.
+- **Success Criteria:**
+  - `Importer.importTransactions` shrinks to an orchestration wrapper under 120 lines with stage helpers capped at 80 lines each and `npm run lint:complexity` passes without new suppressions.
+  - `ActualApi.runActualRequest` delegates timeout and console patching to dedicated utilities with unit tests covering timeout, retry, and shutdown flows.
+  - `import.command.ts` delegates parsing/orchestration to helpers, keeping the command handler below 60 lines and exercising new flows through CLI integration tests.
+  - Error handling surfaces consistent messages through a shared helper verified by updated tests and docs.
+- **Implementation Order:** 8.1 ➜ 8.2 ➜ 8.3 ➜ 8.4 ➜ 8.5.
 
-### Story 8.1 – Refactor retry/resolution logic into reusable helpers
+### Story 8.1 – Establish importer pipeline scaffolding
 
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Budget directory resolution logic is implemented in `ActualApi.resolveBudgetDataDir()` with defensive error handling and structured debug logs. The resolver scans `metadata.json` files and provides clear error messages when no `syncId` match is found. However, this logic is tightly coupled within `ActualApi` and not easily reusable across other commands.
-- **Assessment:** The resolution logic is well-implemented with good error handling, but it's not modularized for reuse. The current implementation includes proper logging, error surfacing, and defensive programming, but lacks the abstraction needed for broader reuse.
-- **Next Steps:**
-  - Extract `resolveBudgetDataDir` logic into a standalone utility in `src/utils/`
-  - Create a reusable `BudgetResolver` class with dependency injection for logger
-  - Update `ActualApi` to use the new resolver while maintaining current behavior
-  - Add unit tests for the resolver independent of `ActualApi`
-- **Key Files:** `src/utils/ActualApi.ts` (lines 128-200), `tests/ActualApi.test.ts`, future `src/utils/BudgetResolver.ts`
+- **User Story:** As a maintainer, I want the transaction importer to run through composable stage interfaces so that future changes can be isolated, tested, and shipped without rewriting the whole method.
+- **Dependencies:** None.
+- **Acceptance Criteria:**
+  - A `TransactionImportPipeline` (or similarly named) orchestrator composes stage interfaces for fetch, filter, transform, reconcile, and persist steps while preserving current behaviour.
+  - Unit tests cover the orchestrator happy path using spies/fakes for each stage.
+  - The importer entry point delegates to the orchestrator, reducing the legacy method to ≤120 lines.
+- **Architecture Reference:** [Transaction Import Pipeline ADR](./adr/transaction-import-pipeline.md)
+- **Tasks:**
+  - 8.1.a Draft `docs/adr/transaction-import-pipeline.md` capturing the importer pipeline architecture overview, naming rationale, stage contracts, and migration notes, then link this backlog entry to the note for reviewer context.
+  - 8.1.b Add TypeScript interfaces for each stage in `src/utils/Importer/` with clear input/output contracts.
+  - 8.1.c Implement the orchestrator shell that wires existing logic through the new interfaces without changing external behaviour.
+  - 8.1.d Write unit tests for the orchestrator using Vitest mocks to assert stage invocation order and error propagation.
+  - 8.1.e Update importer-related docs/backlog entries to reference the stage pipeline and note migration considerations.
+  - 8.1.f Request code review.
 
-#### Task 8.1a – Draft helper API
+### Story 8.2 – Move data retrieval and filtering into stage helpers
 
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Design `BudgetResolver` interface with clear inputs/outputs and error handling patterns.
+- **User Story:** As a maintainer, I want fetching, sorting, and ignore filtering handled by dedicated helpers so that upstream MoneyMoney changes or new filters can be added without editing the full pipeline.
+- **Dependencies:** 8.1.
+- **Acceptance Criteria:**
+  - Fetch/filter logic lives in dedicated modules (e.g., `TransactionFetcher`, `TransactionFilter`) with exported pure functions or classes.
+  - Unit tests cover ignored transactions, deterministic sort order, and earliest-import-date handling via the new helpers.
+  - Pipeline integration tests confirm dry-run/live modes still produce identical transaction batches before persistence.
+- **Tasks:**
+  - 8.2.a Extract the existing MoneyMoney fetch and sort code into `TransactionFetcher` with dependency injection for the API client and logger.
+  - 8.2.b Extract ignore-rule filtering and unchecked transaction handling into `TransactionFilter` with focused unit tests.
+  - 8.2.c Update the orchestrator to consume the new helpers and remove duplicate logic from `Importer.importTransactions`.
+  - 8.2.d Extend `tests/Importer.test.ts` (or new files) to cover fetch/filter edge cases using fixtures.
+  - 8.2.e Run `npm run lint:complexity` to ensure complexity budgets are met and capture results in the PR description.
+  - 8.2.f Request code review.
 
-#### Task 8.1b – Adopt helper across callers
+### Story 8.3 – Modularise transformation and reconciliation stages
 
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Refactor `ActualApi` to use `BudgetResolver` and ensure CLI commands can use it directly.
+- **User Story:** As a maintainer, I want conversion, payee transformation, and reconciliation handled by isolated stages so that new features (e.g., category translation, off-budget sync) can reuse them without regression risk.
+- **Dependencies:** 8.1 and 8.2.
+- **Acceptance Criteria:**
+  - Conversion and reconciliation logic lives in modules such as `TransactionConverter` and `TransactionReconciler` that expose deterministic outputs with dependency injection for PayeeTransformer and configuration.
+  - Stage unit tests cover payee transformation fallbacks, start-balance adjustments, and deduplication scenarios.
+  - The importer pipeline offers a dry-run summary object and live persistence path validated by integration tests.
+- **Tasks:**
+  - 8.3.a Extract conversion utilities into a `TransactionConverter` module with pure functions where possible.
+  - 8.3.b Create a `TransactionReconciler` module that encapsulates balance adjustments and deduplication rules with targeted tests.
+  - 8.3.c Update pipeline wiring to use the new modules and expose a typed result object for downstream stories.
+  - 8.3.d Expand importer tests to cover payee transformer fallbacks and dry-run summaries.
+  - 8.3.e Update README/backlog snippets describing importer flow to reference the staged architecture.
+  - 8.3.f Request code review.
 
-#### Task 8.1c – Document helper usage
+### Story 8.4 – Extract Actual API run utilities
 
-- **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Document the resolver API and usage patterns for future commands.
+- **User Story:** As a maintainer, I want timeout and console-patching logic encapsulated in reusable utilities so that API requests remain resilient while the wrapper stays readable.
+- **Dependencies:** Independent, but finishing after 8.1 reduces merge conflicts in shared files.
+- **Acceptance Criteria:**
+  - New utilities (e.g., `TimeoutManager`, `ConsolePatcher`) manage lifecycle concerns with unit tests covering timeout expiry, shutdown retries, and log restoration.
+  - `ActualApi.runActualRequest` focuses on invoking callbacks, delegating to utilities, and returning results with ≤60 lines of code.
+  - Error messages remain unchanged or are covered by updated snapshot/unit tests.
+- **Tasks:**
+  - 8.4.a Implement `TimeoutManager` with configurable durations and cancellation hooks plus dedicated tests using fake timers.
+  - 8.4.b Implement `ConsolePatcher` that suppresses Actual SDK noise with depth-aware patch/unpatch logic and tests.
+  - 8.4.c Refactor `runActualRequest` to compose the utilities and update related tests to use the new abstractions.
+  - 8.4.d Add regression tests for timeout, retry, and shutdown scenarios in `tests/ActualApi.test.ts`.
+  - 8.4.e Update documentation/backlog to describe the new utilities and their extension points.
+  - 8.4.f Request code review.
 
-### Story 8.2 – Consolidate API error handling into a single class
+### Story 8.5 – Standardise CLI orchestration and error handling
 
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** Error handling is implemented across multiple modules with different patterns:
-  - `ActualApi` has `getFriendlyErrorMessage()` for HTTP status mapping and `createErrorWithCause()` for error wrapping
-  - `PayeeTransformer` has specific OpenAI API error handling with status code mapping (401, 403, 429, 500, 502, 503, 504)
-  - `config.ts` has Zod validation error formatting with path-based error messages
-  - `validate.command.ts` has TOML parsing and Zod error handling
-- **Assessment:** Error handling is functional but fragmented. Each module implements its own error formatting and user-friendly messaging. There's no unified error hierarchy, making it difficult to maintain consistent error experiences across the application.
-- **Next Steps:**
-  - Design a unified `ApiError` class that encapsulates HTTP status, error metadata, and user-facing messages
-  - Create error factories for common scenarios (network errors, validation errors, API errors)
-  - Migrate existing error handling to use the unified class while preserving current user experience
-  - Add structured error logging with consistent metadata
-- **Key Files:** `src/utils/ActualApi.ts` (lines 222-263), `src/utils/PayeeTransformer.ts` (lines 432-467), `src/utils/config.ts` (lines 242-266), `tests/ActualApi.test.ts`
+- **User Story:** As a CLI maintainer, I want command parsing, orchestration, and error messaging standardized so that future flags or workflows can ship without duplicating boilerplate.
+- **Dependencies:** 8.1–8.3 (reuses importer pipeline output) and optionally 8.4 for shared error helpers.
+- **Acceptance Criteria:**
+  - `import.command.ts` delegates parsing to helpers (e.g., `CliFilterParser`) and orchestration to a thin coordinator under 60 lines.
+  - Error handling uses shared helpers (e.g., `CommandErrorFormatter`) yielding consistent user-facing messages verified by tests.
+  - CLI integration tests cover success, validation failure, and API failure flows using the refactored pipeline.
+- **Tasks:**
+  - 8.5.a Extract parsing/validation helpers for dates, servers, budgets, and accounts with unit tests exercising edge cases.
+  - 8.5.b Implement an `ImportOrchestrator` that coordinates importer execution, logging, and dry-run/live toggles.
+  - 8.5.c Introduce a shared error formatting helper reused by CLI and API callers, updating affected modules.
+  - 8.5.d Expand `tests/commands/import.command.test.ts` to cover the refactored flows and shared error messages.
+  - 8.5.e Update README/backlog CLI sections to reflect the new orchestration and documented error outputs.
+  - 8.5.f Request code review.
 
-#### Task 8.2a – Define consolidated error shape
+### Epic 8 Risks & Mitigations
 
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Create `ApiError` base class with HTTP status, error codes, user messages, and debug metadata.
-
-#### Task 8.2b – Update consumers to use the new error class
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Refactor `ActualApi`, `PayeeTransformer`, and config modules to use unified error handling.
-
-#### Task 8.2c – Document the new error hierarchy
-
-- **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Document error handling patterns and provide examples for future contributors.
-
-### Story 8.3 – Decompose `Importer.importTransactions` into staged pipelines
-
-- **Complexity:** 13 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `Importer.importTransactions` is a monolithic 298-line method that orchestrates the entire import process:
-  - Date resolution and earliest import date handling
-  - MoneyMoney API fetching with timing metrics
-  - Transaction sorting by `valueDate` with deterministic tie-breaker
-  - Unchecked transaction filtering and ignore pattern matching
-  - Account grouping and transaction conversion
-  - Starting balance calculation and deduplication
-  - Payee transformation with AI integration
-  - Dry-run vs live mode handling
-- **Assessment:** The method is well-tested (14 comprehensive test cases) but has high complexity due to mixing concerns. The current implementation handles edge cases well but is difficult to extend for new features like category translation or off-budget sync. The method has good logging and error handling but lacks modularity.
-- **Next Steps:**
-  - Design a pipeline architecture with discrete stages: Fetch → Filter → Group → Transform → Reconcile → Persist
-  - Extract each stage into focused modules with clear interfaces and unit tests
-  - Create a `TransactionImportPipeline` orchestrator that composes stages
-  - Maintain existing behavior while enabling easier testing and extension
-- **Key Files:** `src/utils/Importer.ts` (lines 25-298), `tests/Importer.test.ts` (14 test cases), future pipeline modules
-
-#### Task 8.3a – Define importer stage interfaces
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Design TypeScript interfaces for each pipeline stage with clear input/output contracts.
-
-#### Task 8.3b – Extract filtering and transformation helpers
-
-- **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Notes:** Create `TransactionFetcher`, `TransactionFilter`, `TransactionConverter`, and `TransactionReconciler` modules.
-
-#### Task 8.3c – Introduce orchestration tests for dry-run vs. live modes
-
-- **Complexity:** 5 pts
-- **Status:** ⬜ Not started
-- **Notes:** Add integration tests ensuring both modes produce identical transaction batches while only live mode persists data.
-
-### Story 8.4 – Simplify `ActualApi.runActualRequest` timeout handling
-
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `runActualRequest` is a complex 94-line method that handles multiple concerns:
-  - Timeout orchestration with configurable timeouts and fallback values
-  - Console patching to suppress Actual SDK noise with depth tracking
-  - Shutdown recovery with recursive timeout handling
-  - Error translation and friendly messaging
-  - State management for initialization flags and data directory tracking
-- **Assessment:** The method is functional but has high complexity due to mixing timeout logic, console management, and error handling. The current implementation includes good error recovery and console noise suppression, but the nested promises and manual state management make it difficult to test and maintain.
-- **Next Steps:**
-  - Extract `ConsolePatcher` utility for noise suppression with clear lifecycle management
-  - Create `TimeoutManager` for timeout orchestration and shutdown recovery
-  - Simplify `runActualRequest` to compose these utilities with clear error boundaries
-  - Add comprehensive tests for timeout scenarios and state management
-- **Key Files:** `src/utils/ActualApi.ts` (lines 265-358), `tests/ActualApi.test.ts`, future utility modules
-
-#### Task 8.4a – Extract console patching & logging utilities
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Create `ConsolePatcher` class with `patch()` and `unpatch()` methods and depth tracking.
-
-#### Task 8.4b – Add timeout and shutdown resilience tests
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Add tests for timeout scenarios, shutdown recovery, and state consistency using fake timers.
-
-#### Task 8.4c – Refactor run wrapper to compose helpers
-
-- **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Simplify `runActualRequest` to use the new utilities while maintaining current behavior.
-
-### Story 8.5 – Modularise CLI import orchestration
-
-- **Complexity:** 8 pts
-- **Status:** ⬜ Not started
-- **Current Behaviour:** `handleCommand` in `import.command.ts` is a 91-line function that orchestrates the entire CLI import process:
-  - Configuration loading with default decision logging
-  - PayeeTransformer initialization based on config
-  - MoneyMoney database access validation
-  - Server and budget filtering with validation
-  - Nested server/budget processing loops
-  - Date parsing and validation
-  - Error handling and logging coordination
-- **Assessment:** The CLI orchestration is functional but tightly coupled. The current implementation has good error handling and validation, but the mixed concerns (parsing, validation, orchestration) make it difficult to test individual components and extend with new features like telemetry or multi-budget sync.
-- **Next Steps:**
-  - Extract `CliFilterParser` for server/budget/account/date parsing with validation
-  - Create `ImportOrchestrator` for server/budget iteration and lifecycle management
-  - Simplify `handleCommand` to focus on CLI concerns while delegating to orchestrator
-  - Add unit tests for parsing helpers and integration tests for orchestration
-- **Key Files:** `src/commands/import.command.ts` (lines 157-225), `tests/commands/import.command.test.ts` (5 CLI tests), future orchestration modules
-
-#### Task 8.5a – Extract filter parsing & validation helpers
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Create `CliFilterParser` with methods for date parsing, server filtering, and budget validation.
-
-#### Task 8.5b – Introduce lifecycle orchestration wrapper
-
-- **Complexity:** 3 pts
-- **Status:** ⬜ Not started
-- **Notes:** Create `ImportOrchestrator` that handles server/budget iteration, dependency injection, and lifecycle logging.
-
-#### Task 8.5c – Cover CLI flows with new helpers
-
-- **Complexity:** 2 pts
-- **Status:** ⬜ Not started
-- **Notes:** Add unit tests for parsing helpers and integration tests for orchestration scenarios.
+- **Regression risk in importer behaviour:** Guard with expanded unit/integration tests introduced across Stories 8.1–8.3 and run them in CI.
+- **Performance regressions from additional abstraction:** Track execution time by capturing before/after metrics in PR descriptions and add lightweight timing assertions where feasible.
+- **Inconsistent error messaging after refactors:** Use snapshot/unit tests for error outputs and gate changes behind feature flags if messaging must remain stable for operators.
+- **Merge conflicts across parallel refactors:** Sequence stories as outlined and branch from the latest mainline to minimise churn; prefer feature flags when touching shared modules.
 
 ## Epic 9: Integration and tooling
 
@@ -690,6 +600,13 @@ end-to-end CLI tests being available.
   invalidation, credential reuse, and logging expectations so we do not regress
   the session lifecycle work in Epic 1.
 
+### Epic 10 Risks & Mitigations
+
+- **Budget session leakage across imports:** Expand CLI integration tests to cover back-to-back budget switches and add timing metrics to confirm shutdown/init gaps remain within the expected window.
+- **Configuration regressions when adding budget metadata:** Extend Zod schema tests and snapshot config fixtures so schema migrations surface diffs before rollout.
+- **Credential reuse failures under concurrency:** Gate runtime changes behind a feature flag and add targeted unit tests with fake timers to verify cache invalidation paths.
+- **Merge conflicts while iterating on shared importer code:** Sequence work after Epic 8 stories, branch from the latest mainline, and document rebases in PR notes to keep reviewers aligned.
+
 ### Story 10.1 – Model configuration and persistence
 
 - **Complexity:** 5 pts
@@ -766,6 +683,13 @@ end-to-end CLI tests being available.
 - **Epic Assessment:** Valuable for parity with MoneyMoney but requires careful
   design. MoneyMoney’s API only exposes point-in-time balances, so we must
   guarantee idempotent reconciliation entries and avoid noisy updates.
+
+### Epic 12 Risks & Mitigations
+
+- **Duplicate reconciliation entries or drift:** Backstop with importer unit and integration tests that compare before/after balance snapshots and assert idempotent ledger output.
+- **Performance regressions from frequent balance polling:** Capture execution timing metrics during dry-run/live flows and gate rollout with a feature flag to throttle adoption if runtime grows.
+- **Incorrect configuration leading to unintended account updates:** Extend schema tests with fixtures covering opt-in/off scenarios and add documentation review tasks to keep operator guidance current.
+- **Difficult rollbacks if reconciliation logic diverges:** Use dedicated branches for balance work, keep PRs focused, and record manual migration steps alongside release notes for rapid disablement.
 
 ### Story 12.1 – Model configuration for off-budget balance sync
 
