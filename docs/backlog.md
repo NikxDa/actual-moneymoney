@@ -468,6 +468,8 @@ end-to-end CLI tests being available.
   flags or environment overrides for power users during rollout.
 - Error translation drift may regress UX → schedule quarterly audits against
   Actual API docs (or when Actual SDK major versions bump) and maintain unit tests guarding the mapping table.
+  **Acceptance criteria:** 90% test coverage of error mapping table,
+  audit checklist with 5+ validation points, automated quarterly reminders.
 
 ## Epic 8: Code quality and maintainability
 
