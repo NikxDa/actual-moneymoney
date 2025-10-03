@@ -96,17 +96,6 @@ purposePatterns = []
 
 The above configuration would ignore all transactions that have a comment containing the string `[actual-ignore]`.
 
-### Custom payee transformation prompt
-
-If you want to adjust how payees are renamed, you can supply a custom prompt for the transformer. The prompt is optional, and when omitted the default instructions are used.
-
-```
-[payeeTransformation]
-prompt = "Keep the payee names as short as possible."
-```
-
-You can provide any text that suits your needs, for example to enforce specific naming conventions.
-
 ### Earliest import date
 
 Each budget can specify an earliest import date. This can be useful when starting to use the importer with an already existing budget in order to prevent duplicates from being imported. The importer will ignore any transactions from before the specified date.
