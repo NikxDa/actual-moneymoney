@@ -95,9 +95,15 @@ export class AccountMap {
     }
 
     async loadFromConfig() {
-        if (this.mapping) return;
+        if (this.mapping) {
+            this.logger.debug(
+                'Account mapping already loaded. Skipping re-load...'
+            );
+            return;
+        }
 
         const accountMapping = this.budgetConfig.accountMapping;
+
         const parsedAccountMapping: Map<MonMonAccount, Account> = new Map();
 
         this.moneyMoneyAccounts = await getAccounts();
