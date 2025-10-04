@@ -55,23 +55,6 @@ class ActualApi {
             });
         });
 
-        for (const budgetConfig of this.serverConfig.budgets) {
-            this.logger.debug(
-                `Downloading budget with syncId ${budgetConfig.syncId}...`
-            );
-
-            await this.suppressConsoleLog(async () => {
-                await actual.downloadBudget(
-                    budgetConfig.syncId,
-                    budgetConfig.e2eEncryption.enabled
-                        ? {
-                              password: budgetConfig.e2eEncryption.password,
-                          }
-                        : undefined
-                );
-            });
-        }
-
         this.isInitialized = true;
     }
 

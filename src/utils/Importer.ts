@@ -236,7 +236,9 @@ class Importer {
                 }
             } else {
                 this.logger.debug(
-                    `Payee transformation is disabled. Using default payee names...`
+                    isDryRun
+                        ? `Skipping payee transformation in dry run mode, using default payee names...`
+                        : `Payee transformation is disabled. Using default payee names...`
                 );
 
                 createTransactions.forEach((t) => {
