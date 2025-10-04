@@ -8,22 +8,43 @@ import Logger, { LogLevel } from '../utils/Logger.js';
 import PayeeTransformer from '../utils/PayeeTransformer.js';
 import { getConfig } from '../utils/config.js';
 import { DATE_FORMAT } from '../utils/shared.js';
+import { applyScope, Scope } from '../utils/scope.js';
 
 const handleCommand = async (argv: ArgumentsCamelCase) => {
-    const config = await getConfig(argv);
-
     const logLevel = (argv.logLevel || LogLevel.INFO) as number;
     const logger = new Logger(logLevel);
 
-    const payeeTransformer = config.payeeTransformation.enabled
-        ? new PayeeTransformer(config.payeeTransformation, logger)
-        : undefined;
+    const scope: Scope = {
+        servers: argv.server as Array<string> | undefined,
+        budgets: argv.budget as Array<string> | undefined,
+        accounts: argv.account as Array<string> | undefined,
+    };
 
-    if (config.actualServers.length === 0) {
+    const fullConfig = await getConfig(argv);
+
+    if (fullConfig.actualServers.length === 0) {
         throw new Error(
             'No Actual servers configured. Refer to the docs on how to a new server with in the configuration file.'
         );
     }
+
+    const config = applyScope(fullConfig, scope);
+
+    if (config.actualServers.length === 0) {
+        logger.info('Nothing to import for the given filters.');
+        return;
+    }
+
+    const scopeSummary = [
+        `Servers: ${scope.servers?.join(', ') || 'ALL'}`,
+        `Budgets: ${scope.budgets?.join(', ') || 'ALL'}`,
+        `Accounts: ${scope.accounts?.join(', ') || 'ALL'}`,
+    ].join('\n  ');
+    logger.info(`Import scope:\n  ${scopeSummary}`);
+
+    const payeeTransformer = config.payeeTransformation.enabled
+        ? new PayeeTransformer(config.payeeTransformation, logger)
+        : undefined;
 
     const isDryRun = (argv.dryRun as boolean) || false;
     const fromDate = argv.from
@@ -32,12 +53,7 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     const toDate = argv.to
         ? parse(argv.to as string, DATE_FORMAT, new Date())
         : undefined;
-    const account = argv.account as string | Array<string> | undefined;
-
-    let accountRefs: Array<string> | undefined;
-    if (account) {
-        accountRefs = Array.isArray(account) ? account : [account];
-    }
+    const accountRefs = scope.accounts;
 
     if (fromDate && isNaN(fromDate.getTime())) {
         throw new Error(
@@ -113,16 +129,6 @@ export default {
         return yargs
             .boolean('dry-run')
             .describe('dry-run', 'Do not import data')
-            .string('account')
-            .describe(
-                'account',
-                'Import only transactions from the specified MoneyMoney account identifier'
-            )
-            .string('budget')
-            .describe(
-                'budget',
-                'Import only to the specified Actual budget identifier'
-            )
             .string('from')
             .describe(
                 'from',
