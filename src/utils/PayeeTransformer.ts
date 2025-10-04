@@ -103,6 +103,10 @@ class PayeeTransformer {
     }
 
     private generatePrompt() {
+        if (this.config.prompt?.trim()) {
+            return this.config.prompt;
+        }
+
         return `
             You are now a model trained to classify bank account transactions. You will receive
             a list of payees as they appear in the source transactions, and you will return

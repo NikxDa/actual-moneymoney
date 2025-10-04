@@ -48,6 +48,7 @@ const payeeTransformationSchema = z.object({
     enabled: z.boolean(),
     openAiApiKey: z.string().optional(),
     openAiModel: z.string().optional().default('gpt-3.5-turbo'),
+    prompt: z.string().optional(),
 });
 
 export const configSchema = z
