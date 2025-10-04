@@ -80,7 +80,9 @@ class ActualApi {
     }
 
     async loadBudget(budgetId: string) {
-        this.logger.debug(`Loading budget with syncId '${budgetId}'...`);
+        this.logger.debug(
+            `Looking for budget configuration with syncId '${budgetId}'...`
+        );
 
         const budgetConfig = this.serverConfig.budgets.find(
             (b) => b.syncId === budgetId
@@ -90,7 +92,7 @@ class ActualApi {
             throw new Error(`No budget with syncId '${budgetId}' found.`);
         }
 
-        this.logger.debug(`Re-loading budget with syncId ${budgetId}...`);
+        this.logger.debug(`Loading budget with syncId ${budgetId}...`);
 
         await this.suppressConsoleLog(async () => {
             await actual.downloadBudget(
@@ -174,7 +176,9 @@ class ActualApi {
 
     private async suppressConsoleLog<T>(callback: () => T | Promise<T>) {
         const originalConsoleLog = console.log;
-        console.log = () => {};
+        console.log = (message: string) => {
+            this.logger.actual(message);
+        };
 
         try {
             return await callback();
