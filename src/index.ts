@@ -59,7 +59,9 @@ const _ = yargs(hideBin(process.argv))
 
         scopedArgv.server = splitArgs(argv.server as Array<string> | undefined);
         scopedArgv.budget = splitArgs(argv.budget as Array<string> | undefined);
-        scopedArgv.account = splitArgs(argv.account as Array<string> | undefined);
+        scopedArgv.account = splitArgs(
+            argv.account as Array<string> | undefined
+        );
     })
     .command(importCommand)
     .command(validateCommand)

@@ -57,7 +57,10 @@ export const applyScope = (config: Config, scope: Scope): Config => {
         .map((server) => {
             const budgets = server.budgets.filter((budget) => {
                 // Filter by budget criteria
-                const budgetMatches = matches(wantBudget, resolveBudgetCandidates(budget));
+                const budgetMatches = matches(
+                    wantBudget,
+                    resolveBudgetCandidates(budget)
+                );
 
                 // If no account filter is specified, include the budget
                 if (!wantAccount) {
@@ -65,7 +68,10 @@ export const applyScope = (config: Config, scope: Scope): Config => {
                 }
 
                 // If account filter is specified, check if budget has matching accounts
-                const accountMatches = matches(wantAccount, resolveAccountCandidates(budget));
+                const accountMatches = matches(
+                    wantAccount,
+                    resolveAccountCandidates(budget)
+                );
 
                 return budgetMatches && accountMatches;
             });
