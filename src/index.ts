@@ -21,7 +21,7 @@ const _ = yargs(hideBin(process.argv))
     })
     .option('logLevel', {
         type: 'number',
-        description: 'The log level to use (0-3)',
+        description: 'The log level to use (0-4)',
     })
     .command(importCommand)
     .command(validateCommand)
