@@ -27,7 +27,7 @@ reviews:
         A newline must be inserted at the end of the file.
         Trim all trailing whitespaces.
         Ensure that lines align visually.
-        Maximum line length must be 120 characters.
+        Maximum line length must be 80 characters.
         Avoid multiple consecutive blank lines in code; keep the ones needed for readability.
         Indents on empty lines should not be maintained.
         Spaces after commas are required.
