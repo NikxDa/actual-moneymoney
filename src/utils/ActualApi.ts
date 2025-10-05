@@ -92,7 +92,20 @@ class ActualApi {
             throw new Error(`No budget with syncId '${budgetId}' found.`);
         }
 
-        this.logger.debug(`Loading budget with syncId ${budgetId}...`);
+        this.logger.debug(`Loading budget with syncId '${budgetId}'...`);
+
+        if (budgetConfig.e2eEncryption.enabled) {
+            const password = budgetConfig.e2eEncryption.password;
+            if (!password || password.trim().length === 0) {
+                throw new Error(
+                    `Budget with syncId '${budgetId}' has end-to-end encryption enabled, but no password is set in the configuration.`
+                );
+            }
+
+            this.logger.debug(
+                `Budget has end-to-end encryption enabled. Using provided password to decrypt data.`
+            );
+        }
 
         await this.suppressConsoleLog(async () => {
             await actual.downloadBudget(
