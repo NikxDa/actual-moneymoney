@@ -40,15 +40,10 @@ const resolveBudgetCandidates = (budget: ActualBudgetConfig) => {
     return [namedBudget, budgetId, budget.syncId];
 };
 
-const resolveAccountCandidates = (budget: ActualBudgetConfig) => {
-    const accountMapping = budget.accountMapping || {};
-    return Object.keys(accountMapping);
-};
 
 export const applyScope = (config: Config, scope: Scope): Config => {
     const wantServer = createMatcher(scope.servers);
     const wantBudget = createMatcher(scope.budgets);
-    const wantAccount = createMatcher(scope.accounts);
 
     const servers = config.actualServers
         .filter((server) =>
@@ -56,24 +51,12 @@ export const applyScope = (config: Config, scope: Scope): Config => {
         )
         .map((server) => {
             const budgets = server.budgets.filter((budget) => {
-                // Filter by budget criteria
-                const budgetMatches = matches(
+                // Filter by budget criteria only
+                // Account filtering is handled later by the Importer class
+                return matches(
                     wantBudget,
                     resolveBudgetCandidates(budget)
                 );
-
-                // If no account filter is specified, include the budget
-                if (!wantAccount) {
-                    return budgetMatches;
-                }
-
-                // If account filter is specified, check if budget has matching accounts
-                const accountMatches = matches(
-                    wantAccount,
-                    resolveAccountCandidates(budget)
-                );
-
-                return budgetMatches && accountMatches;
             });
 
             if (budgets.length === 0) {

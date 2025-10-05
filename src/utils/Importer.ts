@@ -136,6 +136,26 @@ class Importer {
 
         const accountMapping = this.accountMap.getMap(accountRefs);
 
+        // Add early exit if no valid account mappings
+        if (accountMapping.size === 0) {
+            if (accountRefs && accountRefs.length > 0) {
+                this.logger.warn('No valid account mappings found for the specified account filters. Skipping transaction processing.');
+                return;
+            }
+            // If no account filters specified, continue with all accounts
+        }
+
+        // Log filtered account mapping
+        if (accountMapping.size > 0) {
+            this.logger.info('Filtered account mapping', [
+                '[MoneyMoney Account] → [Actual Account]',
+                ...Array.from(accountMapping.entries()).map(
+                    ([monMonAccount, actualAccount]) =>
+                        `${monMonAccount.name} → ${actualAccount.name}`
+                ),
+            ]);
+        }
+
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
             const monMonTransactions =

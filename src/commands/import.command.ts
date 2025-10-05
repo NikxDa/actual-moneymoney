@@ -39,8 +39,8 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
         `Servers: ${scope.servers?.join(', ') || 'ALL'}`,
         `Budgets: ${scope.budgets?.join(', ') || 'ALL'}`,
         `Accounts: ${scope.accounts?.join(', ') || 'ALL'}`,
-    ].join('\n  ');
-    logger.info(`Import scope:\n  ${scopeSummary}`);
+    ];
+    logger.info('Import scope:', scopeSummary);
 
     const payeeTransformer = config.payeeTransformation.enabled
         ? new PayeeTransformer(config.payeeTransformation, logger)
