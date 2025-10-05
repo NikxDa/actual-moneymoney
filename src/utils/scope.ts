@@ -40,7 +40,6 @@ const resolveBudgetCandidates = (budget: ActualBudgetConfig) => {
     return [namedBudget, budgetId, budget.syncId];
 };
 
-
 export const applyScope = (config: Config, scope: Scope): Config => {
     const wantServer = createMatcher(scope.servers);
     const wantBudget = createMatcher(scope.budgets);
@@ -53,10 +52,7 @@ export const applyScope = (config: Config, scope: Scope): Config => {
             const budgets = server.budgets.filter((budget) => {
                 // Filter by budget criteria only
                 // Account filtering is handled later by the Importer class
-                return matches(
-                    wantBudget,
-                    resolveBudgetCandidates(budget)
-                );
+                return matches(wantBudget, resolveBudgetCandidates(budget));
             });
 
             if (budgets.length === 0) {

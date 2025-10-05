@@ -147,7 +147,6 @@ export class AccountMap {
             parsedAccountMapping.set(moneyMoneyAccount, actualAccount);
         }
 
-
         this.mapping = parsedAccountMapping;
     }
 }

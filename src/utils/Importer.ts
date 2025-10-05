@@ -139,7 +139,9 @@ class Importer {
         // Add early exit if no valid account mappings
         if (accountMapping.size === 0) {
             if (accountRefs && accountRefs.length > 0) {
-                this.logger.warn('No valid account mappings found for the specified account filters. Skipping transaction processing.');
+                this.logger.warn(
+                    'No valid account mappings found for the specified account filters. Skipping transaction processing.'
+                );
                 return;
             }
             // If no account filters specified, continue with all accounts
