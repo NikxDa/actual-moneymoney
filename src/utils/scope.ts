@@ -1,4 +1,4 @@
-import { ActualBudgetConfig, ActualServerConfig, Config } from './config.js';
+import { ActualServerConfig, Config } from './config.js';
 
 export type Scope = {
     servers?: Array<string>;
@@ -6,14 +6,18 @@ export type Scope = {
     accounts?: Array<string>;
 };
 
-const matchesFilter = (candidates: Array<string | undefined>, filterValues?: Array<string>) => {
+const matchesFilter = (
+    candidates: Array<string | undefined>,
+    filterValues?: Array<string>
+) => {
     if (!filterValues || filterValues.length === 0) {
         return true;
     }
 
-    const normalizedFilter = filterValues.map(v => v.toLowerCase());
-    return candidates.some(candidate =>
-        candidate && normalizedFilter.includes(candidate.toLowerCase())
+    const normalizedFilter = filterValues.map((v) => v.toLowerCase());
+    return candidates.some(
+        (candidate) =>
+            candidate && normalizedFilter.includes(candidate.toLowerCase())
     );
 };
 
