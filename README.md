@@ -77,14 +77,13 @@ Once configured, importing is as simple as running `actual-monmon import`. Make 
 
 The importer will not track previous imports, so if you wait more than one month between imports, you might need to manually specify the last import date. Running the importer twice in the same month is no problem, as duplicate transactions will automatically be detected and skipped.
 
-You can scope imports with the `--server`, `--budget`, and `--account` options on the import command. Each flag is case-insensitive, can be repeated, and accepts comma-separated values. If no filters are provided, everything is imported (the previous default behaviour).
+You can scope imports with the `--server`, `--budget`, and `--account` options on the import command. Each flag is case-insensitive and can be repeated to specify multiple values. If no filters are provided, everything is imported (the previous default behaviour).
 
 Examples:
 
 ```bash
 # Import only these accounts
 actual-monmon import -a "DKB Giro" -a "DKB Visa"
-actual-monmon import -a "DKB Giro,DKB Visa"
 
 # Restrict to a specific server
 actual-monmon import -s myServerA
@@ -93,7 +92,7 @@ actual-monmon import -s myServerA
 actual-monmon import -s myServerA -b HomeBudget
 
 # Apply all filters at once
-actual-monmon import -s myServerA -b HomeBudget -a "Groceries,Utilities"
+actual-monmon import -s myServerA -b HomeBudget -a "Groceries" -a "Utilities"
 ```
 
 ## Advanced Configuration

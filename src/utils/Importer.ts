@@ -147,16 +147,7 @@ class Importer {
             // If no account filters specified, continue with all accounts
         }
 
-        // Log filtered account mapping
-        if (accountMapping.size > 0) {
-            this.logger.info('Filtered account mapping', [
-                '[MoneyMoney Account] → [Actual Account]',
-                ...Array.from(accountMapping.entries()).map(
-                    ([monMonAccount, actualAccount]) =>
-                        `${monMonAccount.name} → ${actualAccount.name}`
-                ),
-            ]);
-        }
+        // Account mapping logging is now handled in AccountMap.getMap()
 
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {

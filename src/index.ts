@@ -14,19 +14,6 @@ try {
     fs.mkdirSync(APPLICATION_DIRECTORY, { recursive: true });
 }
 
-const splitArgs = (values?: Array<string>): Array<string> | undefined => {
-    if (!values) {
-        return undefined;
-    }
-
-    const items = values
-        .flatMap((value) => value.split(','))
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0);
-
-    return items.length > 0 ? items : undefined;
-};
-
 const _ = yargs(hideBin(process.argv))
     .option('config', {
         type: 'string',
@@ -35,33 +22,6 @@ const _ = yargs(hideBin(process.argv))
     .option('logLevel', {
         type: 'number',
         description: 'The log level to use (0-4)',
-    })
-    .option('server', {
-        alias: 's',
-        type: 'string',
-        array: true,
-        description: 'Limit to server name(s)',
-    })
-    .option('budget', {
-        alias: 'b',
-        type: 'string',
-        array: true,
-        description: 'Limit to budget id/name(s)',
-    })
-    .option('account', {
-        alias: 'a',
-        type: 'string',
-        array: true,
-        description: 'Limit to account name(s)',
-    })
-    .middleware((argv) => {
-        const scopedArgv = argv as Record<string, unknown>;
-
-        scopedArgv.server = splitArgs(argv.server as Array<string> | undefined);
-        scopedArgv.budget = splitArgs(argv.budget as Array<string> | undefined);
-        scopedArgv.account = splitArgs(
-            argv.account as Array<string> | undefined
-        );
     })
     .command(importCommand)
     .command(validateCommand)

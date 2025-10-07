@@ -136,9 +136,27 @@ export default {
             )
             .string('to')
             .describe(
-                'from',
+                'to',
                 `Import transactions up to this date (${DATE_FORMAT})`
-            );
+            )
+            .option('server', {
+                alias: 's',
+                type: 'string',
+                array: true,
+                description: 'Limit to server name(s)',
+            })
+            .option('budget', {
+                alias: 'b',
+                type: 'string',
+                array: true,
+                description: 'Limit to budget id/name(s)',
+            })
+            .option('account', {
+                alias: 'a',
+                type: 'string',
+                array: true,
+                description: 'Limit to account name(s)',
+            });
     },
     handler: (argv) => handleCommand(argv),
 } as CommandModule;
