@@ -3,6 +3,8 @@ import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig } from './config.js';
 import Logger from './Logger.js';
 
+// Account type matching the structure from @actual-app/api
+// This matches the Account type defined in src/types/actual-app__api.d.ts
 type Account = {
     id: string;
     name: string;
