@@ -3,6 +3,16 @@ import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig } from './config.js';
 import Logger from './Logger.js';
 
+// Account type matching the structure from @actual-app/api
+// This matches the Account type defined in src/types/actual-app__api.d.ts
+type Account = {
+    id: string;
+    name: string;
+    type: string;
+    offbudget: boolean;
+    closed: boolean;
+};
+
 export class AccountMap {
     constructor(
         private budgetConfig: ActualBudgetConfig,
@@ -19,6 +29,28 @@ export class AccountMap {
         if (!moneyMoneyAccountRefs) return this.mapping;
 
         const customMap = new Map<MonMonAccount, Account>();
+        const filteredRefs = new Set(
+            moneyMoneyAccountRefs.map((ref) => ref.toLowerCase())
+        );
+
+        // Log all account mappings with strike-through for filtered ones
+        this.logger.info('Account mapping', [
+            '[MoneyMoney Account] → [Actual Account]',
+            ...Array.from(this.mapping.entries()).map(
+                ([monMonAccount, actualAccount]) => {
+                    const isFiltered =
+                        !filteredRefs.has(monMonAccount.name.toLowerCase()) &&
+                        !filteredRefs.has(monMonAccount.uuid.toLowerCase()) &&
+                        !filteredRefs.has(
+                            monMonAccount.accountNumber?.toLowerCase() || ''
+                        );
+                    const prefix = isFiltered ? '~~' : '';
+                    const suffix = isFiltered ? '~~' : '';
+                    return `${prefix}${monMonAccount.name} → ${actualAccount.name}${suffix}`;
+                }
+            ),
+        ]);
+
         for (const ref of moneyMoneyAccountRefs) {
             const monMonAccount = this.getMoneyMoneyAccountByRef(ref);
 
@@ -146,14 +178,6 @@ export class AccountMap {
 
             parsedAccountMapping.set(moneyMoneyAccount, actualAccount);
         }
-
-        this.logger.info('Parsed account mapping', [
-            '[MoneyMoney Account] → [Actual Account]',
-            ...Array.from(parsedAccountMapping.entries()).map(
-                ([monMonAccount, actualAccount]) =>
-                    `${monMonAccount.name} → ${actualAccount.name}`
-            ),
-        ]);
 
         this.mapping = parsedAccountMapping;
     }
