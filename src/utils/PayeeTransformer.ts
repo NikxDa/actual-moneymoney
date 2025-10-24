@@ -4,6 +4,7 @@ import { PayeeTransformationConfig } from './config.js';
 
 class PayeeTransformer {
     private openai: OpenAI;
+    private validatedModel: string;
 
     private static availableModels: Array<string> | null = null;
 
@@ -33,16 +34,18 @@ class PayeeTransformer {
         }
 
         try {
+            // Lazy validation - only validate model when we actually need to use it
+            if (!this.validatedModel) {
+                this.validatedModel = await this.getConfiguredModel();
+            }
+
             this.logger.debug(`Starting payee transformation...`, [
                 `Payees: ${payeeList.length}`,
                 `Model: ${this.config.openAiModel}`,
             ]);
 
-            // Validate model before proceeding
-            const model = await this.getConfiguredModel();
-
             const response = await this.openai.chat.completions.create({
-                model,
+                model: this.validatedModel,
                 messages: [
                     { role: 'system', content: prompt },
                     { role: 'user', content: payeeList.join('\n') },
