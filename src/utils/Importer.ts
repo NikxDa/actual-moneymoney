@@ -186,7 +186,8 @@ class Importer {
             createTransactions = createTransactions.filter((transaction) => {
                 const transactionExists = existingActualTransactions.some(
                     (existingTransaction) =>
-                        existingTransaction.imported_id === transaction.imported_id
+                        existingTransaction.imported_id ===
+                        transaction.imported_id
                 );
                 return !transactionExists;
             });
