@@ -38,7 +38,7 @@
         "yargs": "^18.0.0",
         "zod": "^3.25.76"
     },
-    "node": ">=16",
+    "node": ">=22",
     "devDependencies": {
         "@commitlint/cli": "^20.1.0",
         "@commitlint/config-conventional": "^20.0.0",
@@ -47,7 +47,7 @@
         "eslint": "^9.37.0",
         "globals": "^16.4.0",
         "prettier": "^3.6.2",
-        "semantic-release": "^24.2.9",
+        "semantic-release": "^25.0.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.45.0"
