@@ -183,17 +183,13 @@ class Importer {
             }
 
             // Filter out transactions that already exist in Actual
-            createTransactions = createTransactions.filter(
-                async (transaction) => {
-                    const transactionExists = existingActualTransactions.some(
-                        (existingTransaction) =>
-                            existingTransaction.imported_id ===
-                            transaction.imported_id
-                    );
-
-                    return !transactionExists;
-                }
-            );
+            createTransactions = createTransactions.filter((transaction) => {
+                const transactionExists = existingActualTransactions.some(
+                    (existingTransaction) =>
+                        existingTransaction.imported_id === transaction.imported_id
+                );
+                return !transactionExists;
+            });
 
             if (createTransactions.length === 0) {
                 this.logger.debug(
