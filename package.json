@@ -28,8 +28,8 @@
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
-        "@actual-app/api": "^25.10.0",
-        "chalk": "^5.4.1",
+        "@actual-app/api": "^25.11.0",
+        "chalk": "^5.6.2",
         "date-fns": "^4.1.0",
         "moneymoney": "^1.2.1",
         "node-fetch": "^3.3.2",
@@ -42,14 +42,14 @@
     "devDependencies": {
         "@commitlint/cli": "^19.8.1",
         "@commitlint/config-conventional": "^19.8.1",
-        "@eslint/js": "^9.31.0",
-        "@types/yargs": "^17.0.33",
+        "@eslint/js": "^9.39.1",
+        "@types/yargs": "^17.0.35",
         "eslint": "^9",
-        "globals": "^16.3.0",
+        "globals": "^16.5.0",
         "prettier": "^3.6.2",
         "semantic-release": "^24.2.7",
         "ts-node": "^10.9.2",
-        "typescript": "^5.8.3",
-        "typescript-eslint": "^8.37.0"
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.46.4"
     }
 }
