@@ -278,10 +278,14 @@ class Importer {
     private async convertToActualTransaction(
         transaction: MonMonTransaction
     ): Promise<CreateTransaction> {
-        const transactionNotes =
+        const transactionNotes = [
+            transaction.purpose,
             transaction.comment && this.config.import.importComments
-                ? `${transaction.purpose} | MoneyMoney Comment: ${transaction.comment}`
-                : transaction.purpose;
+                ? `${this.config.import.commentPrefix}${transaction.comment}`
+                : undefined,
+        ]
+            .filter(Boolean)
+            .join(' | ');
 
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),
