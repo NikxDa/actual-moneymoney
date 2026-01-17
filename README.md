@@ -39,6 +39,8 @@ prompt = "<custom prompt>"  # Optional: Override the default payee transformatio
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
+importComments = false # Optional: Import MoneyMoney comments into Actual 
+commentPrefix = "MoneyMoney Comment: " # Optional: Set a prefix for MoneyMoney comments inside the notes
 
 # Actual servers, you can add multiple servers
 [[actualServers]]
