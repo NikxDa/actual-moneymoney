@@ -39,6 +39,7 @@ prompt = "<custom prompt>"  # Optional: Override the default payee transformatio
 [import]
 importUncheckedTransactions = true
 synchronizeClearedStatus = true
+importComments = false # Imports MoneyMoney comments into Actual 
 
 # Actual servers, you can add multiple servers
 [[actualServers]]

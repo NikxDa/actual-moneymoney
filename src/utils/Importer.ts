@@ -278,6 +278,11 @@ class Importer {
     private async convertToActualTransaction(
         transaction: MonMonTransaction
     ): Promise<CreateTransaction> {
+        const transactionNotes =
+            transaction.comment && this.config.import.importComments
+                ? `${transaction.purpose} | MoneyMoney Comment: ${transaction.comment}`
+                : transaction.purpose;
+
         return {
             date: format(transaction.valueDate, 'yyyy-MM-dd'),
             amount: Math.round(transaction.amount * 100),
@@ -286,7 +291,7 @@ class Importer {
             cleared: this.config.import.synchronizeClearedStatus
                 ? transaction.booked
                 : undefined,
-            notes: transaction.purpose,
+            notes: transactionNotes,
             // payee_name: transaction.name,
         };
     }
