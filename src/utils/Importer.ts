@@ -136,6 +136,19 @@ class Importer {
 
         const accountMapping = this.accountMap.getMap(accountRefs);
 
+        // Add early exit if no valid account mappings
+        if (accountMapping.size === 0) {
+            if (accountRefs && accountRefs.length > 0) {
+                this.logger.warn(
+                    'No valid account mappings found for the specified account filters. Skipping transaction processing.'
+                );
+                return;
+            }
+            // If no account filters specified, continue with all accounts
+        }
+
+        // Account mapping logging is now handled in AccountMap.getMap()
+
         // Iterate over account mapping
         for (const [monMonAccount, actualAccount] of accountMapping) {
             const monMonTransactions =
