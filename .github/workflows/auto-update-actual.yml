@@ -1,0 +1,68 @@
+name: Auto-update Actual API
+
+on:
+    schedule:
+        - cron: '0 10 * * *'
+    workflow_dispatch: 
+
+jobs:
+    check-and-update:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GH_TOKEN }}
+
+            - name: Setup Node
+              uses: actions/setup-node@v3
+              with:
+                  node-version: '24'
+
+            - name: Check for new Actual API version
+              id: check-version
+              run: |
+                  CURRENT_VERSION=$(node -p "require('./package.json').dependencies['@actual-app/api']" | sed 's/[^0-9.]//g')
+                  echo "Current version: $CURRENT_VERSION"
+
+                  LATEST_VERSION=$(npm view @actual-app/api version)
+                  echo "Latest version: $LATEST_VERSION"
+
+                  if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+                      echo "New version available: $LATEST_VERSION"
+                      echo "has_update=true" >> $GITHUB_OUTPUT
+                      echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+                  else
+                      echo "Already on latest version"
+                      echo "has_update=false" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Update dependency
+              if: steps.check-version.outputs.has_update == 'true'
+              run: |
+                  npm install @actual-app/api@${{ steps.check-version.outputs.latest_version }}
+
+            - name: Install dependencies and build
+              if: steps.check-version.outputs.has_update == 'true'
+              run: |
+                  npm install
+                  npm run build
+
+            - name: Run linters
+              if: steps.check-version.outputs.has_update == 'true'
+              run: |
+                  npm run lint:eslint || echo "ESLint found issues"
+                  npm run lint:prettier || echo "Prettier found issues"
+
+            - name: Commit and push changes
+              if: steps.check-version.outputs.has_update == 'true'
+              run: |
+                  git config --local user.email "NikxDa]@users.noreply.github.com"
+                  git config --local user.name "NikxDa"
+
+                  git add package.json package-lock.json
+                  git commit -m "feat: update to Actual API ${{ steps.check-version.outputs.latest_version }}"
+
+                  git push
