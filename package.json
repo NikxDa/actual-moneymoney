@@ -45,7 +45,7 @@
         "@eslint/js": "^10.0.1",
         "@types/yargs": "^17.0.35",
         "eslint": "^10",
-        "globals": "^16.5.0",
+        "globals": "^17.3.0",
         "prettier": "^3.8.1",
         "semantic-release": "^25.0.3",
         "ts-node": "^10.9.2",
