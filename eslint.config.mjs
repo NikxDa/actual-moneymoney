@@ -12,6 +12,7 @@ export default tseslint.config(
             globals: globals.node,
         },
         rules: {
+            'preserve-caught-error': 'off',
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 {
