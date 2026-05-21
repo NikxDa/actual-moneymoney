@@ -1,6 +1,5 @@
 import actual from '@actual-app/api';
 import fs from 'fs/promises';
-import fetch from 'node-fetch';
 import { ActualServerConfig } from './config.js';
 import { formatDate } from './date.js';
 import Logger from './Logger.js';
