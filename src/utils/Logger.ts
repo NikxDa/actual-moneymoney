@@ -1,5 +1,3 @@
-import chalk from 'chalk';
-
 export enum LogLevel {
     ERROR = 0,
     WARN = 1,
@@ -9,6 +7,19 @@ export enum LogLevel {
 }
 
 type LogHint = string | string[];
+
+type Color = 'red' | 'yellow' | 'cyan' | 'gray' | 'magenta';
+
+const colorizeText = (color: Color, text: string) => {
+    const codes: Record<Color, string> = {
+        red: '\x1b[31m',
+        yellow: '\x1b[33m',
+        cyan: '\x1b[36m',
+        gray: '\x1b[90m',
+        magenta: '\x1b[35m',
+    };
+    return `${codes[color]}${text}\x1b[0m`;
+};
 
 class Logger {
     public logLevel: LogLevel = LogLevel.INFO;
@@ -43,20 +54,23 @@ class Logger {
     private log(level: LogLevel, message: string, hint?: LogHint) {
         if (this.logLevel >= level) {
             const prefix = `[${LogLevel[level].toUpperCase()}]`;
-            const chalkColor = {
-                [LogLevel.ERROR]: chalk.red,
-                [LogLevel.WARN]: chalk.yellow,
-                [LogLevel.INFO]: chalk.cyan,
-                [LogLevel.DEBUG]: chalk.gray,
-                [LogLevel.ACTUAL]: chalk.magenta,
-            }[level];
+            const color: Color = {
+                [LogLevel.ERROR]: 'red',
+                [LogLevel.WARN]: 'yellow',
+                [LogLevel.INFO]: 'cyan',
+                [LogLevel.DEBUG]: 'gray',
+                [LogLevel.ACTUAL]: 'magenta',
+            }[level] as Color;
 
-            this.consoleLog(chalkColor(prefix), message);
+            this.consoleLog(colorizeText(color, prefix), message);
             if (hint) {
                 const arrayHint = Array.isArray(hint) ? hint : [hint];
                 for (const hint of arrayHint) {
                     this.consoleLog(
-                        chalk.gray(' '.repeat(prefix.length), '↳', hint)
+                        colorizeText(
+                            'gray',
+                            `${' '.repeat(prefix.length)} ↳ ${hint}`
+                        )
                     );
                 }
             }
