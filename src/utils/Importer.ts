@@ -106,9 +106,7 @@ class Importer {
         this.logger.debug(
             `Found ${
                 monMonTransactions.length
-            } total transactions in MoneyMoney since ${formatDate(
-                importDate
-            )}`
+            } total transactions in MoneyMoney since ${formatDate(importDate)}`
         );
 
         const monMonTransactionMap = monMonTransactions.reduce(
