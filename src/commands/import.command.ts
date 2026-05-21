@@ -1,8 +1,8 @@
-import { parse } from 'date-fns';
 import { checkDatabaseUnlocked } from 'moneymoney';
 import { ArgumentsCamelCase, CommandModule } from 'yargs';
 import { AccountMap } from '../utils/AccountMap.js';
 import ActualApi from '../utils/ActualApi.js';
+import { parseDate } from '../utils/date.js';
 import Importer from '../utils/Importer.js';
 import Logger, { LogLevel } from '../utils/Logger.js';
 import PayeeTransformer from '../utils/PayeeTransformer.js';
@@ -26,12 +26,8 @@ const handleCommand = async (argv: ArgumentsCamelCase) => {
     }
 
     const isDryRun = (argv.dryRun as boolean) || false;
-    const fromDate = argv.from
-        ? parse(argv.from as string, DATE_FORMAT, new Date())
-        : undefined;
-    const toDate = argv.to
-        ? parse(argv.to as string, DATE_FORMAT, new Date())
-        : undefined;
+    const fromDate = argv.from ? parseDate(argv.from as string) : undefined;
+    const toDate = argv.to ? parseDate(argv.to as string) : undefined;
     const account = argv.account as string | Array<string> | undefined;
 
     let accountRefs: Array<string> | undefined;

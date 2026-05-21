@@ -1,4 +1,3 @@
-import { format, subMonths } from 'date-fns';
 import {
     Account as MonMonAccount,
     Transaction as MonMonTransaction,
@@ -7,9 +6,9 @@ import {
 import { AccountMap } from './AccountMap.js';
 import ActualApi from './ActualApi.js';
 import { ActualBudgetConfig, Config } from './config.js';
+import { formatDate } from './date.js';
 import Logger from './Logger.js';
 import PayeeTransformer from './PayeeTransformer.js';
-import { DATE_FORMAT } from './shared.js';
 
 class Importer {
     constructor(
@@ -32,7 +31,9 @@ class Importer {
         to?: Date;
         isDryRun?: boolean;
     }) {
-        const fromDate = from ?? subMonths(new Date(), 1);
+        const defaultFromDate = new Date();
+        defaultFromDate.setMonth(defaultFromDate.getMonth() - 1);
+        const fromDate = from ?? defaultFromDate;
         const earliestImportDate = this.budgetConfig.earliestImportDate
             ? new Date(this.budgetConfig.earliestImportDate)
             : null;
@@ -44,10 +45,9 @@ class Importer {
 
         if (earliestImportDate && earliestImportDate > fromDate) {
             this.logger.warn(
-                `Earliest import date is set to ${format(
-                    earliestImportDate,
-                    DATE_FORMAT
-                )}. Using this date instead of ${format(fromDate, DATE_FORMAT)}.`
+                `Earliest import date is set to ${formatDate(
+                    earliestImportDate
+                )}. Using this date instead of ${formatDate(fromDate)}.`
             );
         }
 
@@ -66,9 +66,8 @@ class Importer {
 
         if (monMonTransactions.length === 0) {
             this.logger.info(
-                `No transactions found in MoneyMoney since ${format(
-                    importDate,
-                    DATE_FORMAT
+                `No transactions found in MoneyMoney since ${formatDate(
+                    importDate
                 )}.`
             );
             return;
@@ -107,10 +106,7 @@ class Importer {
         this.logger.debug(
             `Found ${
                 monMonTransactions.length
-            } total transactions in MoneyMoney since ${format(
-                importDate,
-                DATE_FORMAT
-            )}`
+            } total transactions in MoneyMoney since ${formatDate(importDate)}`
         );
 
         const monMonTransactionMap = monMonTransactions.reduce(
@@ -158,12 +154,11 @@ class Importer {
             // Push start transaction if no transactions exist
             if (existingActualTransactions.length === 0) {
                 const startTransaction: CreateTransaction = {
-                    date: format(
+                    date: formatDate(
                         monMonTransactions.length > 0
                             ? monMonTransactions[monMonTransactions.length - 1]
                                   .valueDate
-                            : new Date(),
-                        DATE_FORMAT
+                            : new Date()
                     ),
                     amount: this.getStartingBalanceForAccount(
                         monMonAccount,
@@ -288,7 +283,7 @@ class Importer {
             .join(' | ');
 
         return {
-            date: format(transaction.valueDate, 'yyyy-MM-dd'),
+            date: formatDate(transaction.valueDate),
             amount: Math.round(transaction.amount * 100),
             imported_id: this.getIdForMoneyMoneyTransaction(transaction),
             imported_payee: transaction.name,
