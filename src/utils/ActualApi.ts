@@ -1,8 +1,8 @@
 import actual from '@actual-app/api';
-import { format } from 'date-fns';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
 import { ActualServerConfig } from './config.js';
+import { formatDate } from './date.js';
 import Logger from './Logger.js';
 import { DEFAULT_DATA_DIR } from './shared.js';
 
@@ -115,8 +115,8 @@ class ActualApi {
     }
 
     getTransactions(accountId: string) {
-        const startDate = format(new Date(2000, 1, 1), 'yyyy-MM-dd');
-        const endDate = format(new Date(), 'yyyy-MM-dd');
+        const startDate = formatDate(new Date(2000, 1, 1));
+        const endDate = formatDate(new Date());
 
         return this.suppressConsoleLog(() =>
             actual.getTransactions(accountId, startDate, endDate)
