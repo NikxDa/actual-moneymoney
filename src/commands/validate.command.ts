@@ -44,7 +44,7 @@ const handleValidate = async (argv: ArgumentsCamelCase) => {
         } catch (e) {
             if (e instanceof z.ZodError) {
                 logger.error('Configuration file is invalid:');
-                for (const error of e.errors) {
+                for (const error of e.issues) {
                     logger.error(
                         `Path [${error.path.join('.')}]: ${error.message}`
                     );

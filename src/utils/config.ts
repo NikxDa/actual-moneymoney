@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import toml from 'toml';
 import { ArgumentsCamelCase } from 'yargs';
-import { ZodIssueCode, z } from 'zod';
+import { z } from 'zod';
 import { DEFAULT_CONFIG_FILE } from './shared.js';
 
 const budgetSchema = z
@@ -13,12 +13,12 @@ const budgetSchema = z
             enabled: z.boolean(),
             password: z.string().optional(),
         }),
-        accountMapping: z.record(z.string()),
+        accountMapping: z.record(z.string(), z.string()),
     })
     .superRefine((val, ctx) => {
         if (val.e2eEncryption.enabled && !val.e2eEncryption.password) {
             ctx.addIssue({
-                code: ZodIssueCode.custom,
+                code: 'custom',
                 message:
                     'Password must not be empty if end-to-end encryption is enabled',
             });
@@ -28,14 +28,12 @@ const budgetSchema = z
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
             if (!dateRegex.test(val.earliestImportDate)) {
                 ctx.addIssue({
-                    code: ZodIssueCode.custom,
+                    code: 'custom',
                     message:
                         'Invalid earliest import date format (required format is YYYY-MM-DD)',
                 });
             }
         }
-
-        return val;
     });
 
 const actualServerSchema = z.object({
@@ -76,7 +74,7 @@ export const configSchema = z
             !val.payeeTransformation.openAiApiKey
         ) {
             ctx.addIssue({
-                code: ZodIssueCode.custom,
+                code: 'custom',
                 message:
                     'OpenAI key must not be empty if payeeTransformation is enabled',
             });
