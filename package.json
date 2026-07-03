@@ -31,7 +31,7 @@
     "author": "NikxDa",
     "license": "MIT",
     "dependencies": {
-        "@actual-app/api": "^26.6.0",
+        "@actual-app/api": "^26.7.0",
         "moneymoney": "1.3.0",
         "openai": "6.37.0",
         "toml": "4.1.1",
